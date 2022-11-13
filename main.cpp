@@ -16,15 +16,17 @@ int main(int, char **)
     Matrix<2, 2> b = {1, 2, 4, 3};
     PRINT_SINGLE_ELEMENTS(inverse(b), "inverse(b) = ");
     Matrix<1, 1> c = {3};
-    PRINT_SINGLE_ELEMENTS(inverse(c), "inverse(c) = ");
+    PRINT_SINGLE_ELEMENTS(c.I(), "inverse(c) = ");
     Matrix<10, 10> M{};
-    std::default_random_engine e;
-    std::uniform_real_distribution<> u(-5, 5);
+    std::default_random_engine eni;
+    std::uniform_real_distribution<> uf(-5, 5);
     for (auto &i : M.flat())
     {
-        i = u(e);
+        i = uf(eni);
     }
     PRINT_SINGLE_ELEMENTS(M, "M = ");
     PRINT_SINGLE_ELEMENTS(determinant(M), "determinant(M) = ");
-    PRINT_SINGLE_ELEMENTS(adjoint(M),"adjoint(M) = ");
+    PRINT_SINGLE_ELEMENTS(adjugate(M), "adjoint(M) = ");
+    PRINT_SINGLE_ELEMENTS(M + Matrix<10, 10>::eye(), "M + I = ");
+    Matrix<2, 3> f{};
 }

@@ -48,18 +48,16 @@ inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = ""
 // forward declare
 template <std::size_t M, std::size_t N>
 class Matrix;
-
-template <size_t M>
-double determinant(const Matrix<M, M> &mat);
-
-template <size_t M>
-Matrix<M, M> inverse(const Matrix<M, M> &mat);
+template <size_t N>
+Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even);
+template <size_t N>
+void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
 
 template <std::size_t M, std::size_t N>
 class Matrix
 {
-    template <typename RT>
-    using enable_when_squre_t = typename std::enable_if<M == N, RT>::type;
+    template <size_t A, typename RT = void>
+    using enable_when_squre_t = typename std::enable_if<A == N, RT>::type;
     template <typename T, typename RT = void>
     using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
     using IndexRange = std::pair<int, int>;
@@ -99,13 +97,6 @@ class Matrix
                     data(row_idx + i, col_idx + j) = other(i, j);
                 }
             }
-            // for (size_t j = 0; j < real_col_counts; j++)
-            // {
-            //     for (size_t i = 0; i < real_row_counts; i++)
-            //     {
-            //         data(row_idx + i, col_idx + j) = other(i, j);
-            //     }
-            // }
             return;
         }
         template <typename T, size_t A, enable_arith_type_t<T> * = nullptr>
@@ -268,34 +259,38 @@ public:
         }
         return res;
     }
-    enable_when_squre_t<Matrix<M, M>> I() const
+    template <size_t A = M>
+    enable_when_squre_t<A, Matrix> I() const
     {
-        return inverse(*this);
-    }
-    enable_when_squre_t<double> det() const
-    {
-        return determinant(*this);
+        std::array<int, M> indx{};
+        auto even = true;
+        auto result = Matrix<M, M>::eye();
+        auto LU = ludcmp(*this, indx, even);
+        for (int j = 0; j < M; j++)
+        {
+            ludbksb(LU, indx, result.data() + j * M);
+        }
+        return result;
     }
 
     // Overloaded Operators
-    Matrix
-    operator+(const Matrix &other) const
+    Matrix operator+(const Matrix &other) const
     {
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] + other.data()[i];
+            res[i] = m_data[i] + other.data()[i];
         }
-        return result;
+        return res;
     }
     Matrix operator-(const Matrix &other) const
     {
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] - other.data()[i];
+            res[i] = m_data[i] - other.data()[i];
         }
-        return result;
+        return res;
     }
     template <size_t L>
     Matrix<M, L> operator*(const Matrix<N, L> &other) const
@@ -315,18 +310,6 @@ public:
             iter_A += N;
         }
         return result;
-        // Matrix<M, L> result{};
-        // for (size_t i = 0; i < M; i++)
-        // {
-        //     for (size_t j = 0; j < L; j++)
-        //     {
-        //         for (size_t k = 0; k < N; k++)
-        //         {
-        //             result(i, j) += (*this)(i, k) * other(k, j);
-        //         }
-        //     }
-        // }
-        // return result;
     }
     std::array<double, M> operator*(const std::array<double, N> &x) const
     {
@@ -340,46 +323,6 @@ public:
         }
         return result;
     }
-    // template <size_t L>
-    // Matrix<M, L> Mul2(const Matrix<N, L> &other) const
-    // {
-    //     Matrix<M, L> result{};
-    //     Matrix<N, M> AT = this->T();
-    //     auto iter_A = AT.data();
-    //     auto iter_B = other.data();
-    //     for (size_t i = 0; i < M; i++)
-    //     {
-    //         iter_B = other.data();
-    //         for (size_t j = 0; j < L; j++)
-    //         {
-    //             double d = 0.0;
-    //             for (size_t k = 0; k < N; k++)
-    //             {
-    //                 d += (*(iter_A + k)) * (*(iter_B + k));
-    //             }
-    //             result(i, j) = d;
-    //             iter_B += N;
-    //         }
-    //         iter_A += N;
-    //     }
-    //     return result;
-    // }
-    // template <size_t L>
-    // Matrix<M, L> Mul3(const Matrix<N, L> &other) const
-    // {
-    //     Matrix<M, L> result{};
-    //     for (size_t i = 0; i < M; i++)
-    //     {
-    //         for (size_t j = 0; j < L; j++)
-    //         {
-    //             for (size_t k = 0; k < N; k++)
-    //             {
-    //                 result(i, j) += (*this)(i, k) * other(k, j);
-    //             }
-    //         }
-    //     }
-    //     return result;
-    // }
     Matrix operator+=(const Matrix &other) const
     {
         for (size_t i = 0; i < M * N; i++)
@@ -405,9 +348,9 @@ public:
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] + ele;
+            res[i] = m_data[i] + ele;
         }
-        return result;
+        return res;
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator-(T ele)
@@ -415,9 +358,9 @@ public:
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] - ele;
+            res[i] = m_data[i] - ele;
         }
-        return result;
+        return res;
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator*(T ele)
@@ -425,9 +368,9 @@ public:
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] * ele;
+            res[i] = m_data[i] * ele;
         }
-        return result;
+        return res;
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator/(T ele)
@@ -435,9 +378,9 @@ public:
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
         {
-            result[i] = m_data[i] / ele;
+            res[i] = m_data[i] / ele;
         }
-        return result;
+        return res;
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator+=(T ele)
@@ -595,7 +538,7 @@ Matrix<M - 1u, N - 1u> cofactor(const Matrix<M, N> &mat, size_t p, size_t q)
 }
 
 template <size_t M>
-Matrix<M, M> adjoint(const Matrix<M, M> &mat)
+Matrix<M, M> adjugate(const Matrix<M, M> &mat)
 {
     Matrix<M, M> result{};
     for (int i = 0; i < M; i++)
@@ -609,11 +552,11 @@ Matrix<M, M> adjoint(const Matrix<M, M> &mat)
     return result;
 }
 
-// template <>
-// Matrix<1, 1> adjoint(const Matrix<1, 1, nullptr> &mat)
-// {
-//     return {1};
-// }
+template <>
+Matrix<1, 1> adjugate(const Matrix<1, 1> &mat)
+{
+    return {1};
+}
 
 template <size_t N>
 Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even)
@@ -713,15 +656,7 @@ double determinant(const Matrix<M, M> &mat)
 template <size_t M>
 Matrix<M, M> inverse(const Matrix<M, M> &mat)
 {
-    std::array<int, M> indx{};
-    auto even = true;
-    auto result = Matrix<M, M>::eye();
-    auto LU = ludcmp(mat, indx, even);
-    for (int j = 0; j < M; j++)
-    {
-        ludbksb(LU, indx, result.data() + j * M);
-    }
-    return result;
+    return mat.I();
 }
 
 template <size_t A, size_t B, size_t M, size_t N>
