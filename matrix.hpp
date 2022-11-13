@@ -1,5 +1,5 @@
-#ifndef VERY_SIMPLE_MATRIX_HEADER
-#define VERY_SIMPLE_MATRIX_HEADER
+#ifndef VVERY_SIMPLE_MATRIX_HEADER
+#define VVERY_SIMPLE_MATRIX_HEADER
 
 #include <cmath>
 #include <array>
@@ -14,7 +14,7 @@ constexpr size_t gl_get_less(size_t A, size_t B)
 {
     return A < B ? A : B;
 }
-constexpr size_t gl_get_greater(size_t A, size_t B)
+constexpr size_t gl_get_more(size_t A, size_t B)
 {
     return A < B ? B : A;
 }
@@ -45,9 +45,21 @@ inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = ""
     std::cout << std::endl;
 }
 
+// forward declare
+template <std::size_t M, std::size_t N>
+class Matrix;
+
+template <size_t M>
+double determinant(const Matrix<M, M> &mat);
+
+template <size_t M>
+Matrix<M, M> inverse(const Matrix<M, M> &mat);
+
 template <std::size_t M, std::size_t N>
 class Matrix
 {
+    template <typename RT>
+    using enable_when_squre_t = typename std::enable_if<M == N, RT>::type;
     template <typename T, typename RT = void>
     using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
     using IndexRange = std::pair<int, int>;
@@ -256,9 +268,18 @@ public:
         }
         return res;
     }
+    enable_when_squre_t<Matrix<M, M>> I() const
+    {
+        return inverse(*this);
+    }
+    enable_when_squre_t<double> det() const
+    {
+        return determinant(*this);
+    }
 
     // Overloaded Operators
-    Matrix operator+(const Matrix &other) const
+    Matrix
+    operator+(const Matrix &other) const
     {
         std::vector<double> res(M * N, 0.0);
         for (auto i = 0u; i < M * N; i++)
@@ -507,9 +528,9 @@ void ones(Matrix<M, N> &m)
 }
 
 template <size_t M, size_t N, size_t A, size_t B>
-Matrix<gl_get_greater(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
+Matrix<gl_get_more(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
 {
-    constexpr size_t N_M = gl_get_greater(M, A);
+    constexpr size_t N_M = gl_get_more(M, A);
     Matrix<N_M, N + B> result{};
     for (size_t j = 0; j < N; j++)
     {
@@ -529,9 +550,9 @@ Matrix<gl_get_greater(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<
 }
 
 template <size_t M, size_t N, size_t A, size_t B>
-Matrix<M + A, gl_get_greater(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
+Matrix<M + A, gl_get_more(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
 {
-    constexpr size_t N_N = gl_get_greater(N, B);
+    constexpr size_t N_N = gl_get_more(N, B);
     Matrix<M + A, N_N> result{};
     for (size_t j = 0; j < N; j++)
     {
@@ -573,26 +594,20 @@ Matrix<M - 1u, N - 1u> cofactor(const Matrix<M, N> &mat, size_t p, size_t q)
     return result;
 }
 
-// template <>
-// double determinant(const Matrix<1, 1, nullptr> &mat)
-// {
-//     return mat.flat()[0];
-// }
-
-// template <size_t M>
-// Matrix<M, M> adjoint(const Matrix<M, M> &mat)
-// {
-//     Matrix<M, M> result{};
-//     for (int i = 0; i < M; i++)
-//     {
-//         for (int j = 0; j < M; j++)
-//         {
-//             auto sign = (i + j) % 2 == 0 ? 1 : -1;
-//             result(j, i) = sign * (determinant(cofactor(mat, i, j)));
-//         }
-//     }
-//     return result;
-// }
+template <size_t M>
+Matrix<M, M> adjoint(const Matrix<M, M> &mat)
+{
+    Matrix<M, M> result{};
+    for (int i = 0; i < M; i++)
+    {
+        for (int j = 0; j < M; j++)
+        {
+            auto sign = (i + j) % 2 == 0 ? 1 : -1;
+            result(j, i) = sign * (determinant(cofactor(mat, i, j)));
+        }
+    }
+    return result;
+}
 
 // template <>
 // Matrix<1, 1> adjoint(const Matrix<1, 1, nullptr> &mat)
