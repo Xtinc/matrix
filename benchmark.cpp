@@ -7,17 +7,17 @@ static void BM_MatrixMul(benchmark::State &state)
 {
     std::default_random_engine e;
     std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
-    Matrix<500, 15> M{};
-    for (size_t i = 0; i < 500; i++)
+    Matrix<20,12> M{};
+    for (size_t i = 0; i < 20; i++)
     {
-        for (size_t j = 0; i < 15; i++)
+        for (size_t j = 0; i < 12; i++)
         {
             double t = u(e);
             M(i, j) = t;
         }
     }
     auto b = M.T();
-    Matrix<500, 500> M2{};
+    Matrix<20,20> M2{};
     for (auto _ : state)
     {
         M2 = M * b;
@@ -41,10 +41,10 @@ static void BM_MatrixMulEigen(benchmark::State &state)
 {
     std::default_random_engine e;
     std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
-    Eigen::MatrixXd M2(500, 15);
-    for (size_t i = 0; i < 500; i++)
+    Eigen::MatrixXd M2(20, 12);
+    for (size_t i = 0; i < 20; i++)
     {
-        for (size_t j = 0; i < 15; i++)
+        for (size_t j = 0; i < 12; i++)
         {
             double t = u(e);
             M2(i, j) = t;
@@ -52,7 +52,7 @@ static void BM_MatrixMulEigen(benchmark::State &state)
     }
 
     auto b = M2.transpose();
-    Eigen::MatrixXd M3(500, 500);
+    Eigen::MatrixXd M3(20, 20);
     for (auto _ : state)
     {
         M3 = M2 * b;

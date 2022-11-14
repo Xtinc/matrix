@@ -293,8 +293,8 @@ public:
         pointer m_ptr;
     };
 
-    iterator begin() { return iterator(&m_data[0]); }
-    iterator end() { return iterator(&m_data[M * N]); }
+    iterator begin() { return iterator(m_data.data()); }
+    iterator end() { return iterator(m_data.data() + M * N); }
 
 public:
     Matrix() = default;
