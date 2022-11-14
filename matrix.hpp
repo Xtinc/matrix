@@ -46,15 +46,103 @@ inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = ""
 }
 
 // forward declare
-template <std::size_t M, std::size_t N>
+template <size_t M, size_t N>
 class Matrix;
+
 template <size_t N>
 Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even);
+
 template <size_t N>
 void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
 
+namespace details
+{
+    constexpr size_t gl_sm(size_t A, size_t B)
+    {
+        return A * B < 260 ? 1 : 0;
+    }
+
+    template <size_t M, size_t N, std::size_t A = gl_sm(M, N)>
+    class MatrixBase;
+
+    template <std::size_t M, std::size_t N>
+    class MatrixBase<M, N, 1>
+    {
+        template <typename T, typename RT = void>
+        using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
+
+    protected:
+        MatrixBase() : m_data{} {}
+        ~MatrixBase() = default;
+        MatrixBase(const MatrixBase &) = default;
+        MatrixBase(MatrixBase &&) = default;
+        MatrixBase &operator=(const MatrixBase &) = default;
+        MatrixBase &operator=(MatrixBase &&) = default;
+
+        template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::array<T, L> &list) : m_data{}
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+        template <typename T, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::initializer_list<T> &list) : m_data{}
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+        template <typename T, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::vector<T> &list) : m_data{}
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+
+    protected:
+        std::array<double, M * N> m_data;
+    };
+
+    template <std::size_t M, std::size_t N>
+    class MatrixBase<M, N, 0>
+    {
+        template <typename T, typename RT = void>
+        using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
+
+    protected:
+        MatrixBase() : m_data(M * N, 0.0) {}
+        ~MatrixBase() = default;
+        MatrixBase(const MatrixBase &) = default;
+        MatrixBase(MatrixBase &&) = default;
+        MatrixBase &operator=(const MatrixBase &) = default;
+        MatrixBase &operator=(MatrixBase &&) = default;
+
+        template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+        template <typename T, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::initializer_list<T> &list) : m_data(M * N, 0.0)
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+        template <typename T, enable_arith_type_t<T> * = nullptr>
+        MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
+        {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+
+    protected:
+        std::vector<double> m_data;
+    };
+
+}
+
 template <std::size_t M, std::size_t N>
-class Matrix
+class Matrix : public details::MatrixBase<M, N>
 {
     template <size_t A, typename RT = void>
     using enable_when_squre_t = typename std::enable_if<A == N, RT>::type;
@@ -159,8 +247,57 @@ class Matrix
     };
 
 public:
-    // Constructors
-    Matrix() : m_data(M * N, 0.0){};
+    struct iterator
+    {
+        using iterator_category = std::bidirectional_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = double;
+        using pointer = double *;
+        using reference = double &;
+
+        iterator(pointer ptr) : m_ptr(ptr) {}
+        reference operator*() const
+        {
+            return *m_ptr;
+        }
+        pointer operator->()
+        {
+            return m_ptr;
+        }
+        iterator &operator++()
+        {
+            m_ptr++;
+            return *this;
+        }
+        iterator operator++(int)
+        {
+            iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+        iterator &operator--()
+        {
+            m_ptr--;
+            return *this;
+        }
+        iterator operator--(int)
+        {
+            iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+        friend bool operator==(const iterator &a, const iterator &b) { return a.m_ptr == b.m_ptr; };
+        friend bool operator!=(const iterator &a, const iterator &b) { return a.m_ptr != b.m_ptr; };
+
+    private:
+        pointer m_ptr;
+    };
+
+    iterator begin() { return iterator(&m_data[0]); }
+    iterator end() { return iterator(&m_data[M * N]); }
+
+public:
+    Matrix() = default;
     ~Matrix() = default;
     Matrix(const Matrix &) = default;
     Matrix(Matrix &&) = default;
@@ -168,22 +305,16 @@ public:
     Matrix &operator=(Matrix &&) = default;
 
     template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
-    Matrix(const std::array<T, L> &list) : m_data(M * N, 0.0)
+    Matrix(const std::array<T, L> &list) : MatrixBase(list)
     {
-        auto real_idx = list.size() < M * N ? list.size() : M * N;
-        std::copy_n(list.begin(), real_idx, m_data.begin());
     }
     template <typename T, enable_arith_type_t<T> * = nullptr>
-    Matrix(const std::initializer_list<T> &list) : m_data(M * N, 0.0)
+    Matrix(const std::initializer_list<T> &list) : MatrixBase(list)
     {
-        auto real_idx = list.size() < M * N ? list.size() : M * N;
-        std::copy_n(list.begin(), real_idx, m_data.begin());
     }
     template <typename T, enable_arith_type_t<T> * = nullptr>
-    Matrix(const std::vector<T> &list) : m_data(M * N, 0.0)
+    Matrix(const std::vector<T> &list) : MatrixBase(list)
     {
-        auto real_idx = list.size() < M * N ? list.size() : M * N;
-        std::copy_n(list.begin(), real_idx, m_data.begin());
     }
 
     // Member functions
@@ -194,14 +325,6 @@ public:
     const double *data() const
     {
         return m_data.data();
-    }
-    std::vector<double> &flat()
-    {
-        return m_data;
-    }
-    const std::vector<double> &flat() const
-    {
-        return m_data;
     }
     std::array<double, N> row(size_t idx) const
     {
@@ -249,12 +372,12 @@ public:
     }
     Matrix<N, M> T() const
     {
-        std::vector<double> res(M * N, 0.0);
+        Matrix<N, M> res{};
         for (auto i = 0u; i < M; i++)
         {
             for (auto j = 0u; j < N; j++)
             {
-                res.at(i + j) = (*this)(i, j);
+                res(j, i) = (*this)(i, j);
             }
         }
         return res;
@@ -444,30 +567,26 @@ public:
         }
         return result;
     }
-    static size_t row_counts()
+    constexpr size_t row_counts()
     {
         return M;
     }
-    static size_t col_counts()
+    constexpr size_t col_counts()
     {
         return N;
     }
-
-private:
-    // data member
-    std::vector<double> m_data;
 };
 
 template <size_t M, size_t N>
 void zeros(Matrix<M, N> &m)
 {
-    m.flat() = {};
+    m.fill(0.0);
 }
 
 template <size_t M, size_t N>
 void ones(Matrix<M, N> &m)
 {
-    m.fill(1);
+    m.fill(1.0);
 }
 
 template <size_t M, size_t N, size_t A, size_t B>

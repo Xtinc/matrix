@@ -11,7 +11,7 @@ int main(int, char **)
     PRINT_SINGLE_ELEMENTS(determinant(a), "determinant(a) = ");
     PRINT_SINGLE_ELEMENTS(inverse(a), "inverse(a) = ");
     Matrix<4, 4> A(std::move(a));
-    PRINT_LISTED_ELEMENTS(a.flat(), "Move Sementics, a = ");
+    // PRINT_LISTED_ELEMENTS(a.flat(), "Move Sementics, a = ");
     PRINT_SINGLE_ELEMENTS(A, "Move Sementics, A = ");
     Matrix<2, 2> b = {1, 2, 4, 3};
     PRINT_SINGLE_ELEMENTS(inverse(b), "inverse(b) = ");
@@ -20,7 +20,7 @@ int main(int, char **)
     Matrix<10, 10> M{};
     std::default_random_engine eni;
     std::uniform_real_distribution<> uf(-5, 5);
-    for (auto &i : M.flat())
+    for (auto &i : M)
     {
         i = uf(eni);
     }
@@ -28,5 +28,4 @@ int main(int, char **)
     PRINT_SINGLE_ELEMENTS(determinant(M), "determinant(M) = ");
     PRINT_SINGLE_ELEMENTS(adjugate(M), "adjoint(M) = ");
     PRINT_SINGLE_ELEMENTS(M + Matrix<10, 10>::eye(), "M + I = ");
-    Matrix<2, 3> f{};
 }
