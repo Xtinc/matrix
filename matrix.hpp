@@ -7,44 +7,6 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
-#include <iostream>
-#include <iomanip>
-
-constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
-constexpr size_t gl_get_less(size_t A, size_t B)
-{
-    return A < B ? A : B;
-}
-constexpr size_t gl_get_more(size_t A, size_t B)
-{
-    return A < B ? B : A;
-}
-
-template <typename T>
-inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
-{
-    std::cout << optcsrt << coll << std::endl;
-}
-template <typename T>
-inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
-{
-    std::cout << optcsrt;
-    for (const auto ele : coll)
-    {
-        std::cout << ele << ' ';
-    }
-    std::cout << std::endl;
-}
-template <typename T>
-inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
-{
-    std::cout << optcsrt;
-    for (auto ele : coll)
-    {
-        std::cout << '[' << ele.first << ',' << ele.second << "] ";
-    }
-    std::cout << std::endl;
-}
 
 // forward declare
 template <size_t M, size_t N>
@@ -146,8 +108,6 @@ class Matrix : public details::MatrixBase<M, N>
 {
     template <size_t A, typename RT = void>
     using enable_when_squre_t = typename std::enable_if<A == N, RT>::type;
-    template <typename T, typename RT = void>
-    using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
     using IndexRange = std::pair<int, int>;
 
     struct SubPart
@@ -469,23 +429,6 @@ public:
     Matrix(Matrix &&) = default;
     Matrix &operator=(const Matrix &) = default;
     Matrix &operator=(Matrix &&) = default;
-    template <typename T1, typename T2>
-    Matrix(const details::MatrixSum<T1, T2> &expr)
-    {
-        for (size_t i = 0; i < M * N; i++)
-        {
-            (*this)[i] = expr[i];
-        }
-    }
-    template <typename T1, typename T2>
-    Matrix &operator=(const details::MatrixSum<T1, T2> &expr)
-    {
-        for (size_t i = 0; i < M * N; i++)
-        {
-            (*this)[i] = expr[i];
-        }
-        return *this;
-    }
 
     template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
     Matrix(const std::array<T, L> &list) : MatrixBase(list)
@@ -588,23 +531,55 @@ public:
     {
         return m_data.at(idx);
     }
-    details::MatrixSum<Matrix, Matrix> operator+(const Matrix &other) const
+    template <typename T, enable_arith_type_t<T> * = nullptr>
+    auto operator+(const T &other) const
     {
-        // std::vector<double> res(M * N, 0.0);
-        // for (auto i = 0u; i < M * N; i++)
-        // {
-        //     res[i] = m_data[i] + other.data()[i];
-        // }
-        return details::MatrixSum<Matrix, Matrix>(*this, other);
+        using result_t = details::expr_result<Matrix>;
+        using result_s = details::expr_result<details::expr_scalar<T>>;
+        return details::biops<details::expr_plus_t, result_t, result_s>(details::expr_plus, result_t(*this), result_s(other));
     }
-    Matrix operator-(const Matrix &other) const
+    template <typename T, disable_arith_type_t<T> * = nullptr>
+    auto operator+(const T &other) const
     {
-        std::vector<double> res(M * N, 0.0);
-        for (auto i = 0u; i < M * N; i++)
-        {
-            res[i] = m_data[i] - other.data()[i];
-        }
-        return res;
+        using result_t = details::expr_result<Matrix>;
+        return details::biops<details::expr_plus_t, result_t, T>(details::expr_plus, result_t(*this), other);
+    }
+    auto operator+(const Matrix &other) const
+    {
+        using result_t = details::expr_result<Matrix>;
+        return details::biops<details::expr_plus_t, result_t, result_t>(details::expr_plus, result_t(*this), result_t(other));
+    }
+    template <typename T, enable_arith_type_t<T> * = nullptr>
+    auto operator-(const T &other) const
+    {
+        using result_t = details::expr_result<Matrix>;
+        using result_s = details::expr_result<details::expr_scalar<T>>;
+        return details::biops<details::expr_minus_t, result_t, result_s>(details::expr_minus, result_t(*this), result_s(other));
+    }
+    template <typename T, disable_arith_type_t<T> * = nullptr>
+    auto operator-(const T &other) const
+    {
+        using result_t = details::expr_result<Matrix>;
+        return details::biops<details::expr_minus_t, result_t, T>(details::expr_minus, result_t(*this), other);
+    }
+    auto operator-(const Matrix &other) const
+    {
+        using result_t = details::expr_result<Matrix>;
+        return details::biops<details::expr_minus_t, result_t, result_t>(details::expr_minus, result_t(*this), result_t(other));
+    }
+    template <typename T, enable_arith_type_t<T> * = nullptr>
+    auto operator*(const T &t)
+    {
+        using result_t = details::expr_result<Matrix>;
+        using result_s = details::expr_result<details::expr_scalar<T>>;
+        return details::biops<details::expr_mul_t, result_t, result_s>(details::expr_mul, result_t(*this), result_s(t));
+    }
+    template <typename T, enable_arith_type_t<T> * = nullptr>
+    auto operator/(const T &t)
+    {
+        using result_t = details::expr_result<Matrix>;
+        using result_s = details::expr_result<details::expr_scalar<T>>;
+        return details::biops<details::expr_div_t, result_t, result_s>(details::expr_div, result_t(*this), result_s(t));
     }
     template <size_t L>
     Matrix<M, L> operator*(const Matrix<N, L> &other) const
@@ -666,26 +641,26 @@ public:
     //     }
     //     return res;
     // }
-    template <typename T>
-    enable_arith_type_t<T, Matrix<M, N>> operator-(T ele)
-    {
-        std::vector<double> res(M * N, 0.0);
-        for (auto i = 0u; i < M * N; i++)
-        {
-            res[i] = m_data[i] - ele;
-        }
-        return res;
-    }
-    template <typename T>
-    enable_arith_type_t<T, Matrix<M, N>> operator*(T ele)
-    {
-        std::vector<double> res(M * N, 0.0);
-        for (auto i = 0u; i < M * N; i++)
-        {
-            res[i] = m_data[i] * ele;
-        }
-        return res;
-    }
+    // template <typename T>
+    // enable_arith_type_t<T, Matrix<M, N>> operator-(T ele)
+    // {
+    //     std::vector<double> res(M * N, 0.0);
+    //     for (auto i = 0u; i < M * N; i++)
+    //     {
+    //         res[i] = m_data[i] - ele;
+    //     }
+    //     return res;
+    // }
+    // template <typename T>
+    // enable_arith_type_t<T, Matrix<M, N>> operator*(T ele)
+    // {
+    //     std::vector<double> res(M * N, 0.0);
+    //     for (auto i = 0u; i < M * N; i++)
+    //     {
+    //         res[i] = m_data[i] * ele;
+    //     }
+    //     return res;
+    // }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator/(T ele)
     {
@@ -765,6 +740,10 @@ public:
     constexpr size_t col_counts()
     {
         return N;
+    }
+    constexpr size_t size()
+    {
+        return M * N;
     }
 };
 
