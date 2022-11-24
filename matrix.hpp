@@ -508,7 +508,19 @@ public:
         }
         return result;
     }
-
+    template <size_t A = M>
+    enable_when_squre_t<A, double> det() const
+    {
+        auto even = true;
+        std::array<int, M> indx{};
+        auto LU = ludcmp(*this, indx, even);
+        auto D = even ? 1.0 : -1.0;
+        for (size_t i = 0; i < M; i++)
+        {
+            D *= LU(i, i);
+        }
+        return D;
+    }
     // Overloaded Operators
     double &operator()(size_t row, size_t col)
     {
@@ -612,7 +624,7 @@ public:
     bool operator==(const Matrix &other) const
     {
         return std::equal(this->m_data.begin(), this->m_data.end(), other.data(), [](double ele1, double ele2)
-                          { return fabs(ele1 - ele2) < gl_rep_eps; });
+                          { return is_same(ele1, ele2); });
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator+=(T ele)
@@ -665,7 +677,7 @@ public:
         }
         return os;
     }
-    
+
     template <typename T, enable_arith_type_t<T> * = nullptr>
     friend auto operator+(const T &t, const Matrix<M, N> &self)
     {
@@ -896,15 +908,7 @@ void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b)
 template <size_t M>
 double determinant(const Matrix<M, M> &mat)
 {
-    auto even = true;
-    std::array<int, M> indx{};
-    auto LU = ludcmp(mat, indx, even);
-    auto D = even ? 1.0 : -1.0;
-    for (size_t i = 0; i < M; i++)
-    {
-        D *= LU(i, i);
-    }
-    return D;
+    return mat.det();
 }
 
 template <size_t M>

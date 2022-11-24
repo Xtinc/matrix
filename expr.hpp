@@ -20,6 +20,11 @@ using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value
 template <typename T, typename RT = void>
 using disable_arith_type_t = typename std::enable_if<!std::is_arithmetic<T>::value, RT>::type;
 
+inline bool is_same(double a, double b)
+{
+    return fabs(a - b) < gl_rep_eps;
+}
+
 namespace details
 {
     template <typename T>
