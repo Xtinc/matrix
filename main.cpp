@@ -1,4 +1,4 @@
-#include "matrix.hpp"
+#include "LieGroup.hpp"
 #include <random>
 
 using namespace details;
@@ -34,5 +34,8 @@ int main(int, char **)
     Matrix<4, 4> y = x.T();
     Matrix<4, 4> z = x * 2 + y * 2 + 3.3 + x * y;
     PRINT_SINGLE_ELEMENTS(z, "2*(x + x^T) + 3.3 +x*x^T = ");
-    // PRINT_SINGLE_ELEMENTS(Matrix<4,4>(z), "2*(x + x^T) + 3.3 +x*x^T = ");
+    Matrix<3, 3> so3mat = {0, 3, -2, -3, 0, 1, 2, -1, 0};
+    PRINT_SINGLE_ELEMENTS(vee(so3mat).exp(), "exp(s) = ");
+    SO3 SO3mat = {0, 1, 0, 0, 0, 1, 1, 0, 0};
+    PRINT_SINGLE_ELEMENTS(SO3mat.log(), "log(S) = ");
 }

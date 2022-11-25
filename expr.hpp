@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <limits>
 
+constexpr double gl_rep_pi = 3.141592653;
 constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
 constexpr size_t gl_get_less(size_t A, size_t B)
 {
@@ -19,14 +20,19 @@ template <typename T, typename RT = void>
 using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
 template <typename T, typename RT = void>
 using disable_arith_type_t = typename std::enable_if<!std::is_arithmetic<T>::value, RT>::type;
-
-inline bool is_same(double a, double b)
-{
-    return fabs(a - b) < gl_rep_eps;
-}
+template <size_t A, size_t B, typename RT = void>
+using enable_when_array_t = typename std::enable_if<A == 1 || B == 1, RT>::type;
 
 namespace details
 {
+    inline bool is_same(double a, double b)
+    {
+        return fabs(a - b) < gl_rep_eps;
+    }
+    inline bool near_zero(double a)
+    {
+        return fabs(a) < 1.0e-5;
+    }
     template <typename T>
     inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
     {
@@ -233,6 +239,25 @@ namespace details
             using result_s = expr_result<expr_scalar<T>>;
             return biops<expr_div_t, biops<Ops, lExpr, rExpr>, result_s>(expr_div, *this, result_s(rhs));
         }
+
+        // template <typename T, enable_arith_type_t<T> * = nullptr>
+        // friend auto operator+(const T &t, const expr_type &self)
+        // {
+        //     using result_s = expr_result<expr_scalar<T>>;
+        //     return biops<expr_plus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_plus, result_s(t), self);
+        // }
+        // template <typename T, enable_arith_type_t<T> * = nullptr>
+        // friend auto operator-(const T &t, const expr_type &self)
+        // {
+        //     using result_s = expr_result<expr_scalar<T>>;
+        //     return biops<expr_minus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_minus, result_s(t), self);
+        // }
+        // template <typename T, enable_arith_type_t<T> * = nullptr>
+        // friend auto operator*(const T &t, const expr_type &self)
+        // {
+        //     using result_s = expr_result<expr_scalar<T>>;
+        //     return biops<expr_mul_t, result_s, biops<Ops, lExpr, rExpr>>(expr_mul, result_s(t), self);
+        // }
 
     private:
         Ops m_ops;

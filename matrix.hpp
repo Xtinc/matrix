@@ -521,6 +521,17 @@ public:
         }
         return D;
     }
+    template <size_t A = M>
+    enable_when_squre_t<A, double> trace() const
+    {
+        double res = 0.0;
+        for (size_t i = 0; i < A; i++)
+        {
+            res += (*this)(i, i);
+        }
+        return res;
+    }
+
     // Overloaded Operators
     double &operator()(size_t row, size_t col)
     {
@@ -567,12 +578,12 @@ public:
         return details::biops<details::expr_minus_t, result_t, result_t>(details::expr_minus, result_t(*this), result_t(other));
     }
     template <typename T, enable_arith_type_t<T> * = nullptr>
-    auto operator*(const T &t)
+    auto operator*(const T &t) const
     {
         return details::biops<details::expr_mul_t, result_t, result_s<T>>(details::expr_mul, result_t(*this), result_s<T>(t));
     }
     template <typename T, enable_arith_type_t<T> * = nullptr>
-    auto operator/(const T &t)
+    auto operator/(const T &t) const
     {
         return details::biops<details::expr_div_t, result_t, result_s<T>>(details::expr_div, result_t(*this), result_s<T>(t));
     }
@@ -624,7 +635,7 @@ public:
     bool operator==(const Matrix &other) const
     {
         return std::equal(this->m_data.begin(), this->m_data.end(), other.data(), [](double ele1, double ele2)
-                          { return is_same(ele1, ele2); });
+                          { return details::is_same(ele1, ele2); });
     }
     template <typename T>
     enable_arith_type_t<T, Matrix<M, N>> operator+=(T ele)
@@ -939,6 +950,23 @@ template <size_t M, size_t N>
 Matrix<N, M> transpose(const Matrix<M, N> &m)
 {
     return m.T();
+}
+
+template <size_t M, size_t N>
+enable_when_array_t<M, N, double> norm2(const Matrix<M, N> &mat)
+{
+    double res = 0.0;
+    for (auto ele : mat)
+    {
+        res += ele * ele;
+    }
+    return sqrt(res);
+}
+
+template <size_t M, size_t N>
+double trace(const Matrix<M, N> &mat)
+{
+    return mat.trace();
 }
 
 #endif
