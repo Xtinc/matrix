@@ -721,6 +721,12 @@ public:
         }
         return result;
     }
+    static Matrix zero()
+    {
+        Matrix<M, N> result{};
+        result.fill(0.0);
+        return result;
+    }
     constexpr size_t row_counts()
     {
         return M;

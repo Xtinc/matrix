@@ -38,4 +38,10 @@ int main(int, char **)
     PRINT_SINGLE_ELEMENTS(vee(so3mat).exp(), "exp(s) = ");
     SO3 SO3mat = {0, 1, 0, 0, 0, 1, 1, 0, 0};
     PRINT_SINGLE_ELEMENTS(SO3mat.log(), "log(S) = ");
+    PRINT_SINGLE_ELEMENTS(SE3(SO3mat, {1, 1, 1}), "T = ");
+    SE3 SE3mat = {1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 3, 1};
+    PRINT_SINGLE_ELEMENTS(SE3mat, "SE3mat = ");
+    PRINT_SINGLE_ELEMENTS(SE3mat.log(), "log(s) = ");
+    PRINT_SINGLE_ELEMENTS(hat(SE3mat.log()));
+    PRINT_SINGLE_ELEMENTS(se3{1.5708, 0.0, 0.0, 0.0, 2.3562, 2.3562}.exp());
 }
