@@ -1,7 +1,8 @@
 #ifndef VVERY_SIMPLE_SO3_HEADER
 #define VVERY_SIMPLE_SO3_HEADER
 
-#include "matrix.hpp"
+#include "algorithm.hpp"
+
 namespace ppx
 {
     class SO3;

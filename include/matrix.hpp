@@ -1,7 +1,9 @@
-#ifndef VVERY_SIMPLE_MATRIX_HEADER
-#define VVERY_SIMPLE_MATRIX_HEADER
+#ifndef VVERY_SIMPLE_EXPRESSION_HEADER
+#define VVERY_SIMPLE_EXPRESSION_HEADER
 
-#include "expr.hpp"
+#include <iostream>
+#include <iomanip>
+#include <limits>
 #include <cmath>
 #include <array>
 #include <vector>
@@ -10,12 +12,288 @@
 
 namespace ppx
 {
+    constexpr double gl_rep_pi = 3.141592653589793;
+    constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
+    constexpr double gl_rep_max = std::numeric_limits<float>::max();
+    constexpr size_t gl_get_less(size_t A, size_t B)
+    {
+        return A < B ? A : B;
+    }
+    constexpr size_t gl_get_more(size_t A, size_t B)
+    {
+        return A < B ? B : A;
+    }
+    template <typename T>
+    T gl_get_less_dynamic(T A, T B)
+    {
+        return A < B ? A : B;
+    }
+    template <typename T>
+    T gl_get_more_dynamic(T A, T B)
+    {
+        return A < B ? B : A;
+    }
+
+    template <typename T, typename RT = void>
+    using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
+    template <typename T, typename RT = void>
+    using disable_arith_type_t = typename std::enable_if<!std::is_arithmetic<T>::value, RT>::type;
+    template <size_t A, size_t B, typename RT = void>
+    using enable_when_array_t = typename std::enable_if<A == 1 || B == 1, RT>::type;
+
+    namespace details
+    {
+        inline bool is_same(double a, double b)
+        {
+            return fabs(a - b) < gl_rep_eps;
+        }
+        inline bool near_zero(double a)
+        {
+            return fabs(a) < 1.0e-5;
+        }
+        template <typename T>
+        inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
+        {
+            std::cout << optcsrt << coll << std::endl;
+        }
+        template <typename T>
+        inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
+        {
+            std::cout << optcsrt;
+            for (const auto ele : coll)
+            {
+                std::cout << ele << ' ';
+            }
+            std::cout << std::endl;
+        }
+        template <typename T>
+        inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
+        {
+            std::cout << optcsrt;
+            for (auto ele : coll)
+            {
+                std::cout << '[' << ele.first << ',' << ele.second << "] ";
+            }
+            std::cout << std::endl;
+        }
+
+        // operators
+        struct expr_plus_t
+        {
+            constexpr explicit expr_plus_t() = default;
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return lhs + rhs;
+            }
+        };
+        struct expr_minus_t
+        {
+            constexpr explicit expr_minus_t() = default;
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return lhs - rhs;
+            }
+        };
+        struct expr_mul_t
+        {
+            constexpr explicit expr_mul_t() = default;
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return lhs * rhs;
+            }
+        };
+        struct expr_div_t
+        {
+            constexpr explicit expr_div_t() = default;
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return lhs / rhs;
+            }
+        };
+
+        constexpr expr_plus_t expr_plus{};
+        constexpr expr_minus_t expr_minus{};
+        constexpr expr_mul_t expr_mul{};
+        constexpr expr_div_t expr_div{};
+
+        // expr templates
+
+        template <typename T>
+        struct expr_scalar
+        {
+        private:
+            const T &s;
+
+        public:
+            constexpr expr_scalar(const T &v)
+                : s(v)
+            {
+            }
+            constexpr T const &operator[](std::size_t) const
+            {
+                return s;
+            }
+            constexpr std::size_t size() const
+            {
+                return 0;
+            }
+        };
+
+        template <typename T>
+        struct expr_traits
+        {
+            using ExprRef = T const &;
+        };
+
+        template <typename T>
+        struct expr_traits<expr_scalar<T>>
+        {
+            using ExprRef = expr_scalar<T>;
+        };
+
+        template <typename T>
+        class expr
+        {
+        public:
+            using expr_type = expr<T>;
+            const T &self() const { return static_cast<const T &>(*this); }
+            T &self() { return static_cast<T &>(*this); }
+
+        protected:
+            explicit expr(){};
+            constexpr size_t size() { return self().size_impl(); }
+            auto operator[](size_t idx) const { return self().at_impl(idx); }
+            auto operator()() const { return self()(); };
+        };
+
+        template <typename T>
+        class expr_result : expr<expr_result<T>>
+        {
+        public:
+            using base_type = expr<expr_result<T>>;
+            using base_type::size;
+            using base_type::operator[];
+            friend base_type;
+
+            explicit expr_result(const T &val) : value(val) {}
+            size_t size_impl() const { return value.size(); };
+            auto at_impl(size_t idx) const { return value[idx]; };
+            decltype(auto) operator()() const { return (value); }
+
+        private:
+            typename expr_traits<T>::ExprRef value;
+        };
+
+        template <typename Ops, typename lExpr, typename rExpr>
+        class biops : public expr<biops<Ops, lExpr, rExpr>>
+        {
+        public:
+            using base_type = expr<biops<Ops, lExpr, rExpr>>;
+            using base_type::size;
+            using base_type::operator[];
+            friend base_type;
+
+            explicit biops(const Ops &ops, const lExpr &lxpr, const rExpr &rxpr)
+                : m_ops(ops), m_lxpr(lxpr), m_rxpr(rxpr){};
+            constexpr size_t size_impl() { return gl_get_more(m_lxpr.size(), m_rxpr.size()); };
+            auto at_impl(size_t idx) const { return m_ops(m_lxpr[idx], m_rxpr[idx]); };
+            template <typename T>
+            operator T()
+            {
+                T res{};
+                for (size_t idx = 0; idx < res.size(); ++idx)
+                {
+                    res[idx] = (*this)[idx];
+                }
+                return res;
+            }
+            template <typename T, disable_arith_type_t<T> * = nullptr, typename T::expr_type>
+            auto operator+(const T &rhs)
+            {
+                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, T>(expr_plus, *this, rhs);
+            }
+            template <typename T, disable_arith_type_t<T> * = nullptr>
+            auto operator+(const T &rhs)
+            {
+                using result_t = expr_result<T>;
+                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, result_t>(expr_plus, *this, result_t(rhs));
+            }
+            template <typename T, enable_arith_type_t<T> * = nullptr>
+            auto operator+(const T &rhs)
+            {
+                using result_s = expr_result<expr_scalar<T>>;
+                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, result_s>(expr_plus, *this, result_s(rhs));
+            }
+            template <typename T, disable_arith_type_t<T> * = nullptr, typename T::expr_type>
+            auto operator-(const T &rhs)
+            {
+                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, T>(expr_minus, *this, rhs);
+            }
+            template <typename T, disable_arith_type_t<T> * = nullptr>
+            auto operator-(const T &rhs)
+            {
+                using result_t = expr_result<T>;
+                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, result_t>(expr_minus, *this, result_t(rhs));
+            }
+            template <typename T, enable_arith_type_t<T> * = nullptr>
+            auto operator-(const T &rhs)
+            {
+                using result_s = expr_result<expr_scalar<T>>;
+                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, result_s>(expr_minus, *this, result_s(rhs));
+            }
+            template <typename T, enable_arith_type_t<T> * = nullptr>
+            auto operator*(const T &rhs)
+            {
+                using result_s = expr_result<expr_scalar<T>>;
+                return biops<expr_mul_t, biops<Ops, lExpr, rExpr>, result_s>(expr_mul, *this, result_s(rhs));
+            }
+            template <typename T, enable_arith_type_t<T> * = nullptr>
+            auto operator/(const T &rhs)
+            {
+                using result_s = expr_result<expr_scalar<T>>;
+                return biops<expr_div_t, biops<Ops, lExpr, rExpr>, result_s>(expr_div, *this, result_s(rhs));
+            }
+
+            // template <typename T, enable_arith_type_t<T> * = nullptr>
+            // friend auto operator+(const T &t, const expr_type &self)
+            // {
+            //     using result_s = expr_result<expr_scalar<T>>;
+            //     return biops<expr_plus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_plus, result_s(t), self);
+            // }
+            // template <typename T, enable_arith_type_t<T> * = nullptr>
+            // friend auto operator-(const T &t, const expr_type &self)
+            // {
+            //     using result_s = expr_result<expr_scalar<T>>;
+            //     return biops<expr_minus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_minus, result_s(t), self);
+            // }
+            // template <typename T, enable_arith_type_t<T> * = nullptr>
+            // friend auto operator*(const T &t, const expr_type &self)
+            // {
+            //     using result_s = expr_result<expr_scalar<T>>;
+            //     return biops<expr_mul_t, result_s, biops<Ops, lExpr, rExpr>>(expr_mul, result_s(t), self);
+            // }
+
+        private:
+            Ops m_ops;
+            lExpr m_lxpr;
+            rExpr m_rxpr;
+        };
+
+    }
+
     // forward declare
     template <size_t M, size_t N>
     class Matrix;
 
     template <size_t N>
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even);
+
+    template <size_t M, size_t N>
+    Matrix<M, N> svdcmp(Matrix<M, N> a, Matrix<N, 1> &w, Matrix<N, N> &v);
 
     template <size_t N>
     void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
@@ -743,238 +1021,5 @@ namespace ppx
         }
     };
 
-    template <size_t M, size_t N>
-    void zeros(Matrix<M, N> &m)
-    {
-        m.fill(0.0);
-    }
-
-    template <size_t M, size_t N>
-    void ones(Matrix<M, N> &m)
-    {
-        m.fill(1.0);
-    }
-
-    template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<gl_get_more(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
-    {
-        constexpr size_t N_M = gl_get_more(M, A);
-        Matrix<N_M, N + B> result{};
-        for (size_t j = 0; j < N; j++)
-        {
-            for (size_t i = 0; i < M; i++)
-            {
-                result(i, j) = m1(i, j);
-            }
-        }
-        for (size_t j = N, idx = 0; j < N + B; ++j, ++idx)
-        {
-            for (size_t i = 0; i < A; ++i)
-            {
-                result(i, j) = m2(i, idx);
-            }
-        }
-        return result;
-    }
-
-    template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<M + A, gl_get_more(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
-    {
-        constexpr size_t N_N = gl_get_more(N, B);
-        Matrix<M + A, N_N> result{};
-        for (size_t j = 0; j < N; j++)
-        {
-            for (size_t i = 0; i < M; i++)
-            {
-                result(i, j) = m1(i, j);
-            }
-        }
-        for (size_t j = 0; j < B; ++j)
-        {
-            for (size_t i = A, idx = 0; i < M + A; ++i, ++idx)
-            {
-                result(i, j) = m2(idx, j);
-            }
-        }
-        return result;
-    }
-
-    template <size_t M, size_t N>
-    Matrix<M - 1u, N - 1u> cofactor(const Matrix<M, N> &mat, size_t p, size_t q)
-    {
-        Matrix<M - 1u, N - 1u> result{};
-        size_t i = 0, j = 0;
-        for (size_t row = 0; row < M; row++)
-        {
-            for (size_t col = 0; col < N; col++)
-            {
-                if (row != p && col != q)
-                {
-                    result(i, j++) = mat(row, col);
-                    if (j == N - 1)
-                    {
-                        j = 0;
-                        i++;
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    template <size_t M>
-    Matrix<M, M> adjugate(const Matrix<M, M> &mat)
-    {
-        Matrix<M, M> result{};
-        for (int i = 0; i < M; i++)
-        {
-            for (int j = 0; j < M; j++)
-            {
-                auto sign = (i + j) % 2 == 0 ? 1 : -1;
-                result(j, i) = sign * (determinant(cofactor(mat, i, j)));
-            }
-        }
-        return result;
-    }
-
-    template <>
-    inline Matrix<1, 1> adjugate(const Matrix<1, 1> &mat)
-    {
-        return {1};
-    }
-
-    template <size_t N>
-    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even)
-    {
-        even = true;
-        for (int i = 0; i < N; i++)
-        {
-            indx[i] = i;
-        }
-        for (int k = 0; k < N - 1; k++)
-        {
-            auto valmax = fabs(A(k, k));
-            auto ip = k;
-            for (int row = k + 1; row < N; row++)
-            {
-                double tmp = fabs(A(row, k));
-                if (valmax < tmp)
-                {
-                    valmax = tmp;
-                    ip = row;
-                }
-            }
-            if (valmax < gl_rep_eps)
-            {
-                return {};
-            }
-            if (ip != k)
-            {
-                for (int col = k; col < N; col++)
-                {
-                    std::swap(A(ip, col), A(k, col));
-                }
-                std::swap(indx[ip], indx[k]);
-                for (int col = 0; col < k; col++)
-                {
-                    std::swap(A(k, col), A(ip, col));
-                }
-                even = !even;
-            }
-            for (int row = k + 1; row < N; row++)
-            {
-                double weight = A(row, k) / A(k, k);
-                A(row, k) = weight;
-                for (int col = k + 1; col < N; col++)
-                {
-                    A(row, col) -= weight * A(k, col);
-                }
-            }
-        }
-        return A;
-    }
-
-    template <size_t N>
-    void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b)
-    {
-        std::array<double, N> y{};
-        y[0] = b[indx[0]];
-        for (int row = 1; row < N; row++)
-        {
-            double sum = 0.0;
-            for (int col = 0; col < row; col++)
-            {
-                sum += A(row, col) * y[col];
-            }
-            y[row] = b[indx[row]] - sum;
-        }
-
-        int n = N;
-
-        b[n - 1] = y[n - 1] / A(n - 1, n - 1);
-        for (int row = n - 2; row >= 0; row--)
-        {
-            auto id = row + 1;
-            double sum = 0.0;
-            for (int col = id; col < n; col++)
-            {
-                sum += A(row, col) * b[col];
-            }
-            b[row] = (y[row] - sum) / A(row, row);
-        }
-    }
-
-    template <size_t M>
-    double determinant(const Matrix<M, M> &mat)
-    {
-        return mat.det();
-    }
-
-    template <size_t M>
-    Matrix<M, M> inverse(const Matrix<M, M> &mat)
-    {
-        return mat.I();
-    }
-
-    template <size_t A, size_t B, size_t M, size_t N>
-    Matrix<A, B> slice(const Matrix<M, N> &m, size_t row_start, size_t col_start)
-    {
-        if (row_start + A > M || col_start + B > N)
-        {
-            return {};
-        }
-        Matrix<A, B> res{};
-        for (size_t i = row_start, ix = 0u; i < row_start + A; ++i, ++ix)
-        {
-            for (size_t j = col_start, iy = 0u; j < col_start + B; ++j, ++iy)
-            {
-                res(ix, iy) = m(i, j);
-            }
-        }
-        return res;
-    }
-
-    template <size_t M, size_t N>
-    Matrix<N, M> transpose(const Matrix<M, N> &m)
-    {
-        return m.T();
-    }
-
-    template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norm2(const Matrix<M, N> &mat)
-    {
-        double res = 0.0;
-        for (auto ele : mat)
-        {
-            res += ele * ele;
-        }
-        return sqrt(res);
-    }
-
-    template <size_t M, size_t N>
-    double trace(const Matrix<M, N> &mat)
-    {
-        return mat.trace();
-    }
 }
 #endif

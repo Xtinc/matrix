@@ -50,6 +50,19 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(SE3mat.log(), "log(s) = ");
     PRINT_SINGLE_ELEMENTS(hat(SE3mat.log()));
     PRINT_SINGLE_ELEMENTS(se3{1.5708, 0.0, 0.0, 0.0, 2.3562, 2.3562}.exp());
+    Matrix<4, 3> D{1, 4, 7, 11,
+                   2, 5, 8, 1,
+                   3, 6, 9, 5};
+    Matrix<3, 1> v{};
+    Matrix<3, 3> w{};
+    PRINT_SINGLE_ELEMENTS(svdcmp(D, v, w), "USV = ");
+    PRINT_SINGLE_ELEMENTS(v, "Eigen = ");
+    PRINT_SINGLE_ELEMENTS(w, " W = ");
+    Matrix<3, 3> vn{};
+    vn(0, 0) = 19.6085;
+    vn(1, 1) = 6.84992;
+    vn(2, 2) = 0.765942;
+    PRINT_SINGLE_ELEMENTS(D * vn * w.T(), "U*S*V = ");
 }
 
 void test_lieGroup()
