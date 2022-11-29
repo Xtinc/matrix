@@ -1,6 +1,7 @@
 #include "Eigen/Dense"
+#include "modern_robotics.h"
 #include <benchmark/benchmark.h>
-#include "matrix.hpp"
+#include "LieGroup.hpp"
 #include <random>
 
 static void BM_MatrixMul(benchmark::State &state)
@@ -97,12 +98,54 @@ static void BM_MatrixEigenExpr(benchmark::State &state)
     }
 }
 
+static void BM_MatrixLog(benchmark::State &state)
+{
+    SE3 SE3mat = {1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 3, 1};
+    se3 tmp{};
+    for (auto _ : state)
+    {
+        tmp = SE3mat.log();
+    }
+}
+static void BM_MatrixExp(benchmark::State &state)
+{
+    Matrix<4, 4> se3mat = {0.0, 0.0, 0.0, 0.0,
+                           0.0, 0.0, 1.5708, 0.0,
+                           0.0, -1.5708, 0.0, 0.0,
+                           0.0, 2.3562, 2.3562, 0.0};
+    SE3 tmp{};
+    for (auto _ : state)
+    {
+        tmp = vee(se3mat).exp();
+    }
+}
+
+static void BM_MatrixEigenLog(benchmark::State &state)
+{
+    Eigen::MatrixXd result(4, 4);
+    Eigen::MatrixXd tmp{};
+    result << 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 3, 0, 0, 0, 1;
+    for (auto _ : state)
+    {
+        tmp = mr::MatrixLog6(result);
+    }
+}
+static void BM_MatrixEigenExp(benchmark::State &state)
+{
+    Eigen::MatrixXd result(4, 4);
+    Eigen::MatrixXd tmp{};
+    result << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.5708, 2.3562, 0.0, 1.5708, 0.0, 2.3562, 0.0, 0.0, 0.0, 0.0;
+    for (auto _ : state)
+    {
+        tmp = mr::MatrixExp6(result);
+    }
+}
+
 // Register the function as a benchmark
-BENCHMARK(BM_MatrixMul);
-BENCHMARK(BM_MatrixMulEigen);
-BENCHMARK(BM_MatrixInv);
-BENCHMARK(BM_MatrixEigenInv);
-BENCHMARK(BM_MatrixExpr);
-BENCHMARK(BM_MatrixEigenExpr);
+BENCHMARK(BM_MatrixLog);
+BENCHMARK(BM_MatrixEigenLog);
+BENCHMARK(BM_MatrixExp);
+BENCHMARK(BM_MatrixEigenExp);
+
 // Run the benchmark
 BENCHMARK_MAIN();
