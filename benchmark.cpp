@@ -4,6 +4,8 @@
 #include "LieGroup.hpp"
 #include <random>
 
+using namespace ppx;
+
 static void BM_MatrixMul(benchmark::State &state)
 {
     std::default_random_engine e;
@@ -107,6 +109,7 @@ static void BM_MatrixLog(benchmark::State &state)
         tmp = SE3mat.log();
     }
 }
+
 static void BM_MatrixExp(benchmark::State &state)
 {
     Matrix<4, 4> se3mat = {0.0, 0.0, 0.0, 0.0,
@@ -140,12 +143,55 @@ static void BM_MatrixEigenExp(benchmark::State &state)
         tmp = mr::MatrixExp6(result);
     }
 }
+static void BM_MatrixSVD(benchmark::State &state)
+{
+    Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+                   997.0, -122.0, 35.4, 889.0, 111.1,
+                   -442.0, -0.987, 355.0, -346.0, 3419.0,
+                   235.0, 98.87, -827.0, 876.0, 34.0,
+                   222.0, -87.8, 546.0, -101.0, 122.1,
+                   -86.0, 999.0, 65.2, 902.0, 54.2};
+    Matrix<5, 6> result;
+    Matrix<6, 1> e;
+    Matrix<6, 6> v;
+    for (auto _ : state)
+    {
+        result = svdcmp(u, e, v);
+        auto sss = result * v;
+    }
+}
+
+static void BM_MatrixEigenSVD(benchmark::State &state)
+{
+    Eigen::MatrixXd u(5, 6);
+    u << 1233, 997, -442, 235, 222, -86,
+        415, -122, -0.987, 98.87, -87.8, 999,
+        87.7, 35.4, 355, -827, 546, 65.2,
+        11.6, 889, -346, 876, -101, 902,
+        243, 111.1, 3419, 34, 122.1, 54.2;
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(u, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::MatrixXd U(5, 6), S, V(6, 6);
+    for (auto _ : state)
+    {
+        U = svd.matrixU();
+        S = svd.singularValues();
+        V = svd.matrixV();
+        Eigen::MatrixXd RES = U * S * V;
+    }
+}
 
 // Register the function as a benchmark
+BENCHMARK(BM_MatrixMul);
+BENCHMARK(BM_MatrixMulEigen);
+BENCHMARK(BM_MatrixInv);
+BENCHMARK(BM_MatrixEigenInv);
+BENCHMARK(BM_MatrixExpr);
+BENCHMARK(BM_MatrixEigenExpr);
 BENCHMARK(BM_MatrixLog);
 BENCHMARK(BM_MatrixEigenLog);
 BENCHMARK(BM_MatrixExp);
 BENCHMARK(BM_MatrixEigenExp);
-
+BENCHMARK(BM_MatrixSVD);
+BENCHMARK(BM_MatrixEigenSVD);
 // Run the benchmark
 BENCHMARK_MAIN();

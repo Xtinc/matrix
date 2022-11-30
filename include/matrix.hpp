@@ -23,6 +23,10 @@ namespace ppx
     {
         return A < B ? B : A;
     }
+    constexpr bool gl_less_than(size_t A, size_t B)
+    {
+        return A < B;
+    }
     template <typename T>
     T gl_get_less_dynamic(T A, T B)
     {
@@ -258,25 +262,6 @@ namespace ppx
                 return biops<expr_div_t, biops<Ops, lExpr, rExpr>, result_s>(expr_div, *this, result_s(rhs));
             }
 
-            // template <typename T, enable_arith_type_t<T> * = nullptr>
-            // friend auto operator+(const T &t, const expr_type &self)
-            // {
-            //     using result_s = expr_result<expr_scalar<T>>;
-            //     return biops<expr_plus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_plus, result_s(t), self);
-            // }
-            // template <typename T, enable_arith_type_t<T> * = nullptr>
-            // friend auto operator-(const T &t, const expr_type &self)
-            // {
-            //     using result_s = expr_result<expr_scalar<T>>;
-            //     return biops<expr_minus_t, result_s, biops<Ops, lExpr, rExpr>>(expr_minus, result_s(t), self);
-            // }
-            // template <typename T, enable_arith_type_t<T> * = nullptr>
-            // friend auto operator*(const T &t, const expr_type &self)
-            // {
-            //     using result_s = expr_result<expr_scalar<T>>;
-            //     return biops<expr_mul_t, result_s, biops<Ops, lExpr, rExpr>>(expr_mul, result_s(t), self);
-            // }
-
         private:
             Ops m_ops;
             lExpr m_lxpr;
@@ -293,10 +278,13 @@ namespace ppx
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even);
 
     template <size_t M, size_t N>
-    Matrix<M, N> svdcmp(Matrix<M, N> a, Matrix<N, 1> &w, Matrix<N, N> &v);
+    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v);
 
     template <size_t N>
     void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
+
+    template <size_t M, size_t N>
+    void svdbksb(const Matrix<M, N> &u, Matrix<N, 1> &w, double *b);
 
     namespace details
     {
@@ -382,6 +370,8 @@ namespace ppx
     {
         template <size_t A, typename RT = void>
         using enable_when_squre_t = typename std::enable_if<A == N, RT>::type;
+        template <size_t A, typename RT = void>
+        using disable_when_squre_t = typename std::enable_if<A != N, RT>::type;
         using IndexRange = std::pair<int, int>;
         using result_t = details::expr_result<Matrix>;
         template <typename T>
@@ -789,6 +779,22 @@ namespace ppx
             return result;
         }
         template <size_t A = M>
+        disable_when_squre_t<A, Matrix<N, M>> I() const
+        {
+            Matrix<N, 1> w{};
+            Matrix<N, N> V{};
+            auto U = svdcmp(*this, w, V);
+            Matrix<N, N> W{};
+            for (size_t i = 0; i < N; i++)
+            {
+                if (fabs(w[i]) > gl_rep_eps)
+                {
+                    W(i, i) = 1.0 / w[i];
+                }
+            }
+            return V * W * U.T();
+        }
+        template <size_t A = M>
         enable_when_squre_t<A, double> det() const
         {
             auto even = true;
@@ -1005,6 +1011,19 @@ namespace ppx
         {
             Matrix<M, N> result{};
             result.fill(0.0);
+            return result;
+        }
+        template <typename T, size_t L = gl_get_less(M, N)>
+        static enable_arith_type_t<T, Matrix<L, L>> diag(const std::initializer_list<T> &list)
+        {
+            Matrix<L, L> result{};
+            auto real_size = gl_get_less_dynamic(L, list.size());
+            auto idx = 0u;
+            for (auto iter = list.begin(); iter != list.end(); iter++)
+            {
+                result(idx, idx) = *iter;
+                ++idx;
+            }
             return result;
         }
         constexpr size_t row_counts()

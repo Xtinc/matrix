@@ -170,9 +170,7 @@ namespace ppx
             }
             y[row] = b[indx[row]] - sum;
         }
-
         int n = N;
-
         b[n - 1] = y[n - 1] / A(n - 1, n - 1);
         for (int row = n - 2; row >= 0; row--)
         {
@@ -239,162 +237,138 @@ namespace ppx
         return mat.trace();
     }
 
-    inline double pythag(double a, double b)
-    {
-        double at = fabs(a);
-        double bt = fabs(b);
-        double ct{};
-        double result{};
-
-        if (at > bt)
-        {
-            ct = bt / at;
-            result = at * sqrt(1.0 + ct * ct);
-        }
-        else if (bt > 0.0)
-        {
-            ct = at / bt;
-            result = bt * sqrt(1.0 + ct * ct);
-        }
-        else
-        {
-            result = 0.0;
-        }
-        return result;
-    }
-
     template <size_t M, size_t N>
-    Matrix<M, N> svdcmp(Matrix<M, N> a, Matrix<N, 1> &w, Matrix<N, N> &v)
+    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v)
     {
-        int flag, i, its, j, jj, k, l, nm;
-        double c, f, h, s, x, y, z;
-        double anorm = 0.0;
-        double g = 0.0;
-        double scale = 0.0;
-        double rv1[N];
-
+        auto PYTHAG = [](double a, double b)
+        {
+            double absa = fabs(a);
+            double absb = fabs(b);
+            if (absa > absb)
+            {
+                auto tmp = absb / absa;
+                return absa * sqrt(1.0 + tmp * tmp);
+            }
+            else if (fabs(absb) < gl_rep_eps)
+            {
+                return 0.0;
+            }
+            else
+            {
+                auto tmp = absa / absb;
+                return absb * sqrt(1.0 + tmp * tmp);
+            }
+        };
         auto SIGN = [](double a, double b)
         {
             return b > 0.0 ? fabs(a) : -fabs(a);
         };
-
-        if (M < N)
-        {
-            return {};
-        }
-
-        /* Householder reduction to bidiagonal form */
+        bool flag;
+        int i, its, j, jj, k, l, nm;
+        double anorm, c, f, g, h, s, scale, x, y, z;
+        double rv1[N];
+        g = 0.0;
+        scale = 0.0;
+        anorm = 0.0;
         for (i = 0; i < N; i++)
         {
-            /* left-hand reduction */
-            l = i + 1;
+            l = i + 2;
             rv1[i] = scale * g;
-            g = s = scale = 0.0;
+            g = 0.0;
+            s = 0.0;
+            scale = 0.0;
             if (i < M)
             {
                 for (k = i; k < M; k++)
                 {
-                    scale += fabs(a(k, i));
+                    scale += abs(u(k, i));
                 }
                 if (scale > gl_rep_eps)
                 {
                     for (k = i; k < M; k++)
                     {
-                        a(k, i) = a(k, i) / scale;
-                        s += a(k, i) * a(k, i);
+                        u(k, i) /= scale;
+                        s += u(k, i) * u(k, i);
                     }
-                    f = a(i, i);
+                    f = u(i, i);
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
-                    a(i, i) = f - g;
-                    if (i != N - 1)
+                    u(i, i) = f - g;
+                    for (j = l - 1; j < N; j++)
                     {
-                        for (j = l; j < N; j++)
+                        for (s = 0.0, k = i; k < M; k++)
                         {
-                            for (s = 0.0, k = i; k < M; k++)
-                            {
-                                s += a(k, i) * a(k, j);
-                            }
-                            f = s / h;
-                            for (k = i; k < M; k++)
-                            {
-                                a(k, j) += f * a(k, i);
-                            }
+                            s += u(k, i) * u(k, j);
+                        }
+                        f = s / h;
+                        for (k = i; k < M; k++)
+                        {
+                            u(k, j) += f * u(k, i);
                         }
                     }
                     for (k = i; k < M; k++)
                     {
-                        a(k, i) = a(k, i) * scale;
+                        u(k, i) *= scale;
                     }
                 }
             }
             w[i] = scale * g;
-
-            /* right-hand reduction */
-            g = 0.0;
-            s = 0.0;
-            scale = 0.0;
-            if (i < M && i != N - 1)
+            g = s = scale = 0.0;
+            if (i + 1 <= M && i + 1 != N)
             {
-                for (k = l; k < N; k++)
+                for (k = l - 1; k < N; k++)
                 {
-                    scale += fabs(a(i, k));
+                    scale += abs(u(i, k));
                 }
                 if (scale > gl_rep_eps)
                 {
-                    for (k = l; k < N; k++)
+                    for (k = l - 1; k < N; k++)
                     {
-                        a(i, k) = a(i, k) / scale;
-                        s += a(i, k) * a(i, k);
+                        u(i, k) /= scale;
+                        s += u(i, k) * u(i, k);
                     }
-                    f = a(i, l);
+                    f = u(i, l - 1);
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
-                    a(i, l) = f - g;
-                    for (k = l; k < N; k++)
+                    u(i, l - 1) = f - g;
+                    for (k = l - 1; k < N; k++)
                     {
-                        rv1[k] = a(i, k) / h;
+                        rv1[k] = u(i, k) / h;
                     }
-                    if (i != M - 1)
+                    for (j = l - 1; j < M; j++)
                     {
-                        for (j = l; j < M; j++)
+                        for (s = 0.0, k = l - 1; k < N; k++)
                         {
-                            for (s = 0.0, k = l; k < N; k++)
-                            {
-                                s += a(j, k) * a(i, k);
-                            }
-                            for (k = l; k < N; k++)
-                            {
-                                a(j, k) += s * rv1[k];
-                            }
+                            s += u(j, k) * u(i, k);
+                        }
+                        for (k = l - 1; k < N; k++)
+                        {
+                            u(j, k) += s * rv1[k];
                         }
                     }
-                    for (k = l; k < N; k++)
+                    for (k = l - 1; k < N; k++)
                     {
-                        a(i, k) = a(i, k) * scale;
+                        u(i, k) *= scale;
                     }
                 }
             }
-            anorm = gl_get_more_dynamic(anorm, (fabs(w[i]) + fabs(rv1[i])));
+            anorm = gl_get_more_dynamic(anorm, abs(w[i]) + abs(rv1[i]));
         }
-
-        /* accumulate the right-hand transformation */
         for (i = N - 1; i >= 0; i--)
         {
             if (i < N - 1)
             {
-                if (g > gl_rep_eps)
+                if (g != 0.0)
                 {
                     for (j = l; j < N; j++)
                     {
-                        v(j, i) = (a(i, j) / a(i, l)) / g;
+                        v(j, i) = (u(i, j) / u(i, l)) / g;
                     }
-                    /* double division to avoid underflow */
                     for (j = l; j < N; j++)
                     {
                         for (s = 0.0, k = l; k < N; k++)
                         {
-                            s += a(i, k) * v(k, j);
+                            s += u(i, k) * v(k, j);
                         }
                         for (k = l; k < N; k++)
                         {
@@ -412,101 +386,93 @@ namespace ppx
             g = rv1[i];
             l = i;
         }
-
-        /* accumulate the left-hand transformation */
-        for (i = N - 1; i >= 0; i--)
+        for (i = (int)gl_get_less(M, N) - 1; i >= 0; i--)
         {
             l = i + 1;
             g = w[i];
-            if (i < N - 1)
+            for (j = l; j < N; j++)
             {
-                for (j = l; j < N; j++)
-                {
-                    a(i, j) = 0.0;
-                }
+                u(i, j) = 0.0;
             }
-            if (g > gl_rep_eps)
+            if (fabs(g) > gl_rep_eps)
             {
                 g = 1.0 / g;
-                if (i != N - 1)
+                for (j = l; j < N; j++)
                 {
-                    for (j = l; j < N; j++)
+                    for (s = 0.0, k = l; k < M; k++)
                     {
-                        for (s = 0.0, k = l; k < M; k++)
-                        {
-                            s += a(k, i) * a(k, j);
-                        }
-                        f = (s / a(i, i)) * g;
-                        for (k = i; k < M; k++)
-                        {
-                            a(k, j) += f * a(k, i);
-                        }
+                        s += u(k, i) * u(k, j);
+                    }
+                    f = (s / u(i, i)) * g;
+                    for (k = i; k < M; k++)
+                    {
+                        u(k, j) += f * u(k, i);
                     }
                 }
                 for (j = i; j < M; j++)
                 {
-                    a(j, i) = a(j, i) * g;
+                    u(j, i) *= g;
                 }
             }
             else
             {
                 for (j = i; j < M; j++)
                 {
-                    a(j, i) = 0.0;
+                    u(j, i) = 0.0;
                 }
             }
-            a(i, i) += 1.0;
+            u(i, i) += 1.0;
         }
-
-        /* diagonalize the bidiagonal form */
         for (k = N - 1; k >= 0; k--)
-        { /* loop over singular values */
+        {
             for (its = 0; its < 30; its++)
-            { /* loop over allowed iterations */
-                flag = 1;
+            {
+                flag = true;
                 for (l = k; l >= 0; l--)
-                { /* test for splitting */
+                {
                     nm = l - 1;
-                    if (details::is_same((rv1[l]) + anorm, anorm))
+                    if (l == 0 || abs(rv1[l]) <= gl_rep_eps * anorm)
                     {
-                        flag = 0;
+                        flag = false;
                         break;
                     }
-                    if (details::is_same((w[nm]) + anorm, anorm))
+                    if (abs(w[nm]) <= gl_rep_eps * anorm)
                     {
                         break;
                     }
                 }
-                if (flag > gl_rep_eps)
+                if (flag)
                 {
                     c = 0.0;
                     s = 1.0;
-                    for (i = l; i <= k; i++)
+                    for (i = l; i < k + 1; i++)
                     {
                         f = s * rv1[i];
-                        if (fabs(f) + anorm != anorm)
+                        rv1[i] = c * rv1[i];
+                        if (abs(f) <= gl_rep_eps * anorm)
                         {
-                            g = w[i];
-                            h = pythag(f, g);
-                            w[i] = h;
-                            h = 1.0 / h;
-                            c = g * h;
-                            s = -f * h;
-                            for (j = 0; j < M; j++)
-                            {
-                                y = a(j, nm);
-                                z = a(j, i);
-                                a(j, nm) = y * c + z * s;
-                                a(j, i) = z * c - y * s;
-                            }
+                            break;
+                        }
+                        g = w[i];
+                        h = PYTHAG(f, g);
+                        w[i] = h;
+                        h = 1.0 / h;
+                        c = g * h;
+                        s = -f * h;
+                        for (j = 0; j < M; j++)
+                        {
+                            y = u(j, nm);
+                            z = u(j, i);
+                            u(j, nm) = y * c + z * s;
+                            u(j, i) = z * c - y * s;
                         }
                     }
                 }
                 z = w[k];
                 if (l == k)
-                { /* convergence */
+                {
                     if (z < 0.0)
-                    { /* make singular value nonnegative */
+                    {
                         w[k] = -z;
                         for (j = 0; j < N; j++)
                         {
@@ -515,25 +481,19 @@ namespace ppx
                     }
                     break;
                 }
-                if (its >= 30)
+                if (its == 29)
                 {
-                    // fprintf(stderr, "No convergence after 30,000! iterations \N");
                     return {};
                 }
-
-                /* shift from bottom 2 x 2 minor */
                 x = w[l];
                 nm = k - 1;
                 y = w[nm];
                 g = rv1[nm];
                 h = rv1[k];
                 f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-                g = pythag(f, 1.0);
+                g = PYTHAG(f, 1.0);
                 f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
-
-                /* next QR transformation */
-                c = 1.0;
-                s = 1.0;
+                c = s = 1.0;
                 for (j = l; j <= nm; j++)
                 {
                     i = j + 1;
@@ -541,14 +501,14 @@ namespace ppx
                     y = w[i];
                     h = s * g;
                     g = c * g;
-                    z = pythag(f, h);
+                    z = PYTHAG(f, h);
                     rv1[j] = z;
                     c = f / z;
                     s = h / z;
                     f = x * c + g * s;
                     g = g * c - x * s;
                     h = y * s;
-                    y = y * c;
+                    y *= c;
                     for (jj = 0; jj < N; jj++)
                     {
                         x = v(jj, j);
@@ -556,7 +516,7 @@ namespace ppx
                         v(jj, j) = x * c + z * s;
                         v(jj, i) = z * c - x * s;
                     }
-                    z = pythag(f, h);
+                    z = PYTHAG(f, h);
                     w[j] = z;
                     if (z)
                     {
@@ -568,10 +528,10 @@ namespace ppx
                     x = c * y - s * g;
                     for (jj = 0; jj < M; jj++)
                     {
-                        y = a(jj, j);
-                        z = a(jj, i);
-                        a(jj, j) = y * c + z * s;
-                        a(jj, i) = z * c - y * s;
+                        y = u(jj, j);
+                        z = u(jj, i);
+                        u(jj, j) = y * c + z * s;
+                        u(jj, i) = z * c - y * s;
                     }
                 }
                 rv1[l] = 0.0;
@@ -579,7 +539,37 @@ namespace ppx
                 w[k] = x;
             }
         }
-        return a;
+        return u;
+    }
+
+    template <size_t M, size_t N>
+    void svdbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, double *b)
+    {
+        double tmp[N];
+        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * gl_rep_eps;
+        for (int j = 0; j < N; j++)
+        {
+            auto s = 0.0;
+            if (w[j] > tsh)
+            {
+                for (int i = 0; i < M; i++)
+                {
+                    s += u(i, j) * b[i];
+                }
+                s /= w[j];
+            }
+            tmp[j] = s;
+        }
+        for (int j = 0; j < N; j++)
+        {
+            auto s = 0.0;
+            for (int jj = 0; jj < N; jj++)
+            {
+                s += v(j, jj) * tmp[jj];
+            }
+            b[j] = s;
+        }
     }
 }
 #endif

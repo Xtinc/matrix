@@ -1,10 +1,9 @@
-#include "robotics.h"
+#include "robotics.hpp"
 #include <random>
 #include <cassert>
 
 using namespace ppx;
 using namespace ppx::details;
-using namespace robotics;
 
 #define EXPECT_EQ(A, B) assert(A == B)
 #define EXPECT_NEAR(A, B, C) assert(fabs(A - B) < C)
@@ -50,19 +49,16 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(SE3mat.log(), "log(s) = ");
     PRINT_SINGLE_ELEMENTS(hat(SE3mat.log()));
     PRINT_SINGLE_ELEMENTS(se3{1.5708, 0.0, 0.0, 0.0, 2.3562, 2.3562}.exp());
-    Matrix<4, 3> D{1, 4, 7, 11,
+    Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
                    3, 6, 9, 5};
     Matrix<3, 1> v{};
     Matrix<3, 3> w{};
-    PRINT_SINGLE_ELEMENTS(svdcmp(D, v, w), "USV = ");
-    PRINT_SINGLE_ELEMENTS(v, "Eigen = ");
-    PRINT_SINGLE_ELEMENTS(w, " W = ");
-    Matrix<3, 3> vn{};
-    vn(0, 0) = 19.6085;
-    vn(1, 1) = 6.84992;
-    vn(2, 2) = 0.765942;
-    PRINT_SINGLE_ELEMENTS(D * vn * w.T(), "U*S*V = ");
+    u = svdcmp(u, v, w);
+    PRINT_SINGLE_ELEMENTS(u, "U = ");
+    PRINT_SINGLE_ELEMENTS(v, "S = ");
+    PRINT_SINGLE_ELEMENTS(w, "V = ");
+    PRINT_SINGLE_ELEMENTS(u * Matrix<3, 3>::diag({v[0], v[1], v[2]}) * w.T(), "U*S*V = ");
 }
 
 void test_lieGroup()
@@ -120,18 +116,19 @@ void test_lieGroup()
 void test_robotics()
 {
     {
-        kinematics UR5;
+        kinematics<6> UR5;
         SE3 F6{-1.0, 0.0, 0.0, 0.0,
                0.0, 0.0, 1.0, 0.0,
                0.0, 1.0, 0.0, 0.0,
                0.817, 0.191, -0.006, 1.0};
-        UR5.pushJoint({"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3()});
-        UR5.pushJoint({"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}});
-        UR5.pushJoint({"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}});
-        UR5.pushJoint({"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}});
-        UR5.pushJoint({"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}});
-        UR5.pushJoint({"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6});
-        PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}));
+        UR5.setJoint<0>({"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3()});
+        UR5.setJoint<1>({"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}});
+        UR5.setJoint<2>({"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}});
+        UR5.setJoint<3>({"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}});
+        UR5.setJoint<4>({"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}});
+        UR5.setJoint<5>({"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6});
+        PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Forward(R6) = ");
+        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Jacobi = ");
     }
 }
 
