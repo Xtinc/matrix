@@ -49,6 +49,17 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(SE3mat.log(), "log(s) = ");
     PRINT_SINGLE_ELEMENTS(hat(SE3mat.log()));
     PRINT_SINGLE_ELEMENTS(se3{1.5708, 0.0, 0.0, 0.0, 2.3562, 2.3562}.exp());
+    Matrix<5, 3> X{1, 1, 1, 1, 1,
+                   1, 2, 3, 4, 5,
+                   1, 4, 9, 16, 25};
+    Matrix<5, 1> Y{1.6, 4.4, 9.4, 16.6, 25.5};
+    Matrix<3, 1> yc;
+    Matrix<3, 1> yd;
+    bool sing;
+    auto result = qrdcmp(X, yc, yd, sing);
+    PRINT_SINGLE_ELEMENTS(result, "R = ");
+    PRINT_SINGLE_ELEMENTS(yd, "diag R = ");
+    PRINT_SINGLE_ELEMENTS(yc, "yc = ");
     Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
                    3, 6, 9, 5};
@@ -59,6 +70,79 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(v, "S = ");
     PRINT_SINGLE_ELEMENTS(w, "V = ");
     PRINT_SINGLE_ELEMENTS(u * Matrix<3, 3>::diag({v[0], v[1], v[2]}) * w.T(), "U*S*V = ");
+}
+
+void test_linear()
+{
+    printf("Test linear solver LU\n");
+    for (size_t i = 0; i < 10; i++)
+    {
+        Matrix<100, 100> A;
+        std::default_random_engine eni(i);
+        std::uniform_real_distribution<> uf(-10000, 10000);
+        for (auto &i : A)
+        {
+            i = uf(eni);
+        }
+        eni.seed(i * 7);
+        Matrix<100, 1> x;
+        for (auto &i : x)
+        {
+            i = uf(eni);
+        }
+        auto b = A * x;
+        auto result = solve<factorization::LU>(A, b);
+        auto residual = norm2(Matrix<100, 1>(result - x));
+        PRINT_SINGLE_ELEMENTS(residual, "residual = ");
+        if (residual > gl_rep_eps)
+        {
+            PRINT_SINGLE_ELEMENTS(A, "A = ");
+            PRINT_SINGLE_ELEMENTS(b, "b = ");
+            PRINT_SINGLE_ELEMENTS(x, "x = ");
+        }
+    }
+    printf("Test linear solver SVD\n");
+    for (size_t i = 0; i < 10; i++)
+    {
+        Matrix<100, 100> A;
+        std::default_random_engine eni(i);
+        std::uniform_real_distribution<> uf(-10000, 10000);
+        for (auto &i : A)
+        {
+            i = uf(eni);
+        }
+        eni.seed(i * 3);
+        Matrix<100, 1> x;
+        for (auto &i : x)
+        {
+            i = uf(eni);
+        }
+        auto b = A * x;
+        auto result = solve<factorization::SVD>(A, b);
+        auto residual = norm2(Matrix<100, 1>(result - x));
+        PRINT_SINGLE_ELEMENTS(residual, "residual = ");
+    }
+    printf("Test linear solver QR\n");
+    for (size_t i = 0; i < 10; i++)
+    {
+        Matrix<100, 100> A;
+        std::default_random_engine eni(i);
+        std::uniform_real_distribution<> uf(-10000, 10000);
+        for (auto &i : A)
+        {
+            i = uf(eni);
+        }
+        eni.seed(i * 5);
+        Matrix<100, 1> x;
+        for (auto &i : x)
+        {
+            i = uf(eni);
+        }
+        auto b = A * x;
+        auto result = solve<factorization::QR>(A, b);
+        auto residual = norm2(Matrix<100, 1>(result - x));
+        PRINT_SINGLE_ELEMENTS(residual, "residual = ");
+    }
 }
 
 void test_lieGroup()
@@ -129,12 +213,18 @@ void test_robotics()
         UR5.setJoint<5>({"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6});
         PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Forward(R6) = ");
         PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Jacobi = ");
+        SE3 TargetPose{0.0, 1.0, 0.0, 0.0,
+                       -1.0, 0.0, 0.0, 0.0,
+                       0.0, 0.0, 1.0, 0.0,
+                       0.095, 0.109, 0.988, 1.0};
+        PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.0, -1.5, 0.0, 0.0, 1.5, 0.0}), "IKSpace = ");
     }
 }
 
 int main(int, char **)
 {
     test_matrix();
+    test_linear();
     test_lieGroup();
     test_robotics();
 }

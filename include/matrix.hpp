@@ -284,7 +284,7 @@ namespace ppx
     void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
 
     template <size_t M, size_t N>
-    void svdbksb(const Matrix<M, N> &u, Matrix<N, 1> &w, double *b);
+    void svbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, const Matrix<N, N> &v, double *b);
 
     namespace details
     {
@@ -904,19 +904,21 @@ namespace ppx
             }
             return result;
         }
-        Matrix operator+=(const Matrix &other) const
+        Matrix &operator+=(const Matrix &other)
         {
             for (size_t i = 0; i < M * N; i++)
             {
                 this->m_data[i] += other.data()[i];
             }
+            return *this;
         }
-        Matrix operator-=(const Matrix &other) const
+        Matrix &operator-=(const Matrix &other)
         {
             for (size_t i = 0; i < M * N; i++)
             {
                 this->m_data[i] -= other.data()[i];
             }
+            return *this;
         }
         bool operator==(const Matrix &other) const
         {
@@ -924,7 +926,7 @@ namespace ppx
                               { return details::is_same(ele1, ele2); });
         }
         template <typename T>
-        enable_arith_type_t<T, Matrix<M, N>> operator+=(T ele)
+        enable_arith_type_t<T, Matrix &> operator+=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -933,7 +935,7 @@ namespace ppx
             return *this;
         }
         template <typename T>
-        enable_arith_type_t<T, Matrix<M, N>> operator-=(T ele)
+        enable_arith_type_t<T, Matrix &> operator-=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -942,7 +944,7 @@ namespace ppx
             return *this;
         }
         template <typename T>
-        enable_arith_type_t<T, Matrix<M, N>> operator*=(T ele)
+        enable_arith_type_t<T, Matrix &> operator*=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -951,7 +953,7 @@ namespace ppx
             return *this;
         }
         template <typename T>
-        enable_arith_type_t<T, Matrix<M, N>> operator/=(T ele)
+        enable_arith_type_t<T, Matrix &> operator/=(T ele)
         {
             for (auto &i : this->m_data)
             {

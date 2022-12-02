@@ -5,6 +5,15 @@
 
 namespace ppx
 {
+    // matrix related
+
+    enum class factorization : char
+    {
+        LU,
+        QR,
+        SVD
+    };
+
     template <size_t M, size_t N>
     void zeros(Matrix<M, N> &m)
     {
@@ -105,6 +114,66 @@ namespace ppx
         return {1};
     }
 
+    template <size_t M>
+    double determinant(const Matrix<M, M> &mat)
+    {
+        return mat.det();
+    }
+
+    template <size_t M>
+    Matrix<M, M> inverse(const Matrix<M, M> &mat)
+    {
+        return mat.I();
+    }
+
+    template <size_t A, size_t B, size_t M, size_t N>
+    Matrix<A, B> slice(const Matrix<M, N> &m, size_t row_start, size_t col_start)
+    {
+        if (row_start + A > M || col_start + B > N)
+        {
+            return {};
+        }
+        Matrix<A, B> res{};
+        for (size_t i = row_start, ix = 0u; i < row_start + A; ++i, ++ix)
+        {
+            for (size_t j = col_start, iy = 0u; j < col_start + B; ++j, ++iy)
+            {
+                res(ix, iy) = m(i, j);
+            }
+        }
+        return res;
+    }
+
+    template <size_t M, size_t N>
+    Matrix<N, M> transpose(const Matrix<M, N> &m)
+    {
+        return m.T();
+    }
+
+    template <size_t M, size_t N>
+    enable_when_array_t<M, N, double> norm2(const Matrix<M, N> &mat)
+    {
+        double res = 0.0;
+        for (auto ele : mat)
+        {
+            res += ele * ele;
+        }
+        return sqrt(res);
+    }
+
+    template <size_t M, size_t N>
+    double trace(const Matrix<M, N> &mat)
+    {
+        return mat.trace();
+    }
+
+    // solver linear system
+
+    inline double SIGN(double a, double b)
+    {
+        return b > 0.0 ? fabs(a) : -fabs(a);
+    };
+
     template <size_t N>
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even)
     {
@@ -184,57 +253,90 @@ namespace ppx
         }
     }
 
-    template <size_t M>
-    double determinant(const Matrix<M, M> &mat)
+    template <size_t M, size_t N>
+    Matrix<M, N> qrdcmp(Matrix<M, N> a, Matrix<N, 1> &c, Matrix<N, 1> &d, bool &sing)
     {
-        return mat.det();
-    }
-
-    template <size_t M>
-    Matrix<M, M> inverse(const Matrix<M, M> &mat)
-    {
-        return mat.I();
-    }
-
-    template <size_t A, size_t B, size_t M, size_t N>
-    Matrix<A, B> slice(const Matrix<M, N> &m, size_t row_start, size_t col_start)
-    {
-        if (row_start + A > M || col_start + B > N)
+        sing = false;
+        double scale, sigma, sum, tau;
+        for (int k = 0; k < N - 1; k++)
         {
-            return {};
-        }
-        Matrix<A, B> res{};
-        for (size_t i = row_start, ix = 0u; i < row_start + A; ++i, ++ix)
-        {
-            for (size_t j = col_start, iy = 0u; j < col_start + B; ++j, ++iy)
+            scale = 0.0;
+            for (int i = k; i < N; i++)
             {
-                res(ix, iy) = m(i, j);
+                scale = gl_get_more_dynamic(scale, fabs(a(i, k)));
+            }
+            if (scale < gl_rep_eps)
+            {
+                sing = true;
+                c[k] = 0.0;
+                d[k] = 0.0;
+            }
+            else
+            {
+                for (int i = k; i < M; i++)
+                {
+                    a(i, k) /= scale;
+                }
+                sum = 0.0;
+                for (int i = k; i < M; i++)
+                {
+                    sum += a(i, k) * a(i, k);
+                }
+                sigma = fabs(a(k, k)) < gl_rep_eps ? sqrt(sum) : SIGN(sqrt(sum), a(k, k));
+                a(k, k) += sigma;
+                c[k] = sigma * a(k, k);
+                d[k] = -scale * sigma;
+                for (int j = k + 1; j < N; j++)
+                {
+                    sum = 0.0;
+                    for (int i = k; i < M; i++)
+                    {
+                        sum += a(i, k) * a(i, j);
+                    }
+                    tau = sum / c[k];
+                    for (int i = k; i < M; i++)
+                    {
+                        a(i, j) -= tau * a(i, k);
+                        auto ccc = a(i, j);
+                        std::cout << i << " " << j << " " << a(i, j) << std::endl;
+                    }
+                }
             }
         }
-        return res;
-    }
-
-    template <size_t M, size_t N>
-    Matrix<N, M> transpose(const Matrix<M, N> &m)
-    {
-        return m.T();
-    }
-
-    template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norm2(const Matrix<M, N> &mat)
-    {
-        double res = 0.0;
-        for (auto ele : mat)
+        d[N - 1] = a(N - 1, N - 1);
+        if (fabs(d[N - 1]) < gl_rep_eps)
         {
-            res += ele * ele;
+            sing = true;
         }
-        return sqrt(res);
+        return a;
     }
 
     template <size_t M, size_t N>
-    double trace(const Matrix<M, N> &mat)
+    void qrsolv(const Matrix<M, N> &a, const Matrix<N, 1> &c, const Matrix<N, 1> &d, double *b)
     {
-        return mat.trace();
+        for (int j = 0; j < N - 1; j++)
+        {
+            double sum = 0.0;
+            for (int i = j; i < N; i++)
+            {
+                sum += a(i, j) * b[i];
+            }
+            double tau = sum / c[j];
+            for (int i = j; i < N; i++)
+            {
+                b[i] -= tau * a(i, j);
+            }
+        }
+        b[N - 1] /= d[N - 1];
+        for (int i = N - 2; i >= 0; i--)
+        {
+            double sum = 0.0;
+            for (int j = i + 1; j < N; j++)
+            {
+                sum += a(i, j) * b[j];
+            }
+            b[i] = (b[i] - sum) / d[i];
+        }
     }
 
     template <size_t M, size_t N>
@@ -259,10 +361,6 @@ namespace ppx
                 return absb * sqrt(1.0 + tmp * tmp);
             }
         };
-        auto SIGN = [](double a, double b)
-        {
-            return b > 0.0 ? fabs(a) : -fabs(a);
-        };
         bool flag;
         int i, its, j, jj, k, l, nm;
         double anorm, c, f, g, h, s, scale, x, y, z;
@@ -281,7 +379,7 @@ namespace ppx
             {
                 for (k = i; k < M; k++)
                 {
-                    scale += abs(u(k, i));
+                    scale += fabs(u(k, i));
                 }
                 if (scale > gl_rep_eps)
                 {
@@ -318,7 +416,7 @@ namespace ppx
             {
                 for (k = l - 1; k < N; k++)
                 {
-                    scale += abs(u(i, k));
+                    scale += fabs(u(i, k));
                 }
                 if (scale > gl_rep_eps)
                 {
@@ -352,7 +450,7 @@ namespace ppx
                     }
                 }
             }
-            anorm = gl_get_more_dynamic(anorm, abs(w[i]) + abs(rv1[i]));
+            anorm = gl_get_more_dynamic(anorm, fabs(w[i]) + fabs(rv1[i]));
         }
         for (i = N - 1; i >= 0; i--)
         {
@@ -431,12 +529,12 @@ namespace ppx
                 for (l = k; l >= 0; l--)
                 {
                     nm = l - 1;
-                    if (l == 0 || abs(rv1[l]) <= gl_rep_eps * anorm)
+                    if (l == 0 || fabs(rv1[l]) <= gl_rep_eps * anorm)
                     {
                         flag = false;
                         break;
                     }
-                    if (abs(w[nm]) <= gl_rep_eps * anorm)
+                    if (fabs(w[nm]) <= gl_rep_eps * anorm)
                     {
                         break;
                     }
@@ -449,7 +547,7 @@ namespace ppx
                     {
                         f = s * rv1[i];
                         rv1[i] = c * rv1[i];
-                        if (abs(f) <= gl_rep_eps * anorm)
+                        if (fabs(f) <= gl_rep_eps * anorm)
                         {
                             break;
                         }
@@ -543,7 +641,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    void svdbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, double *b)
+    void svbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, const Matrix<N, N> &v, double *b)
     {
         double tmp[N];
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
@@ -570,6 +668,61 @@ namespace ppx
             }
             b[j] = s;
         }
+    }
+
+    template <factorization type, size_t M, size_t N>
+    typename std::enable_if<type == factorization::LU, Matrix<N, 1>>::type
+    solve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    {
+        std::array<int, M> indx{};
+        auto even = true;
+        auto LU = ludcmp(A, indx, even);
+        ludbksb(LU, indx, b.data());
+        return b;
+    }
+
+    template <factorization type, size_t M, size_t N>
+    typename std::enable_if<type == factorization::QR, Matrix<N, 1>>::type
+    solve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    {
+        bool singular = false;
+        Matrix<N, 1> c;
+        Matrix<N, 1> d;
+        auto R = qrdcmp(A, c, d, singular);
+        if (singular)
+        {
+            return {};
+        }
+        qrsolv(R, c, d, b.data());
+        return slice<N, 1>(b, 0, 0);
+    }
+
+    template <factorization type, size_t M, size_t N>
+    typename std::enable_if<type == factorization::SVD, Matrix<N, 1>>::type
+    solve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    {
+        Matrix<N, 1> w{};
+        Matrix<N, N> V{};
+        auto U = svdcmp(A, w, V);
+        svbksb(U, w, V, b.data());
+        return slice<N, 1>(b, 0, 0);
+    }
+
+    template <size_t M, size_t N>
+    Matrix<N, M> pinv(const Matrix<M, N> &mat)
+    {
+        Matrix<N, 1> w{};
+        Matrix<N, N> V{};
+        auto U = svdcmp(mat, w, V);
+        Matrix<N, N> W{};
+        for (size_t i = 0; i < N; i++)
+        {
+            if (fabs(w[i]) > gl_rep_eps)
+            {
+                W(i, i) = 1.0 / w[i];
+            }
+        }
+        return V * W * U.T();
     }
 }
 #endif

@@ -30,6 +30,10 @@ namespace ppx
         SO3(Rep &&other) : Matrix(std::forward<Rep>(other)) {}
         SO3() : Matrix(Rep::eye()){};
 
+        SO3 operator*(const SO3 &other)
+        {
+            return Matrix::operator*(other);
+        }
         Matrix<3, 3> Adt() const
         {
             return *this;
@@ -107,9 +111,11 @@ namespace ppx
     class se3 : public Matrix<6, 1>
     {
         using T3 = Matrix<3, 1>;
+        using Rep = Matrix<6, 1>;
 
     public:
         using Matrix::Matrix;
+        se3(Rep &&other) : Matrix(std::forward<Rep>(other)) {}
         se3(const T3 &w, const T3 &v)
         {
             m_data[0] = w[0];
@@ -147,6 +153,10 @@ namespace ppx
         }
         SE3() : Matrix(Rep::eye()) {}
 
+        SE3 operator*(const SE3 &other)
+        {
+            return Matrix::operator*(other);
+        }
         SO3 Rot() const
         {
             return slice<3, 3>(*this, 0, 0);
@@ -202,7 +212,7 @@ namespace ppx
     {
         const auto &R = Rot();
         const auto &p = Pos();
-        if (R == SO3::zero())
+        if (R == SO3{})
         {
             return {T3{}, p};
         }
