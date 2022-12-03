@@ -49,17 +49,13 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(SE3mat.log(), "log(s) = ");
     PRINT_SINGLE_ELEMENTS(hat(SE3mat.log()));
     PRINT_SINGLE_ELEMENTS(se3{1.5708, 0.0, 0.0, 0.0, 2.3562, 2.3562}.exp());
-    Matrix<5, 3> X{1, 1, 1, 1, 1,
-                   1, 2, 3, 4, 5,
-                   1, 4, 9, 16, 25};
-    Matrix<5, 1> Y{1.6, 4.4, 9.4, 16.6, 25.5};
-    Matrix<3, 1> yc;
-    Matrix<3, 1> yd;
-    bool sing;
-    auto result = qrdcmp(X, yc, yd, sing);
-    PRINT_SINGLE_ELEMENTS(result, "R = ");
-    PRINT_SINGLE_ELEMENTS(yd, "diag R = ");
-    PRINT_SINGLE_ELEMENTS(yc, "yc = ");
+    Matrix<4, 3> X{3.5, 1.6, 3.7, 4.3,
+                   2.7, -5.7, -0.8, -9.8,
+                   -3.1, -6.0, 1.9, 6.9};
+    Matrix<4, 1> Y{1, 1, 1, 1};
+    PRINT_SINGLE_ELEMENTS(solve<factorization::QR>(X, Y), "QR    x = ");
+    PRINT_SINGLE_ELEMENTS(solve<factorization::SVD>(X, Y), "SVD  x = ");
+    PRINT_SINGLE_ELEMENTS(X, " X = ");
     Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
                    3, 6, 9, 5};

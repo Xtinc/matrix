@@ -133,6 +133,7 @@ static void BM_MatrixEigenLog(benchmark::State &state)
         tmp = mr::MatrixLog6(result);
     }
 }
+
 static void BM_MatrixEigenExp(benchmark::State &state)
 {
     Eigen::MatrixXd result(4, 4);
@@ -143,6 +144,43 @@ static void BM_MatrixEigenExp(benchmark::State &state)
         tmp = mr::MatrixExp6(result);
     }
 }
+
+static void BM_MatrixQR(benchmark::State &state)
+{
+    Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+                   997.0, -122.0, 35.4, 889.0, 111.1,
+                   -442.0, -0.987, 355.0, -346.0, 3419.0,
+                   235.0, 98.87, -827.0, 876.0, 34.0,
+                   222.0, -87.8, 546.0, -101.0, 122.1,
+                   -86.0, 999.0, 65.2, 902.0, 54.2};
+    Matrix<6, 5> result;
+    Matrix<5, 1> c;
+    Matrix<5, 1> d;
+    bool sing;
+    auto uT = u.T();
+    for (auto _ : state)
+    {
+        result = qrdcmp(uT, c, d, sing);
+    }
+}
+
+static void BM_MatrixEigenQR(benchmark::State &state)
+{
+    Eigen::MatrixXd u(6, 5);
+    u << 1233.0, 415.0, 87.7, 11.6, 243.0,
+        997.0, -122.0, 35.4, 889.0, 111.1,
+        -442.0, -0.987, 355.0, -346.0, 3419.0,
+        235.0, 98.87, -827.0, 876.0, 34.0,
+        222.0, -87.8, 546.0, -101.0, 122.1,
+        -86.0, 999.0, 65.2, 902.0, 54.2;
+    auto dd = Eigen::HouseholderQR<Eigen::MatrixXd>(u);
+    Eigen::HouseholderQR<Eigen::MatrixXd> qr(u.rows(), u.cols());
+    for (auto _ : state)
+    {
+        dd.compute(u);
+    }
+}
+
 static void BM_MatrixSVD(benchmark::State &state)
 {
     Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
@@ -191,6 +229,8 @@ BENCHMARK(BM_MatrixLog);
 BENCHMARK(BM_MatrixEigenLog);
 BENCHMARK(BM_MatrixExp);
 BENCHMARK(BM_MatrixEigenExp);
+BENCHMARK(BM_MatrixQR);
+BENCHMARK(BM_MatrixEigenQR);
 BENCHMARK(BM_MatrixSVD);
 BENCHMARK(BM_MatrixEigenSVD);
 // Run the benchmark

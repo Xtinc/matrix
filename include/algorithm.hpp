@@ -258,7 +258,7 @@ namespace ppx
     {
         sing = false;
         double scale, sigma, sum, tau;
-        for (int k = 0; k < N - 1; k++)
+        for (int k = 0; k < N; k++)
         {
             scale = 0.0;
             for (int i = k; i < N; i++)
@@ -273,10 +273,10 @@ namespace ppx
             }
             else
             {
-                for (int i = k; i < M; i++)
-                {
-                    a(i, k) /= scale;
-                }
+                // for (int i = k; i < M; i++)
+                // {
+                //     a(i, k) /= scale;
+                // }
                 sum = 0.0;
                 for (int i = k; i < M; i++)
                 {
@@ -285,7 +285,8 @@ namespace ppx
                 sigma = fabs(a(k, k)) < gl_rep_eps ? sqrt(sum) : SIGN(sqrt(sum), a(k, k));
                 a(k, k) += sigma;
                 c[k] = sigma * a(k, k);
-                d[k] = -scale * sigma;
+                // d[k] = -scale * sigma;
+                d[k] = -sigma;
                 for (int j = k + 1; j < N; j++)
                 {
                     sum = 0.0;
@@ -297,13 +298,12 @@ namespace ppx
                     for (int i = k; i < M; i++)
                     {
                         a(i, j) -= tau * a(i, k);
-                        auto ccc = a(i, j);
-                        std::cout << i << " " << j << " " << a(i, j) << std::endl;
                     }
+                    // details::PRINT_SINGLE_ELEMENTS(a);
                 }
             }
         }
-        d[N - 1] = a(N - 1, N - 1);
+        // d[N - 1] = a(N - 1, N - 1);
         if (fabs(d[N - 1]) < gl_rep_eps)
         {
             sing = true;
@@ -314,21 +314,21 @@ namespace ppx
     template <size_t M, size_t N>
     void qrsolv(const Matrix<M, N> &a, const Matrix<N, 1> &c, const Matrix<N, 1> &d, double *b)
     {
-        for (int j = 0; j < N - 1; j++)
+        for (int j = 0; j < N; j++)
         {
             double sum = 0.0;
-            for (int i = j; i < N; i++)
+            for (int i = j; i < M; i++)
             {
                 sum += a(i, j) * b[i];
             }
             double tau = sum / c[j];
-            for (int i = j; i < N; i++)
+            for (int i = j; i < M; i++)
             {
                 b[i] -= tau * a(i, j);
             }
         }
-        b[N - 1] /= d[N - 1];
-        for (int i = N - 2; i >= 0; i--)
+        // b[N - 1] /= d[N - 1];
+        for (int i = N - 1; i >= 0; i--)
         {
             double sum = 0.0;
             for (int j = i + 1; j < N; j++)
