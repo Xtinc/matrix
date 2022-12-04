@@ -167,7 +167,37 @@ class MatrixBase<M, N, 0>
 | destructor  | 默认析构（不可访问）          |
 | operator=   | 默认赋值/移动赋值（不可访问） |
 
+### ppx::Matrix::SubPart
+
+#### definition
+
+```c++
+#include "matrix.hpp"
+template <std::size_t M, std::size_t N>
+class Matrix : public details::MatrixBase<M, N>
+{
+    struct SubPart;
+}
+```
+
+------
+
+1. ppx::Matrix::SubPart 是Matrix私有类型，外部不可见。
+2. ppx::Matrix::SubPart 是Matrix进行切片时返回的代理操作类型，它相当于Matrix的一个视窗。
+
+在Matrix对象上使用operator()算符并且参数为std::pair时，将激活代理操作。此时的operator()不再返回元素的引用，而是返回结构体SubPart，它储存了operator()切片操作时的范围，将对Matrix的引用语义转移到自身，所以SubPart是Matrix的操作代理类型。
+
+#### Member functions
+
+| 构造方法    |                                        |
+| ----------- | -------------------------------------- |
+| constructor | 唯一，接受Matrix，索引范围（不可访问） |
+| destructor  | 默认析构（不可访问）                   |
+| operator=   | 默认赋值/移动赋值（不可访问）          |
+| operator=   | 从Matrix/数组对象赋值                  |
+
 ## Algorithm
+
 ### ppx::cofactor
 
 #### definition
