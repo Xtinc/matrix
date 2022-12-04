@@ -722,9 +722,11 @@ namespace ppx
         Matrix<N, N> V{};
         auto U = svdcmp(mat, w, V);
         Matrix<N, N> W{};
+        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * gl_rep_eps;
         for (size_t i = 0; i < N; i++)
         {
-            if (fabs(w[i]) > gl_rep_eps)
+            if (fabs(w[i]) > tsh)
             {
                 W(i, i) = 1.0 / w[i];
             }

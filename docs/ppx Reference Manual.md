@@ -125,7 +125,7 @@ namespace details
 ------
 
 1. details::MatrixBase 是储存容器包装。
-2. details::MatrixBase根据第三模板参数A决定自身特化类型：相应区别在于内部数据成员类型将是std::array 或std::vector类型。
+2. details::MatrixBase根据第三模板参数A决定自身特化类型：区别在于数据成员类型将是std::array 或std::vector类型。
 
 details::MatrixBase是对储存容器简单包装。它有默认的移动语义，但它的移动语义会根据内部容器类型发生区别：当内部是std::array类型时，它具有平凡的移动语义；而内部是std::vector它有通常意义上的移动语义。
 
@@ -195,6 +195,180 @@ class Matrix : public details::MatrixBase<M, N>
 | destructor  | 默认析构（不可访问）                   |
 | operator=   | 默认赋值/移动赋值（不可访问）          |
 | operator=   | 从Matrix/数组对象赋值                  |
+
+### details::expr
+
+#### definition
+
+```c++
+#include "matrix.hpp"
+namespace details
+{
+    template <typename T>
+    class expr
+    {
+        public:
+            using expr_type = expr<T>;
+            const T &self() const { return static_cast<const T &>(*this); }
+            T &self() { return static_cast<T &>(*this); }
+
+        protected:
+            explicit expr(){};
+            constexpr size_t size() { return self().size_impl(); }
+            auto operator[](size_t idx) const { return self().at_impl(idx); }
+            auto operator()() const { return self()(); };
+    };
+}
+```
+
+------
+
+expr是存在于ppx::details命名空间内的表达式模板基类。ppx的矩阵计算中实现了惰性求值，而相关的工具都遮蔽于details命名空间中，不对外开放。
+
+表达式模板（Expression Templates），以及与其相应的惰性求值（Lazy Evaluation）技术是C++数值计算中关键部分之一。C++常见线性代数库，如uBLAs[^11]与Eigen[^8]都重度依赖此特性。表达式模板也是C++在高性能领域能接近C与Fortran计算效率的重要工具。然而Eigen中表达式模板泛滥也带来了困扰：大大增加了诸如Openfoam或Moose这些基于Eigen开发的偏微分方程数值库的抽象成本[^12]。ppx有限度的使用了表达式模板技术。关于更多表达式模板知识与细节参考*C++ Templates*[^10]，此处只简单介绍ppx的实现。
+
+expr是表达式基类，因为该类型会大量构造，所以它使用奇异模板递归（CRTP）实现多态，同时避免虚继承开销。它是表达式模板类必须最小特性集合。
+
+#### Member functions
+
+| 构造方法     |                      |
+| ------------ | -------------------- |
+| constructor  | 默认构造（不可访问） |
+| **成员方法** |                      |
+| self         | 返回自身（子类）     |
+| size         | 返回元素数量（子类） |
+| operator[]   | 求值                 |
+| operator()() | 隐式类型转换（子类） |
+
+### details::expr_result
+
+#### definition
+
+```c++
+#include "matrix.hpp"
+namespace details
+{
+    template <typename T>
+    class expr_result : expr<expr_result<T>>；
+}
+```
+
+------
+
+expr_result是普通类型接入模板表达式的起点。它继承自expr，这使它能参与模板计算；另一方面它内部有一个类型萃取器：对于值类型保存值得副本，对于引用类型保存其引用。它内部的数据成员是对普通类型得包装，也是模板计算终点。
+
+它唯一数据成员是：
+
+```c++
+typename expr_traits<T>::ExprRef value;
+```
+
+expr_traits是简单实现的类型萃取[^13]：
+
+```c++
+template <typename T>
+struct expr_traits
+{
+    using ExprRef = T const &;
+};
+
+template <typename T>
+struct expr_traits<expr_scalar<T>>
+{
+    using ExprRef = expr_scalar<T>;
+};
+```
+
+这种萃取使除expr_scalar类型外作为引用储存，对于expr_scalar作为拷贝储存。
+
+#### Member functions
+
+| 构造方法    |          |
+| ----------- | -------- |
+| constructor | 默认构造 |
+| destructor  | 默认析构 |
+
+### details::expr_scalar
+
+#### definition
+
+```c++
+#include "matrix.hpp"
+namespace details
+{
+    template <typename T> 
+    struct expr_scalar;
+}
+```
+
+------
+
+expr_scalar是为了解决表达式模板中标量无法实现operator[]和size函数而实现的包装类，这一技术来自于*C++ Templates*[^10]。例如：数组的逐元运算中进行惰性求值，在遍历表达式树调用operator[]求值遇到标量就会出错。因此所有参与模板计算的标量都使用expr_scalar进行包装。
+
+#### Member functions
+
+| 构造方法     |            |
+| ------------ | ---------- |
+| constructor  | 默认构造   |
+| destructor   | 默认析构   |
+| **成员方法** |            |
+| operator[]   | 返回标量值 |
+| size         | 返回1      |
+
+### details::biops
+
+#### definition
+
+```c++
+#include "matrix.hpp"
+namespace details
+{
+    template <typename Ops, typename lExpr, typename rExpr>
+    class biops : public expr<biops<Ops, lExpr, rExpr>>;
+}
+```
+
+------
+
+biops是bi-operations的缩写，即二元算符。它也继承自expr，因此有参与模板计算能力，同时它也是模板计算中二元运算惰性求值的核心。因此biops也引申出了如下的多个仿函数：
+
+```c++
+ struct expr_plus_t
+ {
+     constexpr explicit expr_plus_t() = default;
+     template <typename LType, typename RType>
+     auto operator()(const LType &lhs, const RType &rhs) const
+     {
+         return lhs + rhs;
+     }
+ };
+```
+
+这种仿函数在模板中代表了用户实际输入的operator+算符；或说是operator+的模板表示类型。
+
+#### Template parameters
+
+| 参数  | 约束     | 说明                       |
+| :---: | -------- | -------------------------- |
+|  Ops  | 二元算符 | 类型参数，代表二元运算     |
+| lExpr | 表达式   | 类型参数，二元运算左操作数 |
+| rExpr | 表达式   | 类型参数，二元运算右操作数 |
+
+biops类型在构造时会把二元运算类型、左右操作数这些参数储存至自己的模板参数中，在真正调用operator[]算符求值时，通过遍历自身模板参数，实现计算。
+
+#### Member functions
+
+| 构造方法     |                                        |
+| ------------ | -------------------------------------- |
+| constructor  | 默认构造                               |
+| destructor   | 默认析构                               |
+| **成员方法** |                                        |
+| operator[]   | 弹出操作数，调用二元算符               |
+| size         | 返回左右操作数size较大者               |
+| operator+    | 储存plus算符，结合右操作数，返回新模板 |
+| operator-    | 储存plus算符，结合右操作数，返回新模板 |
+| operator*    | 储存plus算符，结合右操作数，返回新模板 |
+| operator/    | 储存plus算符，结合右操作数，返回新模板 |
 
 ## Algorithm
 
@@ -522,3 +696,11 @@ $$
 
 [^8]: https://eigen.tuxfamily.org
 [^9]: [google/benchmark: A microbenchmark support library (github.com)](https://github.com/google/benchmark)
+
+[^10]: https://www.speedytemplate.com/forms/general-book-template-2.pdf	"Vandevoorde, D., &amp; Josuttis, N. M. (2002). C++ Templates: The Complete Guide, Portable Documents. Addison-Wesley Professional."
+[^11]: [Boost C++ Libraries](https://www.boost.org/)
+
+[^12]: https://www.osti.gov/servlets/purl/1601096	"Hoemmen, M. F., Badwaik, J., &amp; Brucher, M. (2019). P1417: Historical lessons for C++ linear algebra library standardization (No. SAND2019-1648C). Sandia National Lab.(SNL-NM), Albuquerque, NM (United States)."
+
+[^13]: https://www.researchgate.net/profile/Martin-Sulzmann/publication/228738465_C_templatestraits_versus_Haskell_type_classes/links/09e415110019081e10000000/C-templates-traits-versus-Haskell-type-classes.pdf	"Kothari, S., &amp; Sulzmann, M. (2005). C++ templates/traits versus Haskell type classes. Technical Report TRB2/05, The National Univ. of Singapore, 2005.→ 1 citation on page: 119."
+
