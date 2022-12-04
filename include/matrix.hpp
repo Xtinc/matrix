@@ -304,7 +304,7 @@ namespace ppx
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
             MatrixBase(const std::array<T, L> &list) : m_data{}
             {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
+                constexpr auto real_idx = gl_get_less(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
@@ -332,7 +332,7 @@ namespace ppx
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
             MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
             {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
+                constexpr auto real_idx = gl_get_less(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
@@ -416,15 +416,6 @@ namespace ppx
             void operator=(const std::vector<T> &list)
             {
                 generator_by_list(list);
-            }
-            std::array<double, M> operator*(const std::array<double, N> &x) const
-            {
-                return data * x;
-            }
-            template <size_t L>
-            Matrix<M, L> operator*(const Matrix<N, L> &other) const
-            {
-                return data * other;
             }
 
         private:

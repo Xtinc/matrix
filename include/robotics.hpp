@@ -67,21 +67,21 @@ namespace ppx
             }
             return effector_pose;
         }
-        Matrix<6, N> jacobiSpace(const std::vector<double> &jointAngle)
-        {
-            int real_size = (int)gl_get_less_dynamic(N, jointAngle.size());
-            std::array<double, N> JAngle{};
-            std::copy_n(jointAngle.begin(), real_size, JAngle.begin());
-            Matrix<6, N> Js;
-            SE3 T;
-            for (int i = 1; i < real_size; i++)
-            {
-                se3 screw = JList[i - 1].screw * JAngle[i - 1];
-                T = T * screw.exp();
-                Js({-1, -1}, i) = T.Adt() * JList[i].screw;
-            }
-            return Js;
-        }
+        // Matrix<6, N> jacobiSpace(const std::vector<double> &jointAngle)
+        // {
+        //     int real_size = (int)gl_get_less_dynamic(N, jointAngle.size());
+        //     std::array<double, N> JAngle{};
+        //     std::copy_n(jointAngle.begin(), real_size, JAngle.begin());
+        //     Matrix<6, N> Js;
+        //     SE3 T;
+        //     for (int i = 1; i < real_size; i++)
+        //     {
+        //         se3 screw = JList[i - 1].screw * JAngle[i - 1];
+        //         T = T * screw.exp();
+        //         Js({-1, -1}, i) = T.Adt() * JList[i].screw;
+        //     }
+        //     return Js;
+        // }
         Matrix<6, N> jacobiSpace(const Q &jointAngle)
         {
             Matrix<6, N> Js;
