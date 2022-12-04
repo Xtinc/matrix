@@ -690,7 +690,7 @@ namespace ppx
         {
             return this->m_data.data();
         }
-        std::array<double, N> row(size_t idx) const
+        Matrix<N, 1> row(size_t idx) const
         {
             auto real_idx = idx < M ? idx : M;
             std::array<double, N> result;
@@ -700,7 +700,7 @@ namespace ppx
             }
             return result;
         }
-        std::array<double, M> col(size_t idx) const
+        Matrix<M, 1> col(size_t idx) const
         {
             auto real_idx = idx < N ? idx : N;
             std::array<double, M> result;
