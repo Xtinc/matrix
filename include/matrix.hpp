@@ -12,6 +12,7 @@
 
 namespace ppx
 {
+    constexpr size_t gl_sm_limit = 260;
     constexpr double gl_rep_pi = 3.141592653589793;
     constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
     constexpr double gl_rep_max = std::numeric_limits<float>::max();
@@ -290,7 +291,7 @@ namespace ppx
     {
         constexpr size_t gl_sm(size_t A, size_t B)
         {
-            return A * B < 260 ? 1 : 0;
+            return A * B < gl_sm_limit ? 1 : 0;
         }
 
         template <size_t M, size_t N, std::size_t A = gl_sm(M, N)>
