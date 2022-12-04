@@ -175,8 +175,9 @@ namespace ppx
     };
 
     template <size_t N>
-    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even)
+    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing)
     {
+        sing = false;
         even = true;
         for (int i = 0; i < N; i++)
         {
@@ -197,6 +198,7 @@ namespace ppx
             }
             if (valmax < gl_rep_eps)
             {
+                sing = true;
                 return {};
             }
             if (ip != k)
@@ -676,7 +678,12 @@ namespace ppx
     {
         std::array<int, M> indx{};
         auto even = true;
-        auto LU = ludcmp(A, indx, even);
+        auto sing = false;
+        auto LU = ludcmp(A, indx, even, sing);
+        if (sing)
+        {
+            return {};
+        }
         ludbksb(LU, indx, b.data());
         return b;
     }

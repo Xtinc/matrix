@@ -275,7 +275,7 @@ namespace ppx
     class Matrix;
 
     template <size_t N>
-    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even);
+    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing);
 
     template <size_t M, size_t N>
     Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v);
@@ -692,21 +692,21 @@ namespace ppx
         }
         Matrix<N, 1> row(size_t idx) const
         {
-            auto real_idx = idx < M ? idx : M;
-            std::array<double, N> result;
+            // auto real_idx = idx < M ? idx : M;
+            Matrix<N, 1> result;
             for (auto i = 0u; i < N; ++i)
             {
-                result[i++] = this->m_data.at(real_idx + i * M);
+                result[i++] = this->m_data.at(idx + i * M);
             }
             return result;
         }
         Matrix<M, 1> col(size_t idx) const
         {
-            auto real_idx = idx < N ? idx : N;
-            std::array<double, M> result;
+            // auto real_idx = idx < N ? idx : N;
+            Matrix<M, 1> result;
             for (auto i = 0u; i < M; ++i)
             {
-                result[i++] = this->m_data.at(real_idx * M + i);
+                result[i++] = this->m_data.at(idx * M + i);
             }
             return result;
         }
@@ -743,8 +743,13 @@ namespace ppx
         {
             std::array<int, M> indx{};
             auto even = true;
+            auto sing = false;
+            auto LU = ludcmp(*this, indx, even, sing);
+            if (sing)
+            {
+                return {};
+            }
             auto result = Matrix<M, M>::eye();
-            auto LU = ludcmp(*this, indx, even);
             for (int j = 0; j < M; j++)
             {
                 ludbksb(LU, indx, result.data() + j * M);
@@ -771,8 +776,13 @@ namespace ppx
         enable_when_squre_t<A, double> det() const
         {
             auto even = true;
+            auto sing = false;
             std::array<int, M> indx{};
-            auto LU = ludcmp(*this, indx, even);
+            auto LU = ludcmp(*this, indx, even, sing);
+            if (sing)
+            {
+                return {};
+            }
             auto D = even ? 1.0 : -1.0;
             for (size_t i = 0; i < M; i++)
             {
@@ -862,18 +872,6 @@ namespace ppx
                     iter_B += N;
                 }
                 iter_A += N;
-            }
-            return result;
-        }
-        std::array<double, M> operator*(const std::array<double, N> &x) const
-        {
-            std::vector<double> result(M * N, 0.0);
-            for (size_t i = 0; i < M; i++)
-            {
-                for (size_t j = 0; j < N; j++)
-                {
-                    result[i] = (*this)(i, j) * x[j];
-                }
             }
             return result;
         }
