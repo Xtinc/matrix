@@ -5,11 +5,10 @@
 
 namespace ppx
 {
-    using range = std::pair<double, double>;
     struct joint
     {
         std::string name{"Anon"};
-        range range{-gl_rep_max, gl_rep_max};
+        std::pair<double, double> range{-gl_rep_max, gl_rep_max};
         se3 screw;
         SE3 pose;
         joint() = default;
@@ -28,29 +27,30 @@ namespace ppx
     public:
         using Q = Matrix<N, 1>;
         template <size_t L>
+        idx_available_t<L, joint &> getJoint()
+        {
+            return JList[L];
+        }
+        template <size_t L>
+        idx_available_t<L, const joint &> getJoint() const
+        {
+            return JList[L];
+        }
+        template <size_t L>
         idx_available_t<L> setJoint(const joint &j)
         {
             JList[L] = j;
         }
-        SE3 forwardSpace(const std::string &jointName, const std::vector<double> &jointAngle) const
+        SE3 forwardSpace(const std::string &jointName, const Q &jointAngle) const
         {
-            // check name in joints list & calculate poe.
-            int real_size = (int)gl_get_less_dynamic(N, jointAngle.size());
-            int effector_idx = -1;
-            for (int i = 0; i < real_size; i++)
-            {
-                if (JList[i].name == jointName)
-                {
-                    effector_idx = i;
-                    break;
-                }
-            }
-            if (effector_idx == -1)
+            auto effector_idx = std::find_if(JList.begin(), JList.end(), [&jointName](const joint &elem)
+                                             { return jointName == elem.name; });
+            if (effector_idx == JList.end())
             {
                 return {};
             }
-            SE3 effector_pose = JList[effector_idx].pose;
-            for (int i = effector_idx; i > -1; i--)
+            SE3 effector_pose = effector_idx->pose;
+            for (int i = (int)std::distance(JList.begin(), effector_idx); i > -1; i--)
             {
                 se3 screw = JList[i].screw * jointAngle[i];
                 effector_pose = screw.exp() * effector_pose;
@@ -67,21 +67,6 @@ namespace ppx
             }
             return effector_pose;
         }
-        // Matrix<6, N> jacobiSpace(const std::vector<double> &jointAngle)
-        // {
-        //     int real_size = (int)gl_get_less_dynamic(N, jointAngle.size());
-        //     std::array<double, N> JAngle{};
-        //     std::copy_n(jointAngle.begin(), real_size, JAngle.begin());
-        //     Matrix<6, N> Js;
-        //     SE3 T;
-        //     for (int i = 1; i < real_size; i++)
-        //     {
-        //         se3 screw = JList[i - 1].screw * JAngle[i - 1];
-        //         T = T * screw.exp();
-        //         Js({-1, -1}, i) = T.Adt() * JList[i].screw;
-        //     }
-        //     return Js;
-        // }
         Matrix<6, N> jacobiSpace(const Q &jointAngle)
         {
             Matrix<6, N> Js;
@@ -91,6 +76,23 @@ namespace ppx
                 se3 screw = JList[i - 1].screw * jointAngle[i - 1];
                 T = T * screw.exp();
                 Js({-1, -1}, i) = T.Adt() * JList[i].screw;
+            }
+            return Js;
+        }
+        template <size_t L>
+        idx_available_t<L, Matrix<6, L>> jacobiSpace(const std::array<std::string, L> &namelist, const Q &jointAngle)
+        {
+            Matrix<6, L> Js;
+            auto JsAll = jacobiSpace(jointAngle);
+            for (size_t i = 0; i < L; i++)
+            {
+                auto iter = std::find_if(JList.begin(), JList.end(), [&namelist, i](const joint &elem)
+                                         { return namelist[i] == elem.name; });
+                if (iter != JList.end())
+                {
+                    auto col_idx = std::distance(JList.begin(), iter);
+                    Js({-1, -1}, i) = JsAll.col(col_idx);
+                }
             }
             return Js;
         }
