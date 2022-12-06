@@ -110,7 +110,7 @@ namespace ppx
                 auto err_v = norm2(Vs.v());
                 // printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
                 converage = err_w < gl_rep_eps && err_v < gl_rep_eps;
-                init += pinv(jacobiSpace(init)) * Vs;
+                init += solve<factorization::SVD>(jacobiSpace(init), Vs);
                 ++iter;
             }
             return init;

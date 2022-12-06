@@ -141,6 +141,29 @@ void test_linear()
     }
 }
 
+void test_nonlinear()
+{
+    auto test1 = [](const Matrix<2, 1> &x)
+    {
+        Matrix<2, 1> y;
+        y[0] = sin(x[0]);
+        y[1] = cos(x[1]);
+        return y;
+    };
+    auto jac1 = [](const Matrix<2, 1> &x)
+    {
+        Matrix<2, 2> j;
+        j(0, 0) = cos(x[0]);
+        j(0, 1) = 0;
+        j(1, 0) = 0;
+        j(1, 1) = -sin(x[1]);
+        return j;
+    };
+    Matrix<2, 1> x;
+    auto con = newt(test1, jac1, x);
+    PRINT_SINGLE_ELEMENTS(x, "x = ");
+}
+
 void test_lieGroup()
 {
     {
@@ -220,8 +243,9 @@ void test_robotics()
 
 int main(int, char **)
 {
-    test_matrix();
-    test_linear();
-    test_lieGroup();
-    test_robotics();
+    // test_matrix();
+    // test_linear();
+    // test_lieGroup();
+    // test_robotics();
+    test_nonlinear();
 }

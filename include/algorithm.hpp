@@ -2,6 +2,7 @@
 #define VVERY_SIMPLE_MATRIX_HEADER
 
 #include "matrix.hpp"
+#include <functional>
 
 namespace ppx
 {
@@ -732,6 +733,198 @@ namespace ppx
             }
         }
         return V * W * U.T();
+    }
+
+    // nonlinear solver
+
+    namespace details
+    {
+        template <typename Callable, size_t N>
+        void lnsrch(const Matrix<N, 1> &xold, double fold, const Matrix<N, 1> &g, Matrix<N, 1> &p,
+                    Matrix<N, 1> &x, double &f, double stpmax, bool &check, Callable &func)
+        {
+            constexpr double ALF = 1.0e-4;
+            double alam2 = 0.0;
+            double f2 = 0.0;
+            check = false;
+            auto sum = norm2(p);
+            if (sum > stpmax)
+            {
+                p *= stpmax / sum;
+            }
+            auto slope = std::inner_product(g.begin(), g.end(), p.begin(), 0.0);
+            if (slope > 0.0)
+            {
+                return;
+            }
+            // throw("Roundoff problem in lnsrch.");
+            double test = 0.0;
+            for (int i = 0; i < N; i++)
+            {
+                auto temp = fabs(p[i]) / gl_get_more_dynamic(fabs(xold[i]), 1.0);
+                if (temp > test)
+                {
+                    test = temp;
+                }
+            }
+            auto alamin = gl_rep_eps / test;
+            auto alam = 1.0;
+            for (;;)
+            {
+                auto tmplam = 0.0;
+                x = xold + alam * p;
+                f = func(x);
+                if (alam < alamin)
+                {
+                    x = xold;
+                    check = true;
+                    return;
+                }
+                else if (f < fold + ALF * alam * slope)
+                {
+                    return;
+                }
+                else
+                {
+                    if (alam == 1.0)
+                    {
+                        tmplam = -slope / (2.0 * (f - fold - slope));
+                    }
+                    else
+                    {
+                        auto rhs1 = f - fold - alam * slope;
+                        auto rhs2 = f2 - fold - alam2 * slope;
+                        auto a = (rhs1 / (alam * alam) - rhs2 / (alam2 * alam2)) / (alam - alam2);
+                        auto b = (-alam2 * rhs1 / (alam * alam) + alam * rhs2 / (alam2 * alam2)) / (alam - alam2);
+                        if (fabs(a) < gl_rep_eps)
+                        {
+                            tmplam = -slope / (2.0 * b);
+                        }
+                        else
+                        {
+                            auto disc = b * b - 3.0 * a * slope;
+                            if (disc < 0.0)
+                            {
+                                tmplam = 0.5 * alam;
+                            }
+                            else if (b < 0.0)
+                            {
+                                tmplam = (-b + sqrt(disc)) / (3.0 * a);
+                            }
+                            else
+                            {
+                                tmplam = -slope / (b + sqrt(disc));
+                            }
+                        }
+                        if (tmplam > 0.5 * alam)
+                        {
+                            tmplam = 0.5 * alam;
+                        }
+                    }
+                }
+                alam2 = alam;
+                f2 = f;
+                alam = gl_get_more_dynamic(tmplam, 0.1 * alam);
+            }
+        }
+
+        template <typename T, size_t N>
+        struct NRfmin
+        {
+            Matrix<N, 1> fvec;
+            T &func;
+
+            NRfmin(T &_func) : func(_func) {}
+
+            double operator()(const Matrix<N, 1> &x)
+            {
+                fvec = func(x);
+                return 0.5 * std::inner_product(fvec.cbegin(), fvec.cend(), fvec.cbegin(), 0.0);
+            }
+        };
+
+    }
+
+    template <typename T1, typename T2, size_t N>
+    bool newt(T1 fn, T2 df, Matrix<N, 1> &x)
+    {
+        constexpr int MAXITS = 200;
+        constexpr double TOLF = 1.0e-8;
+        constexpr double TOLMIN = 1.0e-12;
+        constexpr double STPMX = 100.0;
+        // Doub den, f, fold, stpmax, sum, temp, test;
+        double test = 0.0;
+        auto testConverage = [&test](const Matrix<N, 1> &fvec)
+        {
+            test = 0.0;
+            for (int i = 0; i < N; i++)
+            {
+                auto ffvec = fabs(fvec[i]);
+                if (ffvec > test)
+                {
+                    test = ffvec;
+                }
+            }
+        };
+        details::NRfmin<T1, N> fmin(fn);
+        const auto &fvec = fmin.fvec;
+        auto f = fmin(x);
+        testConverage(fvec);
+        if (test < 0.01 * TOLF)
+        {
+            return false;
+        }
+        auto sum = std::inner_product(x.cbegin(), x.cend(), x.cbegin(), 0.0);
+        auto stpmax = STPMX * gl_get_more_dynamic(sqrt(sum), double(N));
+        for (int its = 0; its < MAXITS; its++)
+        {
+            auto fjac = df(x);
+            auto g = fjac * fvec;
+            auto xold = x;
+            auto fold = f;
+            Matrix<N, 1> p = -1 * fvec;
+            bool check = false;
+            p = solve<factorization::LU>(fjac, p);
+            lnsrch(xold, fold, g, p, x, f, stpmax, check, fmin);
+            testConverage(fvec);
+            if (test < TOLF)
+            {
+                return false;
+            }
+            double temp = 0.0;
+            if (check)
+            {
+                test = 0.0;
+                auto den = gl_get_more_dynamic(f, 0.5 * N);
+                for (int i = 0; i < N; i++)
+                {
+                    temp = fabs(g[i]) * gl_get_more_dynamic(fabs(x[i]), 1.0) / den;
+                    if (temp > test)
+                    {
+                        test = temp;
+                    }
+                }
+                if (test < TOLMIN)
+                {
+                    return true;
+                }
+            }
+            test = 0.0;
+            for (int i = 0; i < N; i++)
+            {
+                temp = (fabs(x[i] - xold[i])) / gl_get_more_dynamic(fabs(x[i]), 1.0);
+                if (temp > test)
+                {
+                    test = temp;
+                }
+            }
+            if (test < gl_rep_eps)
+            {
+                return true;
+            }
+        }
+        return false;
+        // throw("MAXITS exceeded in newt");
     }
 }
 #endif
