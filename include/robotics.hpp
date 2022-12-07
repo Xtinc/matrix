@@ -104,13 +104,14 @@ namespace ppx
             auto iter = 0u;
             while (!converage && iter < 20)
             {
+                bool sing = false;
                 Tsb = forwardSpace(init);
                 Vs = Tsb.Adt() * (Tsb.I() * pose).log();
                 auto err_w = norm2(Vs.w());
                 auto err_v = norm2(Vs.v());
                 // printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
                 converage = err_w < gl_rep_eps && err_v < gl_rep_eps;
-                init += solve<factorization::SVD>(jacobiSpace(init), Vs);
+                init += solve<factorization::SVD>(jacobiSpace(init), Vs, sing);
                 ++iter;
             }
             return init;

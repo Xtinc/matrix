@@ -53,15 +53,16 @@ void test_matrix()
                    2.7, -5.7, -0.8, -9.8,
                    -3.1, -6.0, 1.9, 6.9};
     Matrix<4, 1> Y{1, 1, 1, 1};
-    PRINT_SINGLE_ELEMENTS(solve<factorization::QR>(X, Y), "QR    x = ");
-    PRINT_SINGLE_ELEMENTS(solve<factorization::SVD>(X, Y), "SVD  x = ");
+    bool sing = true;
+    PRINT_SINGLE_ELEMENTS(solve<factorization::QR>(X, Y, sing), "QR    x = ");
+    PRINT_SINGLE_ELEMENTS(solve<factorization::SVD>(X, Y, sing), "SVD  x = ");
     PRINT_SINGLE_ELEMENTS(X, " X = ");
     Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
                    3, 6, 9, 5};
     Matrix<3, 1> v{};
     Matrix<3, 3> w{};
-    u = svdcmp(u, v, w);
+    u = svdcmp(u, v, w, sing);
     PRINT_SINGLE_ELEMENTS(u, "U = ");
     PRINT_SINGLE_ELEMENTS(v, "S = ");
     PRINT_SINGLE_ELEMENTS(w, "V = ");
@@ -70,72 +71,62 @@ void test_matrix()
 
 void test_linear()
 {
+    std::default_random_engine eni((unsigned)time(NULL));
+    std::uniform_real_distribution<> uf(-10000, 10000);
     printf("Test linear solver LU\n");
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        std::default_random_engine eni(i);
-        std::uniform_real_distribution<> uf(-10000, 10000);
         for (auto &i : A)
         {
             i = uf(eni);
         }
-        eni.seed(i * 7);
         Matrix<100, 1> x;
         for (auto &i : x)
         {
             i = uf(eni);
         }
         auto b = A * x;
-        auto result = solve<factorization::LU>(A, b);
+        bool sing = false;
+        auto result = solve<factorization::LU>(A, b, sing);
         auto residual = norm2(Matrix<100, 1>(result - x));
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
-        if (residual > gl_rep_eps)
-        {
-            PRINT_SINGLE_ELEMENTS(A, "A = ");
-            PRINT_SINGLE_ELEMENTS(b, "b = ");
-            PRINT_SINGLE_ELEMENTS(x, "x = ");
-        }
     }
     printf("Test linear solver SVD\n");
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        std::default_random_engine eni(i);
-        std::uniform_real_distribution<> uf(-10000, 10000);
         for (auto &i : A)
         {
             i = uf(eni);
         }
-        eni.seed(i * 3);
         Matrix<100, 1> x;
         for (auto &i : x)
         {
             i = uf(eni);
         }
         auto b = A * x;
-        auto result = solve<factorization::SVD>(A, b);
+        bool sing = false;
+        auto result = solve<factorization::SVD>(A, b, sing);
         auto residual = norm2(Matrix<100, 1>(result - x));
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear solver QR\n");
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        std::default_random_engine eni(i);
-        std::uniform_real_distribution<> uf(-10000, 10000);
         for (auto &i : A)
         {
             i = uf(eni);
         }
-        eni.seed(i * 5);
         Matrix<100, 1> x;
         for (auto &i : x)
         {
             i = uf(eni);
         }
         auto b = A * x;
-        auto result = solve<factorization::QR>(A, b);
+        bool sing = false;
+        auto result = solve<factorization::QR>(A, b, sing);
         auto residual = norm2(Matrix<100, 1>(result - x));
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
@@ -143,25 +134,6 @@ void test_linear()
 
 void test_nonlinear()
 {
-    auto test1 = [](const Matrix<2, 1> &x)
-    {
-        Matrix<2, 1> y;
-        y[0] = sin(x[0]);
-        y[1] = cos(x[1]);
-        return y;
-    };
-    auto jac1 = [](const Matrix<2, 1> &x)
-    {
-        Matrix<2, 2> j;
-        j(0, 0) = cos(x[0]);
-        j(0, 1) = 0;
-        j(1, 0) = 0;
-        j(1, 1) = -sin(x[1]);
-        return j;
-    };
-    Matrix<2, 1> x;
-    auto con = newt(test1, jac1, x);
-    PRINT_SINGLE_ELEMENTS(x, "x = ");
 }
 
 void test_lieGroup()
@@ -243,9 +215,8 @@ void test_robotics()
 
 int main(int, char **)
 {
-    // test_matrix();
-    // test_linear();
-    // test_lieGroup();
-    // test_robotics();
-    test_nonlinear();
+    test_matrix();
+    test_linear();
+    test_lieGroup();
+    test_robotics();
 }

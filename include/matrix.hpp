@@ -279,7 +279,7 @@ namespace ppx
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing);
 
     template <size_t M, size_t N>
-    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v);
+    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v, bool &sing);
 
     template <size_t N>
     void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
