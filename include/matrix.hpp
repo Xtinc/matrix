@@ -1,5 +1,5 @@
-#ifndef VVERY_SIMPLE_EXPRESSION_HEADER
-#define VVERY_SIMPLE_EXPRESSION_HEADER
+#ifndef VVERY_SIMPLE_MATRIX_HEADER
+#define VVERY_SIMPLE_MATRIX_HEADER
 
 #include <iostream>
 #include <iomanip>

@@ -134,6 +134,18 @@ void test_linear()
 
 void test_nonlinear()
 {
+    auto f1 = [](double x)
+    {
+        double y = -4 * log(1.0 + x) / 3.0 + x;
+        return y;
+    };
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSection>(f1, 0.0, 1.0));
+    auto f2 = [](double x)
+    {
+        double y = sin(x);
+        return y;
+    };
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::Brent>(f2, 1.15 * gl_rep_pi, 2 * gl_rep_pi));
 }
 
 void test_lieGroup()
@@ -215,8 +227,9 @@ void test_robotics()
 
 int main(int, char **)
 {
-    test_matrix();
-    test_linear();
-    test_lieGroup();
-    test_robotics();
+    // test_matrix();
+    // test_linear();
+    // test_lieGroup();
+    // test_robotics();
+    test_nonlinear();
 }

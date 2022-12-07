@@ -1,7 +1,7 @@
-#ifndef VVERY_SIMPLE_SO3_HEADER
-#define VVERY_SIMPLE_SO3_HEADER
+#ifndef VVERY_SIMPLE_LIEGROUP_HEADER
+#define VVERY_SIMPLE_LIEGROUP_HEADER
 
-#include "algorithm.hpp"
+#include "algorithm2.hpp"
 
 namespace ppx
 {
