@@ -145,7 +145,20 @@ void test_nonlinear()
         double y = sin(x);
         return y;
     };
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::Brent>(f2, 1.15 * gl_rep_pi, 2 * gl_rep_pi));
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSection>(f2, 0, 2 * gl_rep_pi));
+
+    auto f3 = [](const Matrix<2, 1> &x)
+    {
+        return 100 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (1 - x[0]) * (1 - x[0]);
+    };
+    auto d3 = [](const Matrix<2, 1> &x)
+    {
+        Matrix<2, 1> y;
+        y[0] = -400 * (x[1] - x[0] * x[0]) * x[0] - 2 * (1 - x[0]);
+        y[1] = 200 * (x[1] - x[0] * x[0]);
+        return y;
+    };
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(Matrix<2, 1>{-1, 2}, f3, d3));
 }
 
 void test_lieGroup()
@@ -230,6 +243,6 @@ int main(int, char **)
     // test_matrix();
     // test_linear();
     // test_lieGroup();
-    // test_robotics();
-    test_nonlinear();
+    test_robotics();
+    // test_nonlinear();
 }

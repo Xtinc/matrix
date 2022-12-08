@@ -167,6 +167,25 @@ namespace ppx
         return mat.trace();
     }
 
+    template <size_t N>
+    double inner_product(const Matrix<N, 1> &a, const Matrix<N, 1> &b)
+    {
+        return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
+    }
+
+    template <size_t N>
+    double outer_product(const Matrix<N, 1> &a, const Matrix<N, 1> &b)
+    {
+        Matrix<N, N> result;
+        for (size_t j = 0; j < N; i++)
+        {
+            for (size_t i = 0; i < N; i++)
+            {
+                result(i, j) = a[i] * b[j];
+            }
+        }
+        return result;
+    }
     // solver linear system
 
     inline double SIGN(double a, double b)
