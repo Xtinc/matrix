@@ -16,6 +16,180 @@ namespace ppx
 
     namespace details
     {
+        using range = std::pair<double, double>;
+        constexpr double gl_rep_ftol = 3.0e-8;
+
+        template <typename T>
+        range bracket_minimum(const T &func, double x0, double x1)
+        {
+            // deal with monotony?
+            constexpr double k = 2.0;
+            auto s = fabs(x0 - x1);
+            auto a = x1;
+            auto ya = func(x1);
+            auto b = x2;
+            auto yb = func(x2);
+            auto c = 0.0;
+            if (yb > ya)
+            {
+                std::swap(a, b);
+                std::swap(ya, yb);
+                s = -s;
+            }
+            while (true)
+            {
+                c = b + s;
+                auto yc = func(c);
+                if (yc > yb)
+                {
+                    break;
+                }
+                a = b;
+                ya = yb;
+                b = c;
+                yb = yc;
+                s *= k;
+            }
+            return a < c ? {a, c} : {c, a};
+        }
+
+        template <typename T>
+        double golden_section(const T &func, double a, double b)
+        {
+            constexpr double R = 0.6180339887;
+            constexpr double C = 1.0 - R;
+            auto d = R * b + C * a;
+            auto yd = func(d);
+            auto its = 0u;
+            while (fabs(a - b) > gl_rep_ftol && its < 200)
+            {
+                auto c = R * a + C * b;
+                auto yc = func(c);
+                if (yc < yd)
+                {
+                    b = d;
+                    d = c;
+                    yd = yc;
+                }
+                else
+                {
+                    a = b;
+                    b = c;
+                }
+                ++its;
+                // printf("iter = %d, xc = %g, residual = %g\n", its, c, fabs(a - b));
+            }
+            return 0.5 * (a + b);
+        }
+
+        template <typename T>
+        double brent(const T &func, double x0, double x1)
+        {
+            constexpr int ITMAX = 200;
+            constexpr double C = 0.3819660;
+
+            auto a = gl_get_less_dynamic(x0, x1);
+            auto b = gl_get_more_dynamic(x0, x1);
+            auto x = b;
+            auto w = b;
+            auto v = b;
+            auto fx = func(x);
+            auto fw = fx;
+            auto fv = fx;
+            for (int its = 0; its < ITMAX; its++)
+            {
+                double d = 0.0;
+                double e = 0.0;
+                double u = 0.0;
+                auto xm = 0.5 * (a + b);
+                auto tol1 = gl_rep_ftol * fabs(x);
+                auto tol2 = 2.0 * tol1;
+                // printf("its = %d, xc = %g, residual = %g\n", its, x, fabs(x - xm));
+                // printf("%g %g\n", xm, func(xm));
+                if (fabs(x - xm) < tol2 - 0.5 * (b - a))
+                {
+                    return x;
+                }
+                if (fabs(e) > tol1)
+                {
+                    auto r = (x - w) * (fx - fv);
+                    auto q = (x - v) * (fx - fw);
+                    auto p = (x - v) * q - (x - w) * r;
+                    q = 2.0 * (q - r);
+                    if (q > 0.0)
+                    {
+                        p = -p;
+                    }
+                    q = fabs(q);
+                    auto etemp = e;
+                    e = d;
+                    if (fabs(p) > fabs(0.5 * q * etemp) || p < q * (a - x) || p > q * (b - x))
+                    {
+                        e = x > xm ? a - x : b - x;
+                        d = C * e;
+                    }
+                    else
+                    {
+                        d = p / q;
+                        u = x + d;
+                        if (u - a < tol2 || b - u < tol2)
+                        {
+                            d = fabs(xm - x);
+                        }
+                    }
+                }
+                else
+                {
+                    e = x > xm ? a - x : b - x;
+                    d = C * e;
+                }
+                // u = fabs(d) > tol1 ? x + d : x + SIGN(tol1, d);
+                u = x + d;
+                auto fu = func(u);
+                if (fu < fx)
+                {
+                    if (u > x)
+                    {
+                        a = x;
+                    }
+                    else
+                    {
+                        b = x;
+                    }
+                    v = w;
+                    w = x;
+                    x = u;
+                    fv = fw;
+                    fw = fx;
+                    fx = fu;
+                }
+                else
+                {
+                    if (u < x)
+                    {
+                        a = u;
+                    }
+                    else
+                    {
+                        b = u;
+                    }
+                    if (fu < fw || details::is_same(w, x))
+                    {
+                        v = w;
+                        w = u;
+                        fv = fw;
+                        fw = fu;
+                    }
+                    else if (fu < fv || details::is_same(v, x) || details::is_same(v, w))
+                    {
+                        v = u;
+                        fv = fu;
+                    }
+                }
+            }
+            return x;
+        }
+
         template <size_t N, typename T>
         double testconv(const Matrix<N, 1> &a, const Matrix<N, 1> &b, const T &func)
         {
@@ -336,7 +510,7 @@ namespace ppx
                 double e = 0.0;
                 double u = 0.0;
                 auto xm = 0.5 * (a + b);
-                auto tol1 = tol * fabs(x) + gl_rep_eps;
+                auto tol1 = tol * fabs(x);
                 auto tol2 = 2.0 * tol1;
                 if (fabs(x - xm) < tol2 - 0.5 * (b - a))
                 {

@@ -139,26 +139,27 @@ void test_nonlinear()
         double y = -4 * log(1.0 + x) / 3.0 + x;
         return y;
     };
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSection>(f1, 0.0, 1.0));
+    PRINT_SINGLE_ELEMENTS(golden_section(f1, 0, 1), "golden section, xmin = ");
+    PRINT_SINGLE_ELEMENTS(brent(f1, 0, 1), "brent, xmin = ");
     auto f2 = [](double x)
     {
         double y = sin(x);
         return y;
     };
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSection>(f2, 0, 2 * gl_rep_pi));
+    PRINT_SINGLE_ELEMENTS(brent(f2, 0, 2 * gl_rep_pi));
 
-    auto f3 = [](const Matrix<2, 1> &x)
-    {
-        return 100 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (1 - x[0]) * (1 - x[0]);
-    };
-    auto d3 = [](const Matrix<2, 1> &x)
-    {
-        Matrix<2, 1> y;
-        y[0] = -400 * (x[1] - x[0] * x[0]) * x[0] - 2 * (1 - x[0]);
-        y[1] = 200 * (x[1] - x[0] * x[0]);
-        return y;
-    };
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(Matrix<2, 1>{-1, 2}, f3, d3));
+    // auto f3 = [](const Matrix<2, 1> &x)
+    // {
+    //     return 100 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (1 - x[0]) * (1 - x[0]);
+    // };
+    // auto d3 = [](const Matrix<2, 1> &x)
+    // {
+    //     Matrix<2, 1> y;
+    //     y[0] = -400 * (x[1] - x[0] * x[0]) * x[0] - 2 * (1 - x[0]);
+    //     y[1] = 200 * (x[1] - x[0] * x[0]);
+    //     return y;
+    // };
+    // PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(Matrix<2, 1>{-1, 2}, f3, d3));
 }
 
 void test_lieGroup()
@@ -243,6 +244,6 @@ int main(int, char **)
     // test_matrix();
     // test_linear();
     // test_lieGroup();
-    test_robotics();
-    // test_nonlinear();
+    // test_robotics();
+    test_nonlinear();
 }
