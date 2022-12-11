@@ -162,6 +162,21 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
+    enable_when_array_t<M, N, double> norminf(const Matrix<M, N> &mat)
+    {
+        double max = -std::numeric_limits<double>::max();
+        for (auto i : mat)
+        {
+            auto ti = fabs(i);
+            if (ti > max)
+            {
+                max = ti;
+            }
+        }
+        return max;
+    }
+
+    template <size_t M, size_t N>
     double trace(const Matrix<M, N> &mat)
     {
         return mat.trace();

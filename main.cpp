@@ -134,32 +134,90 @@ void test_linear()
 
 void test_nonlinear()
 {
+    printf("test nonlinear 1D:\n");
     auto f1 = [](double x)
     {
-        double y = -4 * log(1.0 + x) / 3.0 + x;
+        double y = 0.0;
+        for (int k = -10; k < 11; k++)
+        {
+            y += (k + 1) * (k + 1) * cos(k * x) * exp(-1 * k * k / 2.0);
+        }
         return y;
     };
-    PRINT_SINGLE_ELEMENTS(golden_section(f1, 0, 1), "golden section, xmin = ");
-    PRINT_SINGLE_ELEMENTS(brent(f1, 0, 1), "brent, xmin = ");
+
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f1, 1.0, 3.0), "f1 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f1, 1.0, 3.0), "f1 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f1, 1.0, 3.0), "f1 by BrentSearch: ");
+
     auto f2 = [](double x)
     {
-        double y = sin(x);
+        return sin(x);
+    };
+
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by BrentSearch: ");
+
+    auto f3 = [](double x)
+    {
+        return sin(x - 9.0 / 7.0);
+    };
+
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by BrentSearch: ");
+
+    printf("test nonlinear ND:\n");
+    auto f4 = [](const Matrix<2, 1> &x)
+    {
+        return 3 * x[0] * x[0] + 2 * x[0] * x[1] + x[1] * x[1] - 4 * x[0] + 5 * x[1];
+    };
+
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f4, Matrix<2, 1>{1, 1}), "f4 by Powell: ");
+
+    auto f5 = [](const Matrix<2, 1> &x)
+    {
+        auto sqr = x[0] * x[0] + x[1] * x[1];
+        return x[0] * exp(-sqr) + sqr / 20.0;
+    };
+
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f5, Matrix<2, 1>{1, 2}), "f5 by Powell: ");
+
+    auto f6 = [](const Matrix<2, 1> &x)
+    {
+        return 100 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (1 - x[0]) * (1 - x[0]);
+    };
+
+    auto d6 = [](const Matrix<2, 1> &x)
+    {
+        Matrix<2, 1> y;
+        y[0] = -400 * (x[1] - x[0] * x[0]) * x[0] - 2 * (1 - x[0]);
+        y[1] = 200 * (x[1] - x[0] * x[0]);
         return y;
     };
-    PRINT_SINGLE_ELEMENTS(brent(f2, 0, 2 * gl_rep_pi));
 
-    // auto f3 = [](const Matrix<2, 1> &x)
-    // {
-    //     return 100 * (x[1] - x[0] * x[0]) * (x[1] - x[0] * x[0]) + (1 - x[0]) * (1 - x[0]);
-    // };
-    // auto d3 = [](const Matrix<2, 1> &x)
-    // {
-    //     Matrix<2, 1> y;
-    //     y[0] = -400 * (x[1] - x[0] * x[0]) * x[0] - 2 * (1 - x[0]);
-    //     y[1] = 200 * (x[1] - x[0] * x[0]);
-    //     return y;
-    // };
-    // PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(Matrix<2, 1>{-1, 2}, f3, d3));
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f6, Matrix<2, 1>{4, -8}), "f6 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::GradientDescent>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by GradientDescent: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::ConjuateGradient>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by BGFS: ");
+
+    auto f7 = [](const Matrix<2, 1> &x)
+    {
+        return (x[0] + 2 * x[1] - 7) * (x[0] + 2 * x[1] - 7) + (2 * x[0] + x[1] - 5) * (2 * x[0] + x[1] - 5);
+    };
+
+    auto d7 = [](const Matrix<2, 1> &x)
+    {
+        Matrix<2, 1> y;
+        y[0] = 10 * x[0] + 8 * x[1] - 34;
+        y[1] = 8 * x[0] + 10 * x[1] - 38;
+        return y;
+    };
+
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f7, Matrix<2, 1>{9, 8}), "f7 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::GradientDescent>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by GradientDescent: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::ConjuateGradient>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by BGFS: ");
 }
 
 void test_lieGroup()
@@ -241,9 +299,10 @@ void test_robotics()
 
 int main(int, char **)
 {
-    // test_matrix();
-    // test_linear();
-    // test_lieGroup();
-    // test_robotics();
+    test_matrix();
+    test_linear();
+    test_lieGroup();
+    test_robotics();
     test_nonlinear();
+    
 }

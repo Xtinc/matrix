@@ -46,6 +46,35 @@ namespace ppx
     template <size_t A, size_t B, typename RT = void>
     using enable_when_array_t = typename std::enable_if<A == 1 || B == 1, RT>::type;
 
+    enum class StatusCode : char
+    {
+        NORMAL,
+        CONVERGED,
+        DIVERGED,
+        SINGULAR
+    };
+
+    inline std::ostream &operator<<(std::ostream &os, const StatusCode &self)
+    {
+        switch (self)
+        {
+        case StatusCode::NORMAL:
+            os << "NORMAL";
+            break;
+        case StatusCode::CONVERGED:
+            os << "CONVERGED";
+            break;
+        case StatusCode::DIVERGED:
+            os << "DIVERGED";
+            break;
+        case StatusCode::SINGULAR:
+            os << "SINGULAR";
+        default:
+            break;
+        }
+        return os;
+    }
+
     namespace details
     {
         inline bool is_same(double a, double b)
@@ -697,7 +726,7 @@ namespace ppx
             Matrix<N, 1> result;
             for (auto i = 0u; i < N; ++i)
             {
-                result[i++] = this->m_data.at(idx + i * M);
+                result[i] = this->m_data.at(idx + i * M);
             }
             return result;
         }
@@ -707,7 +736,7 @@ namespace ppx
             Matrix<M, 1> result;
             for (auto i = 0u; i < M; ++i)
             {
-                result[i++] = this->m_data.at(idx * M + i);
+                result[i] = this->m_data.at(idx * M + i);
             }
             return result;
         }

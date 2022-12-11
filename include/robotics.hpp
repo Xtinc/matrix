@@ -98,35 +98,36 @@ namespace ppx
         }
         Q inverseSpace(const SE3 &pose, Q init)
         {
-            // SE3 Tsb;
-            // se3 Vs;
-            // bool converage = false;
-            // auto iter = 0u;
-            // while (!converage && iter < 20)
+            SE3 Tsb;
+            se3 Vs;
+            bool converage = false;
+            auto iter = 0u;
+            while (!converage && iter < 20)
+            {
+                bool sing = false;
+                Tsb = forwardSpace(init);
+                Vs = Tsb.Adt() * (Tsb.I() * pose).log();
+                auto err_w = norm2(Vs.w());
+                auto err_v = norm2(Vs.v());
+                printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
+                converage = err_w < gl_rep_eps && err_v < gl_rep_eps;
+                init += solve<factorization::SVD>(jacobiSpace(init), Vs, sing);
+                ++iter;
+            }
+            return Vs;
+            // auto fn = [this, pose](const Q &x)
             // {
-            //     bool sing = false;
-            //     Tsb = forwardSpace(init);
-            //     Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-            //     auto err_w = norm2(Vs.w());
-            //     auto err_v = norm2(Vs.v());
-            //     printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
-            //     converage = err_w < gl_rep_eps && err_v < gl_rep_eps;
-            //     init += solve<factorization::SVD>(jacobiSpace(init), Vs, sing);
-            //     ++iter;
-            // }
-            auto fn = [this, pose](const Q &x)
-            {
-                auto Tsb = forwardSpace(x);
-                auto Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-                return 0.5 * inner_product(Vs, Vs);
-            };
-            auto dfn = [this, pose](const Q &x)
-            {
-                auto Tsb = forwardSpace(x);
-                se3 Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-                return Q(jacobiSpace(x) * Vs);
-            };
-            return fminunc<optimization::FRPRCG>(init, fn, dfn);
+            //     auto Tsb = forwardSpace(x);
+            //     auto Vs = Tsb.Adt() * (Tsb.I() * pose).log();
+            //     return 0.5 * inner_product(Vs, Vs);
+            // };
+            // auto dfn = [this, pose](const Q &x)
+            // {
+            //     auto Tsb = forwardSpace(x);
+            //     se3 Vs = Tsb.Adt() * (Tsb.I() * pose).log();
+            //     return Q(jacobiSpace(x) * Vs);
+            // };
+            // return fminunc<optimization::GradientDescent>(fn, dfn, init).x;
         }
     };
 }
