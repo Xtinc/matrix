@@ -192,9 +192,10 @@ static void BM_MatrixSVD(benchmark::State &state)
     Matrix<5, 6> result;
     Matrix<6, 1> e;
     Matrix<6, 6> v;
+    bool sing = false;
     for (auto _ : state)
     {
-        result = svdcmp(u, e, v);
+        result = svdcmp(u, e, v, sing);
         auto sss = result * v;
     }
 }
