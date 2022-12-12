@@ -28,9 +28,9 @@ void test_matrix()
     Matrix<30, 30> M{};
     std::default_random_engine eni;
     std::uniform_real_distribution<> uf(-5, 5);
-    for (auto &i : M)
+    for (auto &ele : M)
     {
-        i = uf(eni);
+        ele = uf(eni);
     }
     PRINT_SINGLE_ELEMENTS(M, "M = ");
     PRINT_SINGLE_ELEMENTS(determinant(M), "determinant(M) = ");
@@ -77,14 +77,14 @@ void test_linear()
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        for (auto &i : A)
+        for (auto &ele : A)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         Matrix<100, 1> x;
-        for (auto &i : x)
+        for (auto &ele : x)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         auto b = A * x;
         bool sing = false;
@@ -96,14 +96,14 @@ void test_linear()
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        for (auto &i : A)
+        for (auto &ele : A)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         Matrix<100, 1> x;
-        for (auto &i : x)
+        for (auto &ele : x)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         auto b = A * x;
         bool sing = false;
@@ -115,14 +115,14 @@ void test_linear()
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
-        for (auto &i : A)
+        for (auto &ele : A)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         Matrix<100, 1> x;
-        for (auto &i : x)
+        for (auto &ele : x)
         {
-            i = uf(eni);
+            ele = uf(eni);
         }
         auto b = A * x;
         bool sing = false;
@@ -178,7 +178,7 @@ void test_nonlinear()
     auto f5 = [](const Matrix<2, 1> &x)
     {
         auto sqr = x[0] * x[0] + x[1] * x[1];
-        return x[0] * exp(-sqr) + sqr / 20.0;
+        return x[0] * x[1] * exp(-sqr) + sqr / 20.0;
     };
 
     PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f5, Matrix<2, 1>{1, 2}), "f5 by Powell: ");
@@ -304,5 +304,4 @@ int main(int, char **)
     test_lieGroup();
     test_robotics();
     test_nonlinear();
-    
 }

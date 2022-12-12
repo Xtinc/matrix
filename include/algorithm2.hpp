@@ -330,7 +330,7 @@ namespace ppx
             size_t ITMAX = 200;
             double FTOLA = gl_rep_eps;
 
-            template <typename T1, typename T2, size_t N>
+            template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
             {
                 R.x = x;
@@ -362,7 +362,7 @@ namespace ppx
             size_t ITMAX = 200;
             double FTOLA = gl_rep_eps;
 
-            template <typename T1, typename T2, size_t N>
+            template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
             {
                 R.x = x;
@@ -402,7 +402,7 @@ namespace ppx
             size_t ITMAX = 20;
             double FTOLA = gl_rep_eps;
 
-            template <typename T1, typename T2, size_t N>
+            template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
             {
                 R.x = x;
@@ -448,7 +448,7 @@ namespace ppx
             size_t ITMAX = 200;
             double FTOLA = gl_rep_eps;
 
-            template <typename T, size_t N>
+            template <typename T>
             OptResult<N> operator()(const T &f, const Matrix<N, 1> &x)
             {
                 R.x = x;

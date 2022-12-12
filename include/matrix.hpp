@@ -198,7 +198,7 @@ namespace ppx
             T &self() { return static_cast<T &>(*this); }
 
         protected:
-            explicit expr(){};
+            explicit expr() = default;
             constexpr size_t size() { return self().size_impl(); }
             auto operator[](size_t idx) const { return self().at_impl(idx); }
             auto operator()() const { return self()(); };
