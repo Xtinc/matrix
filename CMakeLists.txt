@@ -3,7 +3,7 @@ project(ppx VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 include_directories(include)
-add_executable(ppx_main main.cpp)
+add_executable(ppx_main ppxlog.cpp main.cpp)
 
 # set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 # include(FetchContent)
