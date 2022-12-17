@@ -3,7 +3,6 @@
 #include <chrono>
 #include <ctime>
 #include <thread>
-#include <tuple>
 #include <atomic>
 #include <queue>
 #include <fstream>
@@ -32,24 +31,6 @@ namespace ppx
         static thread_local const auto id = std::this_thread::get_id();
         return id;
     }
-
-    template <typename T, typename Tuple>
-    struct TupleIndex;
-
-    template <typename T, typename... Types>
-    struct TupleIndex<T, std::tuple<T, Types...>>
-    {
-        static constexpr const std::size_t value = 0;
-    };
-
-    template <typename T, typename U, typename... Types>
-    struct TupleIndex<T, std::tuple<U, Types...>>
-    {
-        static constexpr const std::size_t value = 1 + TupleIndex<T, std::tuple<Types...>>::value;
-    };
-
-    using SupportedTypes =
-        std::tuple<char, uint32_t, uint64_t, int32_t, int64_t, double, LogLine::string_literal_t, char *>;
 
     inline const char *to_string(LogLevel loglevel)
     {
@@ -133,11 +114,11 @@ namespace ppx
     }
 
     template <>
-    char *decode(std::ostream &os, char *b, LogLine::string_literal_t *dummy)
+    char *decode(std::ostream &os, char *b, string_literal_t *dummy)
     {
-        LogLine::string_literal_t s = *reinterpret_cast<LogLine::string_literal_t *>(b);
+        string_literal_t s = *reinterpret_cast<string_literal_t *>(b);
         os << s.m_s;
-        return b + sizeof(LogLine::string_literal_t);
+        return b + sizeof(string_literal_t);
     }
 
     template <>
@@ -154,7 +135,9 @@ namespace ppx
     void LogLine::stringify(std::ostream &os, char *start, char const *const end)
     {
         if (start == end)
+        {
             return;
+        }
 
         int type_id = static_cast<int>(*start);
         start++;
@@ -218,7 +201,7 @@ namespace ppx
         }
     }
 
-    void LogLine::encode(char const *arg)
+    void LogLine::encode(const char *arg)
     {
         if (arg != nullptr)
         {
@@ -249,7 +232,12 @@ namespace ppx
         m_bytes_used += 1 + length + 1;
     }
 
-    LogLine &LogLine::operator<<(std::string const &arg)
+    void LogLine::encode(string_literal_t arg)
+    {
+        encode<string_literal_t>(arg, TupleIndex<string_literal_t, SupportedTypes>::value);
+    }
+
+    LogLine &LogLine::operator<<(const std::string &arg)
     {
         encode_c_string(arg.c_str(), arg.length());
         return *this;
@@ -324,7 +312,7 @@ namespace ppx
             LogLine logline;
         };
 
-        RingBuffer(size_t const size)
+        RingBuffer(const size_t size)
             : m_size(size), m_ring(static_cast<Item *>(std::malloc(size * sizeof(Item)))), m_write_index(0), m_read_index(0)
         {
             for (size_t i = 0; i < m_size; ++i)
@@ -366,11 +354,11 @@ namespace ppx
             return false;
         }
 
-        RingBuffer(RingBuffer const &) = delete;
-        RingBuffer &operator=(RingBuffer const &) = delete;
+        RingBuffer(const RingBuffer &) = delete;
+        RingBuffer &operator=(const RingBuffer &) = delete;
 
     private:
-        size_t const m_size;
+        const size_t m_size;
         Item *m_ring;
         std::atomic<unsigned int> m_write_index;
         char pad[64];
@@ -404,6 +392,11 @@ namespace ppx
             {
                 m_os->flush();
                 m_os->close();
+            }
+
+            if (m_file_number > 10)
+            {
+                m_file_number = 0;
             }
 
             m_bytes_written = 0;
@@ -497,10 +490,10 @@ namespace ppx
         return true;
     }
 
-    void initialize(RingBufferLogger ngl, std::string const &log_directory,
+    void initialize(std::string const &log_directory,
                     std::string const &log_file_name, uint32_t log_file_roll_size_mb)
     {
-        logger.reset(new Logger(ngl, log_directory, log_file_name, log_file_roll_size_mb));
+        logger.reset(new Logger(RingBufferLogger(), log_directory, log_file_name, log_file_roll_size_mb));
         atomic_logger.store(logger.get());
     }
 

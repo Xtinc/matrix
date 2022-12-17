@@ -4,6 +4,10 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
+#include <array>
+#include <map>
+#include <tuple>
 #include <type_traits>
 
 namespace ppx
@@ -14,6 +18,33 @@ namespace ppx
         WARN,
         CRIT
     };
+
+    template <size_t M, size_t N>
+    class Matrix;
+    class LogLine;
+    struct string_literal_t
+    {
+        explicit string_literal_t(const char *s) : m_s(s) {}
+        char const *m_s;
+    };
+
+    template <typename T, typename Tuple>
+    struct TupleIndex;
+
+    template <typename T, typename... Types>
+    struct TupleIndex<T, std::tuple<T, Types...>>
+    {
+        static constexpr const std::size_t value = 0;
+    };
+
+    template <typename T, typename U, typename... Types>
+    struct TupleIndex<T, std::tuple<U, Types...>>
+    {
+        static constexpr const std::size_t value = 1 + TupleIndex<T, std::tuple<Types...>>::value;
+    };
+
+    using SupportedTypes =
+        std::tuple<char, uint32_t, uint64_t, int32_t, int64_t, double, string_literal_t, char *>;
 
     class LogLine
     {
@@ -28,17 +59,47 @@ namespace ppx
         LogLine &operator<<(int64_t arg);
         LogLine &operator<<(uint64_t arg);
         LogLine &operator<<(double arg);
-        LogLine &operator<<(std::string const &arg);
-
+        LogLine &operator<<(const std::string &arg);
+        template <typename T>
+        LogLine &operator<<(const std::vector<T> &arg)
+        {
+            *this << '[';
+            for (const auto &i : arg)
+            {
+                *this << i << ' ';
+            }
+            *this << ']';
+            return *this;
+        }
+        template <typename T1, typename T2>
+        LogLine &operator<<(const std::map<T1, T2> &arg)
+        {
+            *this << '[';
+            for (const auto &p : arg)
+            {
+                *this << p.first << ' ' << p.second;
+            }
+            *this << ']';
+        }
+        template <typename T, size_t N>
+        LogLine &operator<<(const std::array<T, N> &arg)
+        {
+            *this << '[';
+            for (size_t i = 0; i < N; ++i)
+            {
+                *this << i << ' ';
+            }
+            *this < ']';
+            return *this;
+        }
         template <size_t N>
         LogLine &operator<<(const char (&arg)[N])
         {
             encode(string_literal_t(arg));
             return *this;
         }
-
         template <typename Arg>
-        typename std::enable_if<std::is_same<Arg, char const *>::value, LogLine &>::type
+        typename std::enable_if<std::is_same<Arg, const char *>::value, LogLine &>::type
         operator<<(Arg const &arg)
         {
             encode(arg);
@@ -47,17 +108,11 @@ namespace ppx
 
         template <typename Arg>
         typename std::enable_if<std::is_same<Arg, char *>::value, LogLine &>::type
-        operator<<(Arg const &arg)
+        operator<<(const Arg &arg)
         {
             encode(arg);
             return *this;
         }
-
-        struct string_literal_t
-        {
-            explicit string_literal_t(char const *s) : m_s(s) {}
-            char const *m_s;
-        };
 
     private:
         char *buffer();
@@ -69,9 +124,11 @@ namespace ppx
         void encode(Arg arg, uint8_t type_id);
 
         void encode(char *arg);
-        void encode(char const *arg);
+        void encode(const char *arg);
+        void encode(int *arg);
+        void encode(const int *arg);
         void encode(string_literal_t arg);
-        void encode_c_string(char const *arg, size_t length);
+        void encode_c_string(const char *arg, size_t length);
         void resize_buffer_if_needed(size_t additional_bytes);
         void stringify(std::ostream &os, char *start, char const *const end);
 
@@ -97,7 +154,7 @@ namespace ppx
         uint32_t ring_buffer_size_mb;
     };
 
-    void initialize(RingBufferLogger ngl, std::string const &log_directory, std::string const &log_file_name, uint32_t log_file_roll_size_mb);
+    void initialize(std::string const &log_directory, std::string const &log_file_name, uint32_t log_file_roll_size_mb);
 }
 
 #define PPX_LOG(LEVEL) ppx::PsuedoLog() == ppx::LogLine(LEVEL, __FILE__, __FUNCTION__, __LINE__)
