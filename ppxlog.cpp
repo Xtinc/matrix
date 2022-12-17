@@ -9,6 +9,12 @@
 
 namespace ppx
 {
+    struct RingBufferLogger
+    {
+        RingBufferLogger(uint32_t ring_buffer_size_mb_ = 4) : ring_buffer_size_mb(ring_buffer_size_mb_) {}
+        uint32_t ring_buffer_size_mb;
+    };
+
     uint64_t timestamp_now()
     {
         return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -47,65 +53,6 @@ namespace ppx
     }
 
     template <typename Arg>
-    void LogLine::encode(Arg arg)
-    {
-        *reinterpret_cast<Arg *>(buffer()) = arg;
-        m_bytes_used += sizeof(Arg);
-    }
-
-    template <typename Arg>
-    void LogLine::encode(Arg arg, uint8_t type_id)
-    {
-        resize_buffer_if_needed(sizeof(Arg) + sizeof(uint8_t));
-        encode<uint8_t>(type_id);
-        encode<Arg>(arg);
-    }
-
-    LogLine::LogLine(LogLevel level, char const *file, char const *function, uint32_t line)
-        : m_bytes_used(0), m_buffer_size(sizeof(m_stack_buffer))
-    {
-        encode<uint64_t>(timestamp_now());
-        encode<std::thread::id>(this_thread_id());
-        encode<string_literal_t>(string_literal_t(file));
-        encode<string_literal_t>(string_literal_t(function));
-        encode<uint32_t>(line);
-        encode<LogLevel>(level);
-    }
-
-    void LogLine::stringify(std::ostream &os)
-    {
-        char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
-        char const *const end = b + m_bytes_used;
-        auto timestamp = *reinterpret_cast<uint64_t *>(b);
-        b += sizeof(uint64_t);
-        auto threadid = *reinterpret_cast<std::thread::id *>(b);
-        b += sizeof(std::thread::id);
-        auto file = *reinterpret_cast<string_literal_t *>(b);
-        b += sizeof(string_literal_t);
-        auto function = *reinterpret_cast<string_literal_t *>(b);
-        b += sizeof(string_literal_t);
-        auto line = *reinterpret_cast<uint32_t *>(b);
-        b += sizeof(uint32_t);
-        auto loglevel = *reinterpret_cast<LogLevel *>(b);
-        b += sizeof(LogLevel);
-
-        format_timestamp(os, timestamp);
-
-        os << '[' << to_string(loglevel) << ']'
-           << '[' << threadid << ']'
-           << '[' << file.m_s << ':' << function.m_s << ':' << line << "] ";
-
-        stringify(os, b, end);
-
-        os << "\n";
-
-        if (loglevel >= LogLevel::CRIT)
-        {
-            os.flush();
-        }
-    }
-
-    template <typename Arg>
     char *decode(std::ostream &os, char *b, Arg *dummy)
     {
         Arg arg = *reinterpret_cast<Arg *>(b);
@@ -114,11 +61,11 @@ namespace ppx
     }
 
     template <>
-    char *decode(std::ostream &os, char *b, string_literal_t *dummy)
+    char *decode(std::ostream &os, char *b, details::string_literal_t *dummy)
     {
-        string_literal_t s = *reinterpret_cast<string_literal_t *>(b);
+        details::string_literal_t s = *reinterpret_cast<details::string_literal_t *>(b);
         os << s.m_s;
-        return b + sizeof(string_literal_t);
+        return b + sizeof(details::string_literal_t);
     }
 
     template <>
@@ -132,151 +79,213 @@ namespace ppx
         return ++b;
     }
 
-    void LogLine::stringify(std::ostream &os, char *start, char const *const end)
+    namespace details
     {
-        if (start == end)
+        template <typename Arg>
+        void LogLine::encode(Arg arg)
         {
-            return;
+            *reinterpret_cast<Arg *>(buffer()) = arg;
+            m_bytes_used += sizeof(Arg);
         }
 
-        int type_id = static_cast<int>(*start);
-        start++;
-
-        switch (type_id)
+        template <typename Arg>
+        void LogLine::encode(Arg arg, uint8_t type_id)
         {
-        case 0:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<0, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 1:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<1, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 2:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<2, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 3:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<3, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 4:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<4, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 5:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<5, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 6:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<6, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        case 7:
-            stringify(os, decode(os, start, static_cast<std::tuple_element<7, SupportedTypes>::type *>(nullptr)), end);
-            return;
-        }
-    }
-
-    char *LogLine::buffer()
-    {
-        return !m_heap_buffer ? &m_stack_buffer[m_bytes_used] : &(m_heap_buffer.get())[m_bytes_used];
-    }
-
-    void LogLine::resize_buffer_if_needed(size_t additional_bytes)
-    {
-        size_t const required_size = m_bytes_used + additional_bytes;
-
-        if (required_size <= m_buffer_size)
-        {
-            return;
+            resize_buffer_if_needed(sizeof(Arg) + sizeof(uint8_t));
+            encode<uint8_t>(type_id);
+            encode<Arg>(arg);
         }
 
-        if (!m_heap_buffer)
+        LogLine::LogLine(LogLevel level, char const *file, char const *function, uint32_t line)
+            : m_bytes_used(0), m_buffer_size(sizeof(m_stack_buffer))
         {
-            m_buffer_size = std::max(static_cast<size_t>(512), required_size);
-            m_heap_buffer.reset(new char[m_buffer_size]);
-            memcpy(m_heap_buffer.get(), m_stack_buffer, m_bytes_used);
-            return;
-        }
-        else
-        {
-            m_buffer_size = std::max(static_cast<size_t>(2 * m_buffer_size), required_size);
-            std::unique_ptr<char[]> new_heap_buffer(new char[m_buffer_size]);
-            memcpy(new_heap_buffer.get(), m_heap_buffer.get(), m_bytes_used);
-            m_heap_buffer.swap(new_heap_buffer);
-        }
-    }
-
-    void LogLine::encode(const char *arg)
-    {
-        if (arg != nullptr)
-        {
-            encode_c_string(arg, strlen(arg));
-        }
-    }
-
-    void LogLine::encode(char *arg)
-    {
-        if (arg != nullptr)
-        {
-            encode_c_string(arg, strlen(arg));
-        }
-    }
-
-    void LogLine::encode_c_string(char const *arg, size_t length)
-    {
-        if (length == 0)
-        {
-            return;
+            encode<uint64_t>(timestamp_now());
+            encode<std::thread::id>(this_thread_id());
+            encode<details::string_literal_t>(details::string_literal_t(file));
+            encode<details::string_literal_t>(details::string_literal_t(function));
+            encode<uint32_t>(line);
+            encode<LogLevel>(level);
         }
 
-        resize_buffer_if_needed(1 + length + 1);
-        char *b = buffer();
-        auto type_id = TupleIndex<char *, SupportedTypes>::value;
-        *reinterpret_cast<uint8_t *>(b++) = static_cast<uint8_t>(type_id);
-        memcpy(b, arg, length + 1);
-        m_bytes_used += 1 + length + 1;
-    }
+        void LogLine::stringify(std::ostream &os)
+        {
+            char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
+            char const *const end = b + m_bytes_used;
+            auto timestamp = *reinterpret_cast<uint64_t *>(b);
+            b += sizeof(uint64_t);
+            auto threadid = *reinterpret_cast<std::thread::id *>(b);
+            b += sizeof(std::thread::id);
+            auto file = *reinterpret_cast<details::string_literal_t *>(b);
+            b += sizeof(details::string_literal_t);
+            auto function = *reinterpret_cast<details::string_literal_t *>(b);
+            b += sizeof(details::string_literal_t);
+            auto line = *reinterpret_cast<uint32_t *>(b);
+            b += sizeof(uint32_t);
+            auto loglevel = *reinterpret_cast<LogLevel *>(b);
+            b += sizeof(LogLevel);
 
-    void LogLine::encode(string_literal_t arg)
-    {
-        encode<string_literal_t>(arg, TupleIndex<string_literal_t, SupportedTypes>::value);
-    }
+            format_timestamp(os, timestamp);
 
-    LogLine &LogLine::operator<<(const std::string &arg)
-    {
-        encode_c_string(arg.c_str(), arg.length());
-        return *this;
-    }
+            os << '[' << to_string(loglevel) << ']'
+               << '[' << threadid << ']'
+               << '[' << file.m_s << ':' << function.m_s << ':' << line << "] ";
 
-    LogLine &LogLine::operator<<(int32_t arg)
-    {
-        encode<int32_t>(arg, TupleIndex<int32_t, SupportedTypes>::value);
-        return *this;
-    }
+            stringify(os, b, end);
 
-    LogLine &LogLine::operator<<(uint32_t arg)
-    {
-        encode<uint32_t>(arg, TupleIndex<uint32_t, SupportedTypes>::value);
-        return *this;
-    }
+            os << "\n";
 
-    LogLine &LogLine::operator<<(int64_t arg)
-    {
-        encode<int64_t>(arg, TupleIndex<int64_t, SupportedTypes>::value);
-        return *this;
-    }
+            if (loglevel >= LogLevel::CRIT)
+            {
+                os.flush();
+            }
+        }
 
-    LogLine &LogLine::operator<<(uint64_t arg)
-    {
-        encode<uint64_t>(arg, TupleIndex<uint64_t, SupportedTypes>::value);
-        return *this;
-    }
+        void LogLine::stringify(std::ostream &os, char *start, char const *const end)
+        {
+            if (start == end)
+            {
+                return;
+            }
 
-    LogLine &LogLine::operator<<(double arg)
-    {
-        encode<double>(arg, TupleIndex<double, SupportedTypes>::value);
-        return *this;
-    }
+            int type_id = static_cast<int>(*start);
+            start++;
 
-    LogLine &LogLine::operator<<(char arg)
-    {
-        encode<char>(arg, TupleIndex<char, SupportedTypes>::value);
-        return *this;
+            switch (type_id)
+            {
+            case 0:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<0, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 1:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<1, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 2:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<2, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 3:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<3, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 4:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<4, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 5:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<5, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 6:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<6, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            case 7:
+                stringify(os, decode(os, start, static_cast<std::tuple_element<7, SupportedTypes>::type *>(nullptr)), end);
+                return;
+            }
+        }
+
+        char *LogLine::buffer()
+        {
+            return !m_heap_buffer ? &m_stack_buffer[m_bytes_used] : &(m_heap_buffer.get())[m_bytes_used];
+        }
+
+        void LogLine::resize_buffer_if_needed(size_t additional_bytes)
+        {
+            size_t const required_size = m_bytes_used + additional_bytes;
+
+            if (required_size <= m_buffer_size)
+            {
+                return;
+            }
+
+            if (!m_heap_buffer)
+            {
+                m_buffer_size = std::max(static_cast<size_t>(512), required_size);
+                m_heap_buffer.reset(new char[m_buffer_size]);
+                memcpy(m_heap_buffer.get(), m_stack_buffer, m_bytes_used);
+                return;
+            }
+            else
+            {
+                m_buffer_size = std::max(static_cast<size_t>(2 * m_buffer_size), required_size);
+                std::unique_ptr<char[]> new_heap_buffer(new char[m_buffer_size]);
+                memcpy(new_heap_buffer.get(), m_heap_buffer.get(), m_bytes_used);
+                m_heap_buffer.swap(new_heap_buffer);
+            }
+        }
+
+        void LogLine::encode(const char *arg)
+        {
+            if (arg != nullptr)
+            {
+                encode_c_string(arg, strlen(arg));
+            }
+        }
+
+        void LogLine::encode(char *arg)
+        {
+            if (arg != nullptr)
+            {
+                encode_c_string(arg, strlen(arg));
+            }
+        }
+
+        void LogLine::encode_c_string(char const *arg, size_t length)
+        {
+            if (length == 0)
+            {
+                return;
+            }
+
+            resize_buffer_if_needed(1 + length + 1);
+            char *b = buffer();
+            auto type_id = details::TupleIndex<char *, SupportedTypes>::value;
+            *reinterpret_cast<uint8_t *>(b++) = static_cast<uint8_t>(type_id);
+            memcpy(b, arg, length + 1);
+            m_bytes_used += 1 + length + 1;
+        }
+
+        void LogLine::encode(details::string_literal_t arg)
+        {
+            encode<details::string_literal_t>(arg, details::TupleIndex<details::string_literal_t, SupportedTypes>::value);
+        }
+
+        LogLine &LogLine::operator<<(const std::string &arg)
+        {
+            encode_c_string(arg.c_str(), arg.length());
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(int32_t arg)
+        {
+            encode<int32_t>(arg, details::TupleIndex<int32_t, SupportedTypes>::value);
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(uint32_t arg)
+        {
+            encode<uint32_t>(arg, details::TupleIndex<uint32_t, SupportedTypes>::value);
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(int64_t arg)
+        {
+            encode<int64_t>(arg, details::TupleIndex<int64_t, SupportedTypes>::value);
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(uint64_t arg)
+        {
+            encode<uint64_t>(arg, details::TupleIndex<uint64_t, SupportedTypes>::value);
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(double arg)
+        {
+            encode<double>(arg, details::TupleIndex<double, SupportedTypes>::value);
+            return *this;
+        }
+
+        LogLine &LogLine::operator<<(char arg)
+        {
+            encode<char>(arg, details::TupleIndex<char, SupportedTypes>::value);
+            return *this;
+        }
     }
 
     struct SpinLock
@@ -308,8 +317,8 @@ namespace ppx
 
             std::atomic_flag flag;
             char written;
-            char padding[256 - sizeof(std::atomic_flag) - sizeof(char) - sizeof(LogLine)];
-            LogLine logline;
+            char padding[256 - sizeof(std::atomic_flag) - sizeof(char) - sizeof(details::LogLine)];
+            details::LogLine logline;
         };
 
         RingBuffer(const size_t size)
@@ -331,7 +340,7 @@ namespace ppx
             std::free(m_ring);
         }
 
-        void push(LogLine &&logline)
+        void push(details::LogLine &&logline)
         {
             unsigned int write_index = m_write_index.fetch_add(1, std::memory_order_relaxed) % m_size;
             Item &item = m_ring[write_index];
@@ -340,7 +349,7 @@ namespace ppx
             item.written = 1;
         }
 
-        bool try_pop(LogLine &logline)
+        bool try_pop(details::LogLine &logline)
         {
             Item &item = m_ring[m_read_index % m_size];
             SpinLock spinlock(item.flag);
@@ -374,7 +383,7 @@ namespace ppx
             roll_file();
         }
 
-        void write(LogLine &logline)
+        void write(details::LogLine &logline)
         {
             auto pos = m_os->tellp();
             logline.stringify(*m_os);
@@ -433,7 +442,7 @@ namespace ppx
             m_thread.join();
         }
 
-        void add(LogLine &&logline)
+        void add(details::LogLine &&logline)
         {
             m_buffer_base->push(std::move(logline));
         }
@@ -446,7 +455,7 @@ namespace ppx
                 std::this_thread::sleep_for(std::chrono::microseconds(50));
             }
 
-            LogLine logline(LogLevel::INFO, nullptr, nullptr, 0);
+            details::LogLine logline(LogLevel::INFO, nullptr, nullptr, 0);
 
             while (m_state.load() == State::READY)
             {
@@ -484,14 +493,14 @@ namespace ppx
     std::unique_ptr<Logger> logger;
     std::atomic<Logger *> atomic_logger;
 
-    bool PsuedoLog::operator==(LogLine &logline)
+    bool details::PsuedoLog::operator==(details::LogLine &logline)
     {
         atomic_logger.load(std::memory_order_acquire)->add(std::move(logline));
         return true;
     }
 
-    void initialize(std::string const &log_directory,
-                    std::string const &log_file_name, uint32_t log_file_roll_size_mb)
+    void initialize_log(const std::string &log_directory,
+                        const std::string &log_file_name, uint32_t log_file_roll_size_mb)
     {
         logger.reset(new Logger(RingBufferLogger(), log_directory, log_file_name, log_file_roll_size_mb));
         atomic_logger.store(logger.get());

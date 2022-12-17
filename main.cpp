@@ -300,10 +300,10 @@ void test_robotics()
 
 int main(int, char **)
 {
-    ppx::initialize("./tt/", "test", 10);
-    // test_matrix();
-    // test_linear();
-    // test_lieGroup();
-    // test_robotics();
-    // test_nonlinear();
+    ppx::initialize_log(".", "test", 10);
+    test_matrix();
+    test_linear();
+    test_lieGroup();
+    test_robotics();
+    test_nonlinear();
 }
