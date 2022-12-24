@@ -22,36 +22,6 @@ namespace ppx
 
     namespace details
     {
-        template <typename... T>
-        struct make_void
-        {
-            using type = void;
-        };
-
-#ifdef __cpp_lib_void_t
-        using std::void_t;
-#else
-        template <typename... T>
-        using void_t = typename details::make_void<T...>::type;
-#endif
-
-        template <typename, typename = std::void_t<>>
-        struct is_overloaded_operator_d : public std::false_type
-        {
-        };
-
-        template <typename T>
-        struct is_overloaded_operator_d<T, void_t<decltype(std::declval<std::ostream>() << std::declval<T>())>>
-            : public std::true_type
-        {
-        };
-
-        template <typename T>
-        struct is_overloaded_operator
-        {
-            static constexpr bool const value = details::is_overloaded_operator_d<T>::value;
-        };
-
         // log below
         struct string_literal_t
         {
@@ -145,8 +115,7 @@ namespace ppx
                 return *this;
             }
             template <typename Arg>
-            std::enable_if_t<!std::is_fundamental<Arg>::value && is_overloaded_operator<Arg>::value, LogLine &>
-            operator<<(const Arg &arg)
+            LogLine &operator<<(const Arg &arg)
             {
                 std::stringstream ss;
                 ss << arg;
