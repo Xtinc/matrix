@@ -4,8 +4,8 @@
 #include <ctime>
 #include <thread>
 #include <atomic>
-#include <queue>
 #include <fstream>
+#include <cinttypes>
 
 namespace ppx
 {
@@ -17,18 +17,18 @@ namespace ppx
 
     uint64_t timestamp_now()
     {
-        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
     // I want [2022-12-13 00:01:23.528514], not efficient
     void format_timestamp(std::ostream &os, uint64_t timestamp)
     {
         std::time_t time_t = timestamp / 1000000;
-        auto gmtime = std::gmtime(&time_t);
+        auto gmtime = std::localtime(&time_t);
         char buffer[32];
         strftime(buffer, 32, "%Y-%m-%d %T.", gmtime);
         char microseconds[7];
-        sprintf(microseconds, "%06llu", timestamp % 1000000);
+        sprintf(microseconds, "%06" PRIu64, timestamp % 1000000);
         os << '[' << buffer << microseconds << ']';
     }
 
@@ -411,7 +411,7 @@ namespace ppx
             m_bytes_written = 0;
             m_os.reset(new std::ofstream());
             std::string log_file_name = m_name;
-            log_file_name.append(".");
+            log_file_name.append("_");
             log_file_name.append(std::to_string(++m_file_number));
             log_file_name.append(".txt");
             m_os->open(log_file_name, std::ofstream::out | std::ofstream::trunc);

@@ -300,10 +300,16 @@ void test_robotics()
 
 int main(int, char **)
 {
-    ppx::initialize_log(".", "test", 10);
+    ppx::initialize_log("./", "test", 10);
+    LOG_INFO << "test_matrix";
     test_matrix();
+    LOG_INFO << "test_linear";
     test_linear();
+    LOG_INFO << "test_lieGroup";
     test_lieGroup();
+    LOG_INFO << "test_robotics";
     test_robotics();
+    LOG_INFO << "test_nonlinear";
     test_nonlinear();
+    LOG_INFO << "test end";
 }
