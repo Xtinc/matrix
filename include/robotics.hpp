@@ -114,7 +114,7 @@ namespace ppx
                 init += solve<factorization::SVD>(jacobiSpace(init), Vs, sing);
                 ++iter;
             }
-            return Vs;
+            return init;
             // auto fn = [this, pose](const Q &x)
             // {
             //     auto Tsb = forwardSpace(x);

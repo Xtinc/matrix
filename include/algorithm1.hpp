@@ -367,22 +367,7 @@ namespace ppx
     {
         auto PYTHAG = [](double a, double b)
         {
-            double absa = fabs(a);
-            double absb = fabs(b);
-            if (absa > absb)
-            {
-                auto tmp = absb / absa;
-                return absa * sqrt(1.0 + tmp * tmp);
-            }
-            else if (fabs(absb) < gl_rep_eps)
-            {
-                return 0.0;
-            }
-            else
-            {
-                auto tmp = absa / absb;
-                return absb * sqrt(1.0 + tmp * tmp);
-            }
+            return sqrt(a * a + b * b);
         };
         sing = false;
         bool flag;
