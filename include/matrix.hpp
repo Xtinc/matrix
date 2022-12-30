@@ -45,6 +45,8 @@ namespace ppx
     using disable_arith_type_t = typename std::enable_if<!std::is_arithmetic<T>::value, RT>::type;
     template <size_t A, size_t B, typename RT = void>
     using enable_when_array_t = typename std::enable_if<A == 1 || B == 1, RT>::type;
+    template <size_t A, size_t B, typename RT = void>
+    using enable_when_matrix_t = typename std::enable_if<A != 1 && B != 1, RT>::type;
 
     enum class StatusCode : char
     {
@@ -506,7 +508,7 @@ namespace ppx
             {
                 return m_ptr > rhs.m_ptr;
             }
-            inline bool operator<=(const iterator &rhs) const noexcept
+            inline bool operator<(const iterator &rhs) const noexcept
             {
                 return m_ptr <= rhs.m_ptr;
             }
@@ -602,7 +604,7 @@ namespace ppx
             {
                 return m_ptr > rhs.m_ptr;
             }
-            inline bool operator<=(const const_iterator &rhs) const noexcept
+            inline bool operator<(const const_iterator &rhs) const noexcept
             {
                 return m_ptr <= rhs.m_ptr;
             }
@@ -840,6 +842,14 @@ namespace ppx
         {
             return this->m_data.at(row + col * M);
         }
+        double &operator()(const std::pair<size_t, size_t> &idx)
+        {
+            return this->m_data.at(idx.first + idx.second * M);
+        }
+        const double &operator()(const std::pair<size_t, size_t> &idx) const
+        {
+            return this->m_data.at(idx.first + idx.second * M);
+        }
         double &operator[](size_t idx)
         {
             return this->m_data.at(idx);
@@ -1020,7 +1030,6 @@ namespace ppx
         static enable_arith_type_t<T, Matrix<L, L>> diag(const std::initializer_list<T> &list)
         {
             Matrix<L, L> result{};
-            auto real_size = gl_get_less_dynamic(L, list.size());
             auto idx = 0u;
             for (auto iter = list.begin(); iter != list.end(); iter++)
             {

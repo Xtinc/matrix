@@ -14,6 +14,24 @@ namespace ppx
         SVD
     };
 
+    enum class eigensystem : char
+    {
+        SymOnlyVal,
+        SymValAndVec,
+        SymValAndVecSorted,
+        // GemOnlyVal,
+        // GemValAndVec,
+        // GemValAndVecSorted
+        // todo
+    };
+
+    template <size_t N>
+    struct EigResult
+    {
+        Matrix<N, N> vec;
+        Matrix<N, 1> val;
+    };
+
     template <size_t M, size_t N>
     void zeros(Matrix<M, N> &m)
     {
@@ -109,7 +127,7 @@ namespace ppx
     }
 
     template <>
-    inline Matrix<1, 1> adjugate(const Matrix<1, 1> &mat)
+    inline Matrix<1, 1> adjugate(const Matrix<1, 1> &)
     {
         return {1};
     }
@@ -186,6 +204,14 @@ namespace ppx
     double inner_product(const Matrix<N, 1> &a, const Matrix<N, 1> &b)
     {
         return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
+    }
+
+    template <size_t M, size_t N>
+    std::pair<size_t, size_t> maxloc(const Matrix<M, N> &mat)
+    {
+        auto max_pos = std::max_element(mat.begin(), mat.end());
+        auto max_dis = std::div(std::distance(mat.begin(), max_pos), M);
+        return {max_dis.rem, max_dis.quot};
     }
 
     // solver linear system
@@ -365,10 +391,6 @@ namespace ppx
     template <size_t M, size_t N>
     Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v, bool &sing)
     {
-        auto PYTHAG = [](double a, double b)
-        {
-            return sqrt(a * a + b * b);
-        };
         sing = false;
         bool flag;
         int i, its, j, jj, k, l, nm;
@@ -377,6 +399,7 @@ namespace ppx
         g = 0.0;
         scale = 0.0;
         anorm = 0.0;
+        l = 0;
         for (i = 0; i < N; i++)
         {
             l = i + 2;
@@ -465,7 +488,7 @@ namespace ppx
         {
             if (i < N - 1)
             {
-                if (g != 0.0)
+                if (fabs(g) > gl_rep_eps)
                 {
                     for (j = l; j < N; j++)
                     {
@@ -535,6 +558,7 @@ namespace ppx
             for (its = 0; its < 30; its++)
             {
                 flag = true;
+                nm = k - 1;
                 for (l = k; l >= 0; l--)
                 {
                     nm = l - 1;
@@ -561,7 +585,7 @@ namespace ppx
                             break;
                         }
                         g = w[i];
-                        h = PYTHAG(f, g);
+                        h = sqrt(f * f + g * g);
                         w[i] = h;
                         h = 1.0 / h;
                         c = g * h;
@@ -599,7 +623,7 @@ namespace ppx
                 g = rv1[nm];
                 h = rv1[k];
                 f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-                g = PYTHAG(f, 1.0);
+                g = sqrt(f * f + 1.0);
                 f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
                 c = s = 1.0;
                 for (j = l; j <= nm; j++)
@@ -609,7 +633,7 @@ namespace ppx
                     y = w[i];
                     h = s * g;
                     g = c * g;
-                    z = PYTHAG(f, h);
+                    z = sqrt(f * f + h * h);
                     rv1[j] = z;
                     c = f / z;
                     s = h / z;
@@ -624,7 +648,7 @@ namespace ppx
                         v(jj, j) = x * c + z * s;
                         v(jj, i) = z * c - x * s;
                     }
-                    z = PYTHAG(f, h);
+                    z = sqrt(f * f + h * h);
                     w[j] = z;
                     if (z)
                     {
@@ -681,7 +705,7 @@ namespace ppx
     }
 
     template <factorization type, size_t M, size_t N>
-    typename std::enable_if<type == factorization::LU, Matrix<N, 1>>::type
+    std::enable_if_t<type == factorization::LU, Matrix<N, 1>>
     solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
     {
         std::array<int, M> indx{};
@@ -696,7 +720,7 @@ namespace ppx
     }
 
     template <factorization type, size_t M, size_t N>
-    typename std::enable_if<type == factorization::QR, Matrix<N, 1>>::type
+    std::enable_if_t<type == factorization::QR, Matrix<N, 1>>
     solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
     {
         Matrix<N, 1> c;
@@ -711,7 +735,7 @@ namespace ppx
     }
 
     template <factorization type, size_t M, size_t N>
-    typename std::enable_if<type == factorization::SVD, Matrix<N, 1>>::type
+    std::enable_if_t<type == factorization::SVD, Matrix<N, 1>>
     solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
     {
         Matrix<N, 1> w{};
@@ -748,5 +772,365 @@ namespace ppx
         }
         return V * W * U.T();
     }
+
+    // eigen system
+    namespace details
+    {
+        template <size_t N>
+        void tred2_no_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        {
+            for (int i = (int)N - 1; i > 0; i--)
+            {
+                int l = i - 1;
+                double h = 0.0;
+                double scale = 0.0;
+                if (l > 0)
+                {
+                    for (int k = 0; k < i; k++)
+                    {
+                        scale += fabs(z(i, k));
+                    }
+                    if (fabs(scale) < gl_rep_eps)
+                    {
+                        e[i] = z(i, l);
+                    }
+                    else
+                    {
+                        for (int k = 0; k < i; k++)
+                        {
+                            z(i, k) /= scale;
+                            h += z(i, k) * z(i, k);
+                        }
+                        double f = z(i, l);
+                        double g = f > 0.0 ? -sqrt(h) : sqrt(h);
+                        e[i] = scale * g;
+                        h -= f * g;
+                        z(i, l) = f - g;
+                        f = 0.0;
+                        for (int j = 0; j < i; j++)
+                        {
+                            g = 0.0;
+                            for (int k = 0; k < j + 1; k++)
+                            {
+                                g += z(j, k) * z(i, k);
+                            }
+                            for (int k = j + 1; k < i; k++)
+                            {
+                                g += z(k, j) * z(i, k);
+                            }
+                            e[j] = g / h;
+                            f += e[j] * z(i, j);
+                        }
+                        double hh = f / (2 * h);
+                        for (int j = 0; j < i; j++)
+                        {
+                            f = z(i, j);
+                            e[j] = g = e[j] - hh * f;
+                            for (int k = 0; k < j + 1; k++)
+                            {
+                                z(j, k) -= f * e[k] + g * z(i, k);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    e[i] = z(i, l);
+                }
+                d[i] = h;
+            }
+            e[0] = 0.0;
+            for (int i = 0; i < N; i++)
+            {
+                d[i] = z(i, i);
+            }
+        }
+
+        template <size_t N>
+        void tliq_no_vec(Matrix<N, 1> &d, Matrix<N, 1> &e)
+        {
+            constexpr double EPS = std::numeric_limits<double>::epsilon();
+            for (int i = 1; i < N; i++)
+            {
+                e[i - 1] = e[i];
+            }
+            e[N - 1] = 0.0;
+            for (int l = 0; l < N; l++)
+            {
+                int iter = 0;
+                int m = 0;
+                do
+                {
+                    for (m = l; m < N - 1; m++)
+                    {
+                        if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
+                        {
+                            break;
+                        }
+                    }
+                    if (m != l)
+                    {
+                        if (iter++ == 30)
+                        // how ? throw("Too many iterations in tqli");
+                        {
+                            return;
+                        }
+                        double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
+                        double r = sqrt(g * g + 1.0);
+                        g = d[m] - d[l] + e[l] / (g + SIGN(r, g));
+                        double s = 1.0;
+                        double c = 1.0;
+                        double p = 0.0;
+                        int i = 0;
+                        for (i = m - 1; i >= l; i--)
+                        {
+                            double f = s * e[i];
+                            double b = c * e[i];
+                            r = sqrt(f * f + g * g);
+                            e[i + 1] = r;
+                            if (fabs(r) < gl_rep_eps)
+                            {
+                                d[i + 1] -= p;
+                                e[m] = 0.0;
+                                break;
+                            }
+                            s = f / r;
+                            c = g / r;
+                            g = d[i + 1] - p;
+                            r = (d[i] - g) * s + 2.0 * c * b;
+                            p = s * r;
+                            d[i + 1] = g + p;
+                            g = c * r - b;
+                        }
+                        if (fabs(r) < gl_rep_eps && i >= l)
+                        {
+                            continue;
+                        }
+                        d[l] -= p;
+                        e[l] = g;
+                        e[m] = 0.0;
+                    }
+                } while (m != l);
+            }
+        }
+
+        template <size_t N>
+        Matrix<N, N> tred2_with_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        {
+            for (int i = N - 1; i > 0; i--)
+            {
+                int l = i - 1;
+                double h = 0.0;
+                double scale = 0.0;
+                if (l > 0)
+                {
+                    for (int k = 0; k < i; k++)
+                    {
+                        scale += fabs(z(i, k));
+                    }
+                    if (fabs(scale) < gl_rep_eps)
+                    {
+                        e[i] = z(i, l);
+                    }
+                    else
+                    {
+                        for (int k = 0; k < i; k++)
+                        {
+                            z(i, k) /= scale;
+                            h += z(i, k) * z(i, k);
+                        }
+                        double f = z(i, l);
+                        double g = (f > 0.0 ? -sqrt(h) : sqrt(h));
+                        e[i] = scale * g;
+                        h -= f * g;
+                        z(i, l) = f - g;
+                        f = 0.0;
+                        for (int j = 0; j < i; j++)
+                        {
+                            z(j, i) = z(i, j) / h;
+                            g = 0.0;
+                            for (int k = 0; k < j + 1; k++)
+                            {
+                                g += z(j, k) * z(i, k);
+                            }
+                            for (int k = j + 1; k < i; k++)
+                            {
+                                g += z(k, j) * z(i, k);
+                            }
+                            e[j] = g / h;
+                            f += e[j] * z(i, j);
+                        }
+                        double hh = f / (2 * h);
+                        for (int j = 0; j < i; j++)
+                        {
+                            f = z(i, j);
+                            e[j] = g = e[j] - hh * f;
+                            for (int k = 0; k < j + 1; k++)
+                            {
+                                z(j, k) -= f * e[k] + g * z(i, k);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    e[i] = z(i, l);
+                }
+                d[i] = h;
+            }
+            d[0] = 0.0;
+            e[0] = 0.0;
+            for (int i = 0; i < N; i++)
+            {
+                if (fabs(d[i]) > gl_rep_eps)
+                {
+                    for (int j = 0; j < i; j++)
+                    {
+                        double g = 0.0;
+                        for (int k = 0; k < i; k++)
+                        {
+                            g += z(i, k) * z(k, j);
+                        }
+                        for (int k = 0; k < i; k++)
+                        {
+                            z(k, j) -= g * z(k, i);
+                        }
+                    }
+                }
+                d[i] = z(i, i);
+                z(i, i) = 1.0;
+                for (int j = 0; j < i; j++)
+                {
+                    z(j, i) = 0.0;
+                    z(i, j) = 0.0;
+                }
+            }
+            return z;
+        }
+
+        template <size_t N>
+        void tliq_with_vec(Matrix<N, N> &z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        {
+            constexpr double EPS = std::numeric_limits<double>::epsilon();
+            for (int i = 1; i < N; i++)
+            {
+                e[i - 1] = e[i];
+            }
+            e[N - 1] = 0.0;
+            for (int l = 0; l < N; l++)
+            {
+                int iter = 0;
+                int m = 0;
+                do
+                {
+                    for (m = l; m < N - 1; m++)
+                    {
+                        if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
+                        {
+                            break;
+                        }
+                    }
+                    if (m != l)
+                    {
+                        if (iter++ == 30)
+                        // how ? throw("Too many iterations in tqli");
+                        {
+                            return;
+                        }
+                        double g = (d[l + 1] - d[l]) / (2.0 * e[l]);
+                        double r = sqrt(g * g + 1.0);
+                        g = d[m] - d[l] + e[l] / (g + SIGN(r, g));
+                        double s = 1.0;
+                        double c = 1.0;
+                        double p = 0.0;
+                        int i = 0;
+                        for (i = m - 1; i >= l; i--)
+                        {
+                            double f = s * e[i];
+                            double b = c * e[i];
+                            r = sqrt(f * f + g * g);
+                            e[i + 1] = r;
+                            if (fabs(r) < gl_rep_eps)
+                            {
+                                d[i + 1] -= p;
+                                e[m] = 0.0;
+                                break;
+                            }
+                            s = f / r;
+                            c = g / r;
+                            g = d[i + 1] - p;
+                            r = (d[i] - g) * s + 2.0 * c * b;
+                            p = s * r;
+                            d[i + 1] = g + p;
+                            g = c * r - b;
+                            for (int k = 0; k < N; k++)
+                            {
+                                f = z(k, i + 1);
+                                z(k, i + 1) = s * z(k, i) + c * f;
+                                z(k, i) = c * z(k, i) - s * f;
+                            }
+                        }
+                        if (fabs(r) < gl_rep_eps && i >= l)
+                        {
+                            continue;
+                        }
+                        d[l] -= p;
+                        e[l] = g;
+                        e[m] = 0.0;
+                    }
+                } while (m != l);
+            }
+        }
+
+        template <size_t N>
+        void eigsrt(Matrix<N, N> &mat, Matrix<N, 1> &vec)
+        {
+            for (size_t i = 0; i < (int)N - 1; i++)
+            {
+                auto j = std::distance(vec.begin() + i, std::min_element(vec.begin() + i, vec.end())) + i;
+                if (j != i)
+                {
+                    std::swap(vec[i], vec[j]);
+                    for (size_t k = 0; k < N; k++)
+                    {
+                        std::swap(mat(k, i), mat(k, j));
+                    }
+                }
+            }
+        }
+    }
+
+    template <eigensystem type, size_t N>
+    std::enable_if_t<type == eigensystem::SymValAndVec, EigResult<N>>
+    eig(const Matrix<N, N> &mat)
+    {
+        Matrix<N, 1> e, eig_value;
+        auto result = details::tred2_with_vec(mat, eig_value, e);
+        details::tliq_with_vec(result, eig_value, e);
+        return {result, eig_value};
+    }
+
+    template <eigensystem type, size_t N>
+    std::enable_if_t<type == eigensystem::SymValAndVecSorted, EigResult<N>>
+    eig(const Matrix<N, N> &mat)
+    {
+        Matrix<N, 1> e, eig_value;
+        auto result = details::tred2_with_vec(mat, eig_value, e);
+        details::tliq_with_vec(result, eig_value, e);
+        details::eigsrt(result, eig_value);
+        return {result, eig_value};
+    }
+
+    template <eigensystem type, size_t N>
+    std::enable_if_t<type == eigensystem::SymOnlyVal, Matrix<N, 1>>
+    eig(const Matrix<N, N> &mat)
+    {
+        Matrix<N, 1> e, eig_value;
+        details::tred2_no_vec(mat, eig_value, e);
+        details::tliq_no_vec(eig_value, e);
+        std::sort(eig_value.begin(), eig_value.end());
+        return eig_value;
+    }
+
 }
 #endif

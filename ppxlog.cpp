@@ -53,7 +53,7 @@ namespace ppx
     }
 
     template <typename Arg>
-    char *decode(std::ostream &os, char *b, Arg *dummy)
+    char *decode(std::ostream &os, char *b, Arg *)
     {
         Arg arg = *reinterpret_cast<Arg *>(b);
         os << arg;
@@ -61,7 +61,7 @@ namespace ppx
     }
 
     template <>
-    char *decode(std::ostream &os, char *b, details::string_literal_t *dummy)
+    char *decode(std::ostream &os, char *b, details::string_literal_t *)
     {
         details::string_literal_t s = *reinterpret_cast<details::string_literal_t *>(b);
         os << s.m_s;
@@ -69,7 +69,7 @@ namespace ppx
     }
 
     template <>
-    char *decode(std::ostream &os, char *b, char **dummy)
+    char *decode(std::ostream &os, char *b, char **)
     {
         while (*b != '\0')
         {

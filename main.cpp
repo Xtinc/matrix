@@ -13,6 +13,7 @@ void test_matrix()
 {
     Matrix<4, 4> a = {1, 2, 3, 4, 5, 6, 7, 8};
     PRINT_SINGLE_ELEMENTS(a);
+    PRINT_SINGLE_ELEMENTS(a(maxloc(a)), "max of a : ");
     a({2, 3}, {2, 3}) = Matrix<2, 2>{1, 1, 1, 1};
     a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
     PRINT_SINGLE_ELEMENTS(a, "a = ");
@@ -68,6 +69,14 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(v, "S = ");
     PRINT_SINGLE_ELEMENTS(w, "V = ");
     PRINT_SINGLE_ELEMENTS(u * Matrix<3, 3>::diag({v[0], v[1], v[2]}) * w.T(), "U*S*V = ");
+
+    Matrix<4, 4> g{2, -1, 1, 4,
+                   -1, 2, -1, 1,
+                   1, -1, 2, -2,
+                   4, 1, -2, 3};
+    PRINT_SINGLE_ELEMENTS(g, "g = ");
+    PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymValAndVecSorted>(g).vec, "eigen vector of g : ");
+    PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymOnlyVal>(g), "eigen value of g : ");
 }
 
 void test_linear()
