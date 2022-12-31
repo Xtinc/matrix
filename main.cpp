@@ -230,6 +230,37 @@ void test_nonlinear()
     PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by BGFS: ");
 }
 
+void test_statics()
+{
+    Matrix<2, 1> mu{-2, 8};
+    Matrix<2, 2> sigma{0.4, 0.0, 0.0, 1.2};
+    Matrix<2, 1> x;
+    multi_normal_distribution<2> d(mu, sigma);
+    PRINT_SINGLE_ELEMENTS(d.pdf(x), "pdf of [0,0] = ");
+    PRINT_SINGLE_ELEMENTS(d.pdf(Matrix<2, 1>{-0.6, -0.6}), "pdf of [-0.6,-0.6] = ");
+    std::vector<double> x1, x2;
+    multi_normal_distribution<2> d2(Matrix<2, 1>{2, 1}, Matrix<2, 2>{4, 1, 1, 4});
+    mixed_normal_distribution<2> mg;
+    mg.push_back(d, 0.3);
+    mg.push_back(d2, 0.7);
+    constexpr int ITMAX = 1000;
+    for (int n = 0; n < ITMAX; ++n)
+    {
+        auto res = mg();
+        PRINT_LISTED_ELEMENTS(res);
+        // x1.emplace_back(res[0]);
+        // x2.emplace_back(res[1]);
+    }
+    // auto e1 = mean(x1);
+    // auto e2 = mean(x2);
+    // auto s1 = var(x1);
+    // auto s2 = var(x2);
+    // PRINT_SINGLE_ELEMENTS(e1, " mean of x1 = ");
+    // PRINT_SINGLE_ELEMENTS(s1, " var of x1 = ");
+    // PRINT_SINGLE_ELEMENTS(e2, " mean of x2 = ");
+    // PRINT_SINGLE_ELEMENTS(s2, " var of x2 = ");
+}
+
 void test_lieGroup()
 {
     {
@@ -310,15 +341,17 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
-    LOG_INFO << "test_matrix";
-    test_matrix();
-    LOG_INFO << "test_linear";
-    test_linear();
-    LOG_INFO << "test_lieGroup";
-    test_lieGroup();
-    LOG_INFO << "test_robotics";
-    test_robotics();
-    LOG_INFO << "test_nonlinear";
-    test_nonlinear();
-    LOG_INFO << "test end";
+    // LOG_INFO << "test_matrix";
+    // test_matrix();
+    // LOG_INFO << "test_linear";
+    // test_linear();
+    // LOG_INFO << "test_statics";
+    test_statics();
+    // LOG_INFO << "test_lieGroup";
+    // test_lieGroup();
+    // LOG_INFO << "test_robotics";
+    // test_robotics();
+    // LOG_INFO << "test_nonlinear";
+    // test_nonlinear();
+    // LOG_INFO << "test end";
 }

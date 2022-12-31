@@ -12,6 +12,7 @@
 
 namespace ppx
 {
+    // constexpr
     constexpr size_t gl_sm_limit = 260;
     constexpr double gl_rep_pi = 3.141592653589793;
     constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
@@ -28,6 +29,15 @@ namespace ppx
     {
         return A < B;
     }
+    constexpr double gl_deg_rad(double deg)
+    {
+        return deg * gl_rep_pi / 180;
+    }
+    constexpr double gl_rad_deg(double rad)
+    {
+        return 180 * rad / gl_rep_pi;
+    }
+
     template <typename T>
     T gl_get_less_dynamic(T A, T B)
     {
@@ -1035,6 +1045,26 @@ namespace ppx
             {
                 result(idx, idx) = *iter;
                 ++idx;
+            }
+            return result;
+        }
+        template <size_t M>
+        static Matrix<M, M> diag(const Matrix<M, 1> &list)
+        {
+            Matrix<M, M> result{};
+            for (size_t i = 0; i < N; i++)
+            {
+                result(i, i) = list[i];
+            }
+            return result;
+        }
+        template <size_t N>
+        static Matrix<N, N> diag(const Matrix<1, N> &list)
+        {
+            Matrix<N, N> result{};
+            for (size_t i = 0; i < N; i++)
+            {
+                result(i, i) = list[i];
             }
             return result;
         }

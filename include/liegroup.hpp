@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_LIEGROUP_HEADER
 #define VVERY_SIMPLE_LIEGROUP_HEADER
 
-#include "algorithm2.hpp"
+#include "algorithm3.hpp"
 
 namespace ppx
 {
