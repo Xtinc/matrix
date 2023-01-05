@@ -411,7 +411,7 @@ namespace ppx
         {
         public:
             SubPart(Matrix<M, N> &self, IndexRange r, IndexRange c)
-                : row_idx(0), row_end(0), col_idx(0), col_end(0), data(self)
+                : row_idx(0), col_idx(0), row_end(0), col_end(0), data(self)
             {
                 row_idx = r.first >= 0 ? r.first : 0;
                 col_idx = c.first >= 0 ? c.first : 0;
@@ -618,11 +618,11 @@ namespace ppx
             {
                 return m_ptr <= rhs.m_ptr;
             }
-            inline const pointer operator->() const noexcept
+            inline pointer operator->() const noexcept
             {
                 return m_ptr;
             }
-            inline const reference operator*() const noexcept
+            inline reference operator*() const noexcept
             {
                 return *m_ptr;
             }
@@ -1048,20 +1048,20 @@ namespace ppx
             }
             return result;
         }
-        template <size_t M>
-        static Matrix<M, M> diag(const Matrix<M, 1> &list)
+        template <size_t L>
+        static Matrix<L, L> diag(const Matrix<L, 1> &list)
         {
-            Matrix<M, M> result{};
+            Matrix<L, L> result{};
             for (size_t i = 0; i < N; i++)
             {
                 result(i, i) = list[i];
             }
             return result;
         }
-        template <size_t N>
-        static Matrix<N, N> diag(const Matrix<1, N> &list)
+        template <size_t L>
+        static Matrix<L, L> diag(const Matrix<1, L> &list)
         {
-            Matrix<N, N> result{};
+            Matrix<L, L> result{};
             for (size_t i = 0; i < N; i++)
             {
                 result(i, i) = list[i];

@@ -10,7 +10,7 @@ endif()
 if(MSVC)
   target_compile_options(ppx_main PRIVATE /W4)
 else()
-  target_compile_options(ppx_main PRIVATE -Wall -Wextra -pedantic)
+  target_compile_options(ppx_main PRIVATE -Wall -Wextra -pedantic -Wno-sign-compare)
 endif()
 
 # set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)

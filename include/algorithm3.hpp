@@ -2,6 +2,7 @@
 #define VVERY_SIMPLE_ALGORITHM3_HEADER
 
 #include "algorithm2.hpp"
+#include <random>
 
 namespace ppx
 {
@@ -77,7 +78,7 @@ namespace ppx
         {
             m_guassian.push_back(std::forward<T>(elem));
             m_prior.push_back(prior);
-        };
+        }
 
         Matrix<N, 1> operator()() const
         {

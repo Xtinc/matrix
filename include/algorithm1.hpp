@@ -219,7 +219,7 @@ namespace ppx
     inline double SIGN(double a, double b)
     {
         return b > 0.0 ? fabs(a) : -fabs(a);
-    };
+    }
 
     template <size_t N>
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing)
