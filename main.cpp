@@ -238,7 +238,7 @@ void test_statics()
     multi_normal_distribution<2> d(mu, sigma);
     PRINT_SINGLE_ELEMENTS(d.pdf(x), "pdf of [0,0] = ");
     PRINT_SINGLE_ELEMENTS(d.pdf(Matrix<2, 1>{-0.6, -0.6}), "pdf of [-0.6,-0.6] = ");
-    std::vector<double> x1, x2;
+    std::vector<Matrix<2, 1>> x1;
     multi_normal_distribution<2> d2(Matrix<2, 1>{2, 1}, Matrix<2, 2>{4, 1, 1, 4});
     mixed_normal_distribution<2> mg;
     mg.push_back(d, 0.3);
@@ -246,11 +246,18 @@ void test_statics()
     constexpr int ITMAX = 1000;
     for (int n = 0; n < ITMAX; ++n)
     {
-        auto res = mg();
-        PRINT_LISTED_ELEMENTS(res);
-        // x1.emplace_back(res[0]);
-        // x2.emplace_back(res[1]);
+        x1.emplace_back(mg());
     }
+    mixed_normal_distribution<2> mge;
+    mge.push_back(multi_normal_distribution<2>(), 0.5);
+    mge.push_back(multi_normal_distribution<2>(), 0.5);
+    mge.loglikehood(x1);
+    PRINT_SINGLE_ELEMENTS(mge.prior(0), "p1 = ");
+    PRINT_SINGLE_ELEMENTS(mge.prior(1), "p1 = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution(0).mean(), "d1 mean = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution(0).covariance(), "d1 cov = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution(1).mean(), "d2 mean = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution(1).covariance(), "d2 cov = ");
     // auto e1 = mean(x1);
     // auto e2 = mean(x2);
     // auto s1 = var(x1);
