@@ -93,14 +93,21 @@ namespace ppx
         Matrix<N, N> m_cov;
     };
 
+    template <size_t N>
+    std::ostream &operator<<(std::ostream &os, const MultiNormalDistribution<N> &self)
+    {
+        os << "MultiNormalDistribution<" << N << ">:\n"
+           << "mean = \t" << self.mean()
+           << "cov  = \t" << self.covariance();
+        return os;
+    }
+
     template <size_t N, size_t K>
     class MixedNormalDistribution
     {
     public:
         using dist = MultiNormalDistribution<N>;
         using samples = std::vector<Matrix<N, 1>>;
-        template <size_t L, typename RT = void>
-        using idx_available_t = std::enable_if_t<gl_less_than(L, N), RT>;
 
         double pdf(const Matrix<N, 1> &x)
         {
@@ -133,37 +140,26 @@ namespace ppx
             return m_guassian[idx]();
         }
 
-        template <size_t L>
-        const idx_available_t<L, dist> &
-        distribution() const
+        const dist &distribution(size_t idx) const
         {
-            return m_guassian.at(L);
+            return m_guassian.at(idx);
         }
-        template <size_t L>
-        idx_available_t<L, dist> &
-        distribution()
+        dist &distribution(size_t idx)
         {
-            return m_guassian.at(L);
+            return m_guassian.at(idx);
         }
-        template <size_t L>
-        const idx_available_t<L, double> &
-        prior() const
+        const double &prior(size_t idx) const
         {
-            return m_prior.at(L);
+            return m_prior.at(idx);
         }
-        template <size_t L>
-        idx_available_t<L, double> &
-        prior()
+        double &prior(size_t idx)
         {
-            return m_prior.at(L);
+            return m_prior.at(idx);
         }
-
-        template <size_t L>
-        idx_available_t<L>
-        setcomp(const dist &d, double p)
+        void setcomp(size_t idx, const dist &d, double p)
         {
-            m_guassian[L] = d;
-            m_prior[L] = p;
+            m_guassian[idx] = d;
+            m_prior[idx] = p;
         }
 
         void loglikehood(const samples &data)
@@ -210,6 +206,18 @@ namespace ppx
         std::array<double, K> m_prior;
         size_t ITMAX = 200;
     };
+
+    template <size_t N, size_t K>
+    std::ostream &operator<<(std::ostream &os, const MixedNormalDistribution<N, K> &self)
+    {
+        os << "MixedNormalDistribution<" << N << ',' << K << ">:\n";
+        for (size_t i = 0; i < K; i++)
+        {
+            os << self.prior(i) << " of all, component " << i << ":\n";
+            os << self.distribution(i) << "\n";
+        }
+        return os;
+    }
 }
 
 #endif
