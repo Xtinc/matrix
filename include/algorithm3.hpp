@@ -26,12 +26,12 @@ namespace ppx
     }
 
     template <size_t N>
-    class multi_normal_distribution
+    class MultiNormalDistribution
     {
     public:
         using samples = std::vector<Matrix<N, 1>>;
-        multi_normal_distribution() : m_cov(Matrix<N, N>::eye()) {}
-        multi_normal_distribution(const Matrix<N, 1> &mu, const Matrix<N, N> &sigma)
+        MultiNormalDistribution() : m_cov(Matrix<N, N>::eye()) {}
+        MultiNormalDistribution(const Matrix<N, 1> &mu, const Matrix<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}
         Matrix<N, 1> operator()() const
         {
@@ -93,22 +93,19 @@ namespace ppx
         Matrix<N, N> m_cov;
     };
 
-    template <size_t N>
-    class mixed_normal_distribution
+    template <size_t N, size_t K>
+    class MixedNormalDistribution
     {
     public:
+        using dist = MultiNormalDistribution<N>;
         using samples = std::vector<Matrix<N, 1>>;
+        template <size_t L, typename RT = void>
+        using idx_available_t = std::enable_if_t<gl_less_than(L, N), RT>;
 
-        template <typename T>
-        void push_back(T &&elem, double prior)
-        {
-            m_guassian.push_back(std::forward<T>(elem));
-            m_prior.push_back(prior);
-        }
         double pdf(const Matrix<N, 1> &x)
         {
             double sum = 0.0;
-            for (size_t i = 0; i < m_prior.size(); i++)
+            for (size_t i = 0; i < K; i++)
             {
                 sum += m_guassian[i].pdf(x) * m_prior[i];
             }
@@ -121,7 +118,7 @@ namespace ppx
             // how?
             // if (!details::is_same(total_p, 1.0))
             // {
-            //     return {};
+            // return {};
             // }
             std::random_device rd{};
             std::mt19937 gen(rd());
@@ -129,37 +126,55 @@ namespace ppx
             double sample = dis(gen);
             double sum = m_prior.front();
             size_t idx = 0;
-            size_t idx_max = m_prior.size();
-            while (sample > sum && idx < idx_max)
+            while (sample > sum && idx < K)
             {
                 sum += m_prior[++idx];
             }
             return m_guassian[idx]();
         }
 
-        const multi_normal_distribution<N> &distribution(size_t idx) const
+        template <size_t L>
+        const idx_available_t<L, dist> &
+        distribution() const
         {
-            return m_guassian.at(idx);
+            return m_guassian.at(L);
         }
-        multi_normal_distribution<N> &distribution(size_t idx)
+        template <size_t L>
+        idx_available_t<L, dist> &
+        distribution()
         {
-            return m_guassian.at(idx);
+            return m_guassian.at(L);
         }
-        const double &prior(size_t idx) const
+        template <size_t L>
+        const idx_available_t<L, double> &
+        prior() const
         {
-            return m_prior.at(idx);
+            return m_prior.at(L);
         }
-        double &prior(size_t idx)
+        template <size_t L>
+        idx_available_t<L, double> &
+        prior()
         {
-            return m_prior.at(idx);
+            return m_prior.at(L);
+        }
+
+        template <size_t L>
+        idx_available_t<L>
+        setcomp(const dist &d, double p)
+        {
+            m_guassian[L] = d;
+            m_prior[L] = p;
         }
 
         void loglikehood(const samples &data)
         {
+            constexpr auto c = K;
             auto n = data.size();
-            auto c = m_prior.size();
+            double residual = 1.0;
+            double last_p = 0.0;
+            auto its = 0u;
 
-            for (size_t iter = 0; iter < 100; ++iter)
+            while (residual > gl_rep_eps && its < ITMAX)
             {
                 std::vector<std::vector<double>> a(c, std::vector<double>(n));
                 for (size_t k = 0; k < c; k++)
@@ -171,7 +186,7 @@ namespace ppx
                 {
                     auto sum_g = std::accumulate(a[k].begin(), a[k].end(), 0.0);
                     m_prior[k] = sum_g / n;
-                    Matrix<N, 1> sum_m = std::inner_product(a[k].begin(), a[k].end(), data.begin(), Matrix<N, 1>()) / n;
+                    Matrix<N, 1> sum_m = std::inner_product(a[k].begin(), a[k].end(), data.begin(), Matrix<N, 1>());
                     sum_m /= sum_g;
                     Matrix<N, N> sum_s;
                     for (size_t i = 0; i < n; i++)
@@ -182,12 +197,18 @@ namespace ppx
                     m_guassian[k].mean() = sum_m;
                     m_guassian[k].covariance() = sum_s / sum_g;
                 }
+                double tpp = std::accumulate(data.begin(), data.end(), 0.0, [&](double y0, const Matrix<N, 1> &x)
+                                             { return y0 + log(pdf(x)); });
+                residual = fabs(last_p - tpp);
+                last_p = tpp;
+                ++its;
             }
         }
 
     private:
-        std::vector<multi_normal_distribution<N>> m_guassian;
-        std::vector<double> m_prior;
+        std::array<dist, K> m_guassian;
+        std::array<double, K> m_prior;
+        size_t ITMAX = 200;
     };
 }
 

@@ -235,29 +235,29 @@ void test_statics()
     Matrix<2, 1> mu{-2, 8};
     Matrix<2, 2> sigma{0.4, 0.0, 0.0, 1.2};
     Matrix<2, 1> x;
-    multi_normal_distribution<2> d(mu, sigma);
+    MultiNormalDistribution<2> d(mu, sigma);
     PRINT_SINGLE_ELEMENTS(d.pdf(x), "pdf of [0,0] = ");
     PRINT_SINGLE_ELEMENTS(d.pdf(Matrix<2, 1>{-0.6, -0.6}), "pdf of [-0.6,-0.6] = ");
     std::vector<Matrix<2, 1>> x1;
-    multi_normal_distribution<2> d2(Matrix<2, 1>{2, 1}, Matrix<2, 2>{4, 1, 1, 4});
-    mixed_normal_distribution<2> mg;
-    mg.push_back(d, 0.3);
-    mg.push_back(d2, 0.7);
+    MultiNormalDistribution<2> d2(Matrix<2, 1>{2, 1}, Matrix<2, 2>{4, 1, 1, 4});
+    MixedNormalDistribution<2, 2> mg;
+    mg.setcomp<0>(d, 0.3);
+    mg.setcomp<1>(d2, 0.7);
     constexpr int ITMAX = 1000;
     for (int n = 0; n < ITMAX; ++n)
     {
         x1.emplace_back(mg());
     }
-    mixed_normal_distribution<2> mge;
-    mge.push_back(multi_normal_distribution<2>(), 0.5);
-    mge.push_back(multi_normal_distribution<2>(), 0.5);
+    MixedNormalDistribution<2, 2> mge;
+    mge.setcomp<0>(MultiNormalDistribution<2>({1, 1}, {1, 0, 0, 1}), 0.5);
+    mge.setcomp<1>(MultiNormalDistribution<2>({2, 2}, {1, 0, 0, 1}), 0.5);
     mge.loglikehood(x1);
-    PRINT_SINGLE_ELEMENTS(mge.prior(0), "p1 = ");
-    PRINT_SINGLE_ELEMENTS(mge.prior(1), "p1 = ");
-    PRINT_SINGLE_ELEMENTS(mge.distribution(0).mean(), "d1 mean = ");
-    PRINT_SINGLE_ELEMENTS(mge.distribution(0).covariance(), "d1 cov = ");
-    PRINT_SINGLE_ELEMENTS(mge.distribution(1).mean(), "d2 mean = ");
-    PRINT_SINGLE_ELEMENTS(mge.distribution(1).covariance(), "d2 cov = ");
+    PRINT_SINGLE_ELEMENTS(mge.prior<0>(), "p1 = ");
+    PRINT_SINGLE_ELEMENTS(mge.prior<1>(), "p1 = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution<0>().mean(), "d1 mean = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution<0>().covariance(), "d1 cov = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution<1>().mean(), "d2 mean = ");
+    PRINT_SINGLE_ELEMENTS(mge.distribution<1>().covariance(), "d2 cov = ");
     // auto e1 = mean(x1);
     // auto e2 = mean(x2);
     // auto s1 = var(x1);
