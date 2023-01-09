@@ -45,9 +45,9 @@ namespace ppx
     }
 
     template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<gl_get_more(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
+    Matrix<std::max(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
     {
-        constexpr size_t N_M = gl_get_more(M, A);
+        constexpr size_t N_M = std::max(M, A);
         Matrix<N_M, N + B> result{};
         for (size_t j = 0; j < N; j++)
         {
@@ -67,9 +67,9 @@ namespace ppx
     }
 
     template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<M + A, gl_get_more(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
+    Matrix<M + A, std::max(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
     {
-        constexpr size_t N_N = gl_get_more(N, B);
+        constexpr size_t N_N = std::max(N, B);
         Matrix<M + A, N_N> result{};
         for (size_t j = 0; j < N; j++)
         {
@@ -115,9 +115,9 @@ namespace ppx
     Matrix<M, M> adjugate(const Matrix<M, M> &mat)
     {
         Matrix<M, M> result{};
-        for (int i = 0; i < M; i++)
+        for (size_t i = 0; i < M; i++)
         {
-            for (int j = 0; j < M; j++)
+            for (size_t j = 0; j < M; j++)
             {
                 auto sign = (i + j) % 2 == 0 ? 1 : -1;
                 result(j, i) = sign * (determinant(cofactor(mat, i, j)));
@@ -224,17 +224,18 @@ namespace ppx
     template <size_t N>
     Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing)
     {
+        constexpr int IN = N;
         sing = false;
         even = true;
-        for (int i = 0; i < N; i++)
+        for (int i = 0; i < IN; i++)
         {
             indx[i] = i;
         }
-        for (int k = 0; k < N; k++)
+        for (int k = 0; k < IN; k++)
         {
             auto valmax = fabs(A(k, k));
             auto ip = k;
-            for (int row = k + 1; row < N; row++)
+            for (int row = k + 1; row < IN; row++)
             {
                 double tmp = fabs(A(row, k));
                 if (valmax < tmp)
@@ -250,7 +251,7 @@ namespace ppx
             }
             if (ip != k)
             {
-                for (int col = k; col < N; col++)
+                for (int col = k; col < IN; col++)
                 {
                     std::swap(A(ip, col), A(k, col));
                 }
@@ -261,11 +262,11 @@ namespace ppx
                 }
                 even = !even;
             }
-            for (int row = k + 1; row < N; row++)
+            for (int row = k + 1; row < IN; row++)
             {
                 double weight = A(row, k) / A(k, k);
                 A(row, k) = weight;
-                for (int col = k + 1; col < N; col++)
+                for (int col = k + 1; col < IN; col++)
                 {
                     A(row, col) -= weight * A(k, col);
                 }
@@ -277,9 +278,10 @@ namespace ppx
     template <size_t N>
     void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b)
     {
+        constexpr int n = N;
         std::array<double, N> y{};
         y[0] = b[indx[0]];
-        for (int row = 1; row < N; row++)
+        for (int row = 1; row < n; row++)
         {
             double sum = 0.0;
             for (int col = 0; col < row; col++)
@@ -288,7 +290,6 @@ namespace ppx
             }
             y[row] = b[indx[row]] - sum;
         }
-        int n = N;
         b[n - 1] = y[n - 1] / A(n - 1, n - 1);
         for (int row = n - 2; row >= 0; row--)
         {
@@ -305,14 +306,16 @@ namespace ppx
     template <size_t M, size_t N>
     Matrix<M, N> qrdcmp(Matrix<M, N> a, Matrix<N, 1> &c, Matrix<N, 1> &d, bool &sing)
     {
+        constexpr int IN = N;
+        constexpr int IM = M;
         sing = false;
         double scale, sigma, sum, tau;
-        for (int k = 0; k < N; k++)
+        for (int k = 0; k < IN; k++)
         {
             scale = 0.0;
-            for (int i = k; i < N; i++)
+            for (int i = k; i < IN; i++)
             {
-                scale = gl_get_more_dynamic(scale, fabs(a(i, k)));
+                scale = std::max(scale, fabs(a(i, k)));
             }
             if (scale < gl_rep_eps)
             {
@@ -327,7 +330,7 @@ namespace ppx
                 //     a(i, k) /= scale;
                 // }
                 sum = 0.0;
-                for (int i = k; i < M; i++)
+                for (int i = k; i < IM; i++)
                 {
                     sum += a(i, k) * a(i, k);
                 }
@@ -336,15 +339,15 @@ namespace ppx
                 c[k] = sigma * a(k, k);
                 // d[k] = -scale * sigma;
                 d[k] = -sigma;
-                for (int j = k + 1; j < N; j++)
+                for (int j = k + 1; j < IN; j++)
                 {
                     sum = 0.0;
-                    for (int i = k; i < M; i++)
+                    for (int i = k; i < IM; i++)
                     {
                         sum += a(i, k) * a(i, j);
                     }
                     tau = sum / c[k];
-                    for (int i = k; i < M; i++)
+                    for (int i = k; i < IM; i++)
                     {
                         a(i, j) -= tau * a(i, k);
                     }
@@ -353,7 +356,7 @@ namespace ppx
             }
         }
         // d[N - 1] = a(N - 1, N - 1);
-        if (fabs(d[N - 1]) < gl_rep_eps)
+        if (fabs(d[IN - 1]) < gl_rep_eps)
         {
             sing = true;
         }
@@ -363,24 +366,26 @@ namespace ppx
     template <size_t M, size_t N>
     void qrsolv(const Matrix<M, N> &a, const Matrix<N, 1> &c, const Matrix<N, 1> &d, double *b)
     {
-        for (int j = 0; j < N; j++)
+        constexpr int IN = N;
+        constexpr int IM = M;
+        for (int j = 0; j < IN; j++)
         {
             double sum = 0.0;
-            for (int i = j; i < M; i++)
+            for (int i = j; i < IM; i++)
             {
                 sum += a(i, j) * b[i];
             }
             double tau = sum / c[j];
-            for (int i = j; i < M; i++)
+            for (int i = j; i < IM; i++)
             {
                 b[i] -= tau * a(i, j);
             }
         }
         // b[N - 1] /= d[N - 1];
-        for (int i = N - 1; i >= 0; i--)
+        for (int i = IN - 1; i >= 0; i--)
         {
             double sum = 0.0;
-            for (int j = i + 1; j < N; j++)
+            for (int j = i + 1; j < IN; j++)
             {
                 sum += a(i, j) * b[j];
             }
@@ -391,6 +396,8 @@ namespace ppx
     template <size_t M, size_t N>
     Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v, bool &sing)
     {
+        constexpr int IN = N;
+        constexpr int IM = M;
         sing = false;
         bool flag;
         int i, its, j, jj, k, l, nm;
@@ -400,22 +407,22 @@ namespace ppx
         scale = 0.0;
         anorm = 0.0;
         l = 0;
-        for (i = 0; i < N; i++)
+        for (i = 0; i < IN; i++)
         {
             l = i + 2;
             rv1[i] = scale * g;
             g = 0.0;
             s = 0.0;
             scale = 0.0;
-            if (i < M)
+            if (i < IM)
             {
-                for (k = i; k < M; k++)
+                for (k = i; k < IM; k++)
                 {
                     scale += fabs(u(k, i));
                 }
                 if (scale > gl_rep_eps)
                 {
-                    for (k = i; k < M; k++)
+                    for (k = i; k < IM; k++)
                     {
                         u(k, i) /= scale;
                         s += u(k, i) * u(k, i);
@@ -424,19 +431,19 @@ namespace ppx
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
                     u(i, i) = f - g;
-                    for (j = l - 1; j < N; j++)
+                    for (j = l - 1; j < IN; j++)
                     {
-                        for (s = 0.0, k = i; k < M; k++)
+                        for (s = 0.0, k = i; k < IM; k++)
                         {
                             s += u(k, i) * u(k, j);
                         }
                         f = s / h;
-                        for (k = i; k < M; k++)
+                        for (k = i; k < IM; k++)
                         {
                             u(k, j) += f * u(k, i);
                         }
                     }
-                    for (k = i; k < M; k++)
+                    for (k = i; k < IM; k++)
                     {
                         u(k, i) *= scale;
                     }
@@ -444,15 +451,15 @@ namespace ppx
             }
             w[i] = scale * g;
             g = s = scale = 0.0;
-            if (i + 1 <= M && i + 1 != N)
+            if (i + 1 <= IM && i + 1 != N)
             {
-                for (k = l - 1; k < N; k++)
+                for (k = l - 1; k < IN; k++)
                 {
                     scale += fabs(u(i, k));
                 }
                 if (scale > gl_rep_eps)
                 {
-                    for (k = l - 1; k < N; k++)
+                    for (k = l - 1; k < IN; k++)
                     {
                         u(i, k) /= scale;
                         s += u(i, k) * u(i, k);
@@ -461,52 +468,52 @@ namespace ppx
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
                     u(i, l - 1) = f - g;
-                    for (k = l - 1; k < N; k++)
+                    for (k = l - 1; k < IN; k++)
                     {
                         rv1[k] = u(i, k) / h;
                     }
-                    for (j = l - 1; j < M; j++)
+                    for (j = l - 1; j < IM; j++)
                     {
-                        for (s = 0.0, k = l - 1; k < N; k++)
+                        for (s = 0.0, k = l - 1; k < IN; k++)
                         {
                             s += u(j, k) * u(i, k);
                         }
-                        for (k = l - 1; k < N; k++)
+                        for (k = l - 1; k < IN; k++)
                         {
                             u(j, k) += s * rv1[k];
                         }
                     }
-                    for (k = l - 1; k < N; k++)
+                    for (k = l - 1; k < IN; k++)
                     {
                         u(i, k) *= scale;
                     }
                 }
             }
-            anorm = gl_get_more_dynamic(anorm, fabs(w[i]) + fabs(rv1[i]));
+            anorm = std::max(anorm, fabs(w[i]) + fabs(rv1[i]));
         }
-        for (i = N - 1; i >= 0; i--)
+        for (i = IN - 1; i >= 0; i--)
         {
-            if (i < N - 1)
+            if (i < IN - 1)
             {
                 if (fabs(g) > gl_rep_eps)
                 {
-                    for (j = l; j < N; j++)
+                    for (j = l; j < IN; j++)
                     {
                         v(j, i) = (u(i, j) / u(i, l)) / g;
                     }
-                    for (j = l; j < N; j++)
+                    for (j = l; j < IN; j++)
                     {
-                        for (s = 0.0, k = l; k < N; k++)
+                        for (s = 0.0, k = l; k < IN; k++)
                         {
                             s += u(i, k) * v(k, j);
                         }
-                        for (k = l; k < N; k++)
+                        for (k = l; k < IN; k++)
                         {
                             v(k, j) += s * v(k, i);
                         }
                     }
                 }
-                for (j = l; j < N; j++)
+                for (j = l; j < IN; j++)
                 {
                     v(i, j) = 0.0;
                     v(j, i) = 0.0;
@@ -516,44 +523,44 @@ namespace ppx
             g = rv1[i];
             l = i;
         }
-        for (i = (int)gl_get_less(M, N) - 1; i >= 0; i--)
+        for (i = std::min(IM, IN) - 1; i >= 0; i--)
         {
             l = i + 1;
             g = w[i];
-            for (j = l; j < N; j++)
+            for (j = l; j < IN; j++)
             {
                 u(i, j) = 0.0;
             }
             if (fabs(g) > gl_rep_eps)
             {
                 g = 1.0 / g;
-                for (j = l; j < N; j++)
+                for (j = l; j < IN; j++)
                 {
-                    for (s = 0.0, k = l; k < M; k++)
+                    for (s = 0.0, k = l; k < IM; k++)
                     {
                         s += u(k, i) * u(k, j);
                     }
                     f = (s / u(i, i)) * g;
-                    for (k = i; k < M; k++)
+                    for (k = i; k < IM; k++)
                     {
                         u(k, j) += f * u(k, i);
                     }
                 }
-                for (j = i; j < M; j++)
+                for (j = i; j < IM; j++)
                 {
                     u(j, i) *= g;
                 }
             }
             else
             {
-                for (j = i; j < M; j++)
+                for (j = i; j < IM; j++)
                 {
                     u(j, i) = 0.0;
                 }
             }
             u(i, i) += 1.0;
         }
-        for (k = N - 1; k >= 0; k--)
+        for (k = IN - 1; k >= 0; k--)
         {
             for (its = 0; its < 30; its++)
             {
@@ -590,7 +597,7 @@ namespace ppx
                         h = 1.0 / h;
                         c = g * h;
                         s = -f * h;
-                        for (j = 0; j < M; j++)
+                        for (j = 0; j < IM; j++)
                         {
                             y = u(j, nm);
                             z = u(j, i);
@@ -605,7 +612,7 @@ namespace ppx
                     if (z < 0.0)
                     {
                         w[k] = -z;
-                        for (j = 0; j < N; j++)
+                        for (j = 0; j < IN; j++)
                         {
                             v(j, k) = -v(j, k);
                         }
@@ -641,7 +648,7 @@ namespace ppx
                     g = g * c - x * s;
                     h = y * s;
                     y *= c;
-                    for (jj = 0; jj < N; jj++)
+                    for (jj = 0; jj < IN; jj++)
                     {
                         x = v(jj, j);
                         z = v(jj, i);
@@ -658,7 +665,7 @@ namespace ppx
                     }
                     f = c * g + s * y;
                     x = c * y - s * g;
-                    for (jj = 0; jj < M; jj++)
+                    for (jj = 0; jj < IM; jj++)
                     {
                         y = u(jj, j);
                         z = u(jj, i);
@@ -677,15 +684,17 @@ namespace ppx
     template <size_t M, size_t N>
     void svbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, const Matrix<N, N> &v, double *b)
     {
+        constexpr int IN = N;
+        constexpr int IM = M;
         double tmp[N];
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
         auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * gl_rep_eps;
-        for (int j = 0; j < N; j++)
+        for (int j = 0; j < IN; j++)
         {
             auto s = 0.0;
             if (w[j] > tsh)
             {
-                for (int i = 0; i < M; i++)
+                for (int i = 0; i < IM; i++)
                 {
                     s += u(i, j) * b[i];
                 }
@@ -693,10 +702,10 @@ namespace ppx
             }
             tmp[j] = s;
         }
-        for (int j = 0; j < N; j++)
+        for (int j = 0; j < IN; j++)
         {
             auto s = 0.0;
-            for (int jj = 0; jj < N; jj++)
+            for (int jj = 0; jj < IN; jj++)
             {
                 s += v(j, jj) * tmp[jj];
             }
@@ -779,7 +788,8 @@ namespace ppx
         template <size_t N>
         void tred2_no_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
-            for (int i = (int)N - 1; i > 0; i--)
+            constexpr int IN = N;
+            for (int i = IN - 1; i > 0; i--)
             {
                 int l = i - 1;
                 double h = 0.0;
@@ -840,7 +850,7 @@ namespace ppx
                 d[i] = h;
             }
             e[0] = 0.0;
-            for (int i = 0; i < N; i++)
+            for (int i = 0; i < IN; i++)
             {
                 d[i] = z(i, i);
             }
@@ -849,19 +859,20 @@ namespace ppx
         template <size_t N>
         void tliq_no_vec(Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
+            constexpr int IN = N;
             constexpr double EPS = std::numeric_limits<double>::epsilon();
-            for (int i = 1; i < N; i++)
+            for (int i = 1; i < IN; i++)
             {
                 e[i - 1] = e[i];
             }
             e[N - 1] = 0.0;
-            for (int l = 0; l < N; l++)
+            for (int l = 0; l < IN; l++)
             {
                 int iter = 0;
                 int m = 0;
                 do
                 {
-                    for (m = l; m < N - 1; m++)
+                    for (m = l; m < IN - 1; m++)
                     {
                         if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
                         {
@@ -917,7 +928,8 @@ namespace ppx
         template <size_t N>
         Matrix<N, N> tred2_with_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
-            for (int i = N - 1; i > 0; i--)
+            constexpr int IN = N;
+            for (int i = IN - 1; i > 0; i--)
             {
                 int l = i - 1;
                 double h = 0.0;
@@ -980,7 +992,7 @@ namespace ppx
             }
             d[0] = 0.0;
             e[0] = 0.0;
-            for (int i = 0; i < N; i++)
+            for (int i = 0; i < IN; i++)
             {
                 if (fabs(d[i]) > gl_rep_eps)
                 {
@@ -1011,19 +1023,20 @@ namespace ppx
         template <size_t N>
         void tliq_with_vec(Matrix<N, N> &z, Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
+            constexpr int IN = N;
             constexpr double EPS = std::numeric_limits<double>::epsilon();
-            for (int i = 1; i < N; i++)
+            for (int i = 1; i < IN; i++)
             {
                 e[i - 1] = e[i];
             }
-            e[N - 1] = 0.0;
-            for (int l = 0; l < N; l++)
+            e[IN - 1] = 0.0;
+            for (int l = 0; l < IN; l++)
             {
                 int iter = 0;
                 int m = 0;
                 do
                 {
-                    for (m = l; m < N - 1; m++)
+                    for (m = l; m < IN - 1; m++)
                     {
                         if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
                         {
@@ -1063,7 +1076,7 @@ namespace ppx
                             p = s * r;
                             d[i + 1] = g + p;
                             g = c * r - b;
-                            for (int k = 0; k < N; k++)
+                            for (int k = 0; k < IN; k++)
                             {
                                 f = z(k, i + 1);
                                 z(k, i + 1) = s * z(k, i) + c * f;
@@ -1085,7 +1098,8 @@ namespace ppx
         template <size_t N>
         void eigsrt(Matrix<N, N> &mat, Matrix<N, 1> &vec)
         {
-            for (size_t i = 0; i < (int)N - 1; i++)
+            constexpr int IN = N;
+            for (size_t i = 0; i < IN - 1; i++)
             {
                 auto j = std::distance(vec.begin() + i, std::min_element(vec.begin() + i, vec.end())) + i;
                 if (j != i)

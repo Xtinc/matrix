@@ -17,18 +17,6 @@ namespace ppx
     constexpr double gl_rep_pi = 3.141592653589793;
     constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
     constexpr double gl_rep_max = std::numeric_limits<float>::max();
-    constexpr size_t gl_get_less(size_t A, size_t B)
-    {
-        return A < B ? A : B;
-    }
-    constexpr size_t gl_get_more(size_t A, size_t B)
-    {
-        return A < B ? B : A;
-    }
-    constexpr bool gl_less_than(size_t A, size_t B)
-    {
-        return A < B;
-    }
     constexpr double gl_deg_rad(double deg)
     {
         return deg * gl_rep_pi / 180;
@@ -36,17 +24,6 @@ namespace ppx
     constexpr double gl_rad_deg(double rad)
     {
         return 180 * rad / gl_rep_pi;
-    }
-
-    template <typename T>
-    T gl_get_less_dynamic(T A, T B)
-    {
-        return A < B ? A : B;
-    }
-    template <typename T>
-    T gl_get_more_dynamic(T A, T B)
-    {
-        return A < B ? B : A;
     }
 
     template <typename T, typename RT = void>
@@ -346,7 +323,7 @@ namespace ppx
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
             MatrixBase(const std::array<T, L> &list) : m_data{}
             {
-                constexpr auto real_idx = gl_get_less(L, M * N);
+                constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
@@ -374,7 +351,7 @@ namespace ppx
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
             MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
             {
-                constexpr auto real_idx = gl_get_less(L, M * N);
+                constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
@@ -792,7 +769,7 @@ namespace ppx
                 return {};
             }
             auto result = Matrix<M, M>::eye();
-            for (int j = 0; j < M; j++)
+            for (size_t j = 0; j < M; j++)
             {
                 ludbksb(LU, indx, result.data() + j * M);
             }
@@ -1036,7 +1013,7 @@ namespace ppx
             result.fill(0.0);
             return result;
         }
-        template <typename T, size_t L = gl_get_less(M, N)>
+        template <typename T, size_t L = std::min(M, N)>
         static enable_arith_type_t<T, Matrix<L, L>> diag(const std::initializer_list<T> &list)
         {
             Matrix<L, L> result{};

@@ -21,7 +21,7 @@ namespace ppx
     {
     private:
         template <size_t L, typename RT = void>
-        using idx_available_t = typename std::enable_if<gl_less_than(L, N), RT>::type;
+        using idx_available_t = typename std::enable_if<(L < N), RT>::type;
         std::array<joint, N> JList;
 
     public:
@@ -71,7 +71,7 @@ namespace ppx
         {
             Matrix<6, N> Js;
             SE3 T;
-            for (int i = 1; i < N; i++)
+            for (int i = 1; i < (int)N; i++)
             {
                 se3 screw = JList[i - 1].screw * jointAngle[i - 1];
                 T = T * screw.exp();

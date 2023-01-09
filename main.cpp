@@ -250,10 +250,10 @@ void test_statics()
     {
         x1.emplace_back(mg());
     }
-    for (size_t i = 0; i < ITMAX; i++)
-    {
-        PRINT_LISTED_ELEMENTS(x1[i]);
-    }
+    // for (size_t i = 0; i < ITMAX; i++)
+    // {
+    //     PRINT_LISTED_ELEMENTS(x1[i]);
+    // }
 
     MixedNormalDistribution<2, 3> mge;
     mge.setcomp(0, MultiNormalDistribution<2>({1, 1}, {1, 0, 0, 1}), 0.5);
@@ -351,17 +351,17 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
-    // LOG_INFO << "test_matrix";
-    // test_matrix();
-    // LOG_INFO << "test_linear";
-    // test_linear();
+    LOG_INFO << "test_matrix";
+    test_matrix();
+    LOG_INFO << "test_linear";
+    test_linear();
     LOG_INFO << "test_statics";
     test_statics();
-    // LOG_INFO << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_INFO << "test_robotics";
-    // test_robotics();
-    // LOG_INFO << "test_nonlinear";
-    // test_nonlinear();
+    LOG_INFO << "test_lieGroup";
+    test_lieGroup();
+    LOG_INFO << "test_robotics";
+    test_robotics();
+    LOG_INFO << "test_nonlinear";
+    test_nonlinear();
     LOG_INFO << "test end";
 }

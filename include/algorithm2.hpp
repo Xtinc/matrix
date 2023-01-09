@@ -58,8 +58,8 @@ namespace ppx
         public:
             void already_bounded(double x0, double x1)
             {
-                a = gl_get_less_dynamic(x0, x1);
-                c = gl_get_more_dynamic(x0, x1);
+                a = std::min(x0, x1);
+                c = std::max(x0, x1);
                 b = 0.5 * (a + c);
             }
 
@@ -209,7 +209,7 @@ namespace ppx
                 auto fx = func(x);
                 auto fw = fx;
                 auto fv = fx;
-                for (int its = 0; its < ITMAX; its++)
+                for (auto its = 0u; its < ITMAX; its++)
                 {
                     double d = 0.0;
                     double e = 0.0;
@@ -335,7 +335,7 @@ namespace ppx
                 R.x = x;
                 Matrix<N, 1> dx;
                 dx.fill(1.0);
-                auto its = 0;
+                auto its = 0u;
                 while (norminf(dx) > FTOLA && its < ITMAX)
                 {
                     dx = -1 * df(R.x);
@@ -365,7 +365,7 @@ namespace ppx
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
             {
                 R.x = x;
-                auto its = 0;
+                auto its = 0u;
                 Matrix<N, 1> g = df(R.x);
                 Matrix<N, 1> d = -1.0 * g;
                 Matrix<N, 1> dh;
@@ -374,7 +374,7 @@ namespace ppx
                 {
                     Matrix<N, 1> gh = df(R.x);
                     double beta =
-                        gl_get_more_dynamic(0.0, inner_product<N>(gh, gh - g) / inner_product(g, g));
+                        std::max(0.0, inner_product<N>(gh, gh - g) / inner_product(g, g));
                     dh = -1 * gh + beta * d;
                     auto lr = lnsrch(f, R.x, dh);
                     if (lr.s == StatusCode::DIVERGED)
