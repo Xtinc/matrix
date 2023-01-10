@@ -96,7 +96,7 @@ namespace ppx
             {
                 omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * Matrix<3, 1>{R(0, 0), R(1, 0), +R(2, 0)};
             }
-            return gl_rep_pi * hat(omg);
+            return PI * hat(omg);
         }
         else
         {

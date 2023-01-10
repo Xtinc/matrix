@@ -54,7 +54,7 @@ namespace ppx
             int n = static_cast<int>(N);
             Matrix<2, 1> normalized_mu = x - m_mean;
             double quadform = (normalized_mu.T() * m_cov.I() * normalized_mu)[0];
-            double norm = pow(sqrt(2 * gl_rep_pi), -n) * pow(m_cov.det(), -0.5);
+            double norm = pow(sqrt(2 * PI), -n) * pow(m_cov.det(), -0.5);
             return norm * exp(-0.5 * quadform);
         }
         const Matrix<N, 1> &mean() const
@@ -170,7 +170,7 @@ namespace ppx
             double last_p = 0.0;
             auto its = 0u;
 
-            while (residual > gl_rep_eps && its < ITMAX)
+            while (residual > EPS_SP && its < ITMAX)
             {
                 std::vector<std::vector<double>> a(c, std::vector<double>(n));
                 for (size_t k = 0; k < c; k++)

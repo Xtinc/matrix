@@ -99,7 +99,7 @@ void test_linear()
         auto b = A * x;
         bool sing = false;
         auto result = solve<factorization::LU>(A, b, sing);
-        auto residual = norm2(Matrix<100, 1>(result - x));
+        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear solver SVD\n");
@@ -118,7 +118,7 @@ void test_linear()
         auto b = A * x;
         bool sing = false;
         auto result = solve<factorization::SVD>(A, b, sing);
-        auto residual = norm2(Matrix<100, 1>(result - x));
+        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear solver QR\n");
@@ -137,7 +137,7 @@ void test_linear()
         auto b = A * x;
         bool sing = false;
         auto result = solve<factorization::QR>(A, b, sing);
-        auto residual = norm2(Matrix<100, 1>(result - x));
+        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
 }
@@ -164,18 +164,18 @@ void test_nonlinear()
         return sin(x);
     };
 
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by GoldenSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by QuadraticSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f2, 0.0, 2.0 * gl_rep_pi), "f2 by BrentSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f2, 0.0, 2.0 * PI), "f2 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f2, 0.0, 2.0 * PI), "f2 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f2, 0.0, 2.0 * PI), "f2 by BrentSearch: ");
 
     auto f3 = [](double x)
     {
         return sin(x - 9.0 / 7.0);
     };
 
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by GoldenSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by QuadraticSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f3, 1, 2.0 * gl_rep_pi), "f3 by BrentSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f3, 1, 2.0 * PI), "f3 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f3, 1, 2.0 * PI), "f3 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f3, 1, 2.0 * PI), "f3 by BrentSearch: ");
 
     printf("test nonlinear ND:\n");
     auto f4 = [](const Matrix<2, 1> &x)
@@ -337,9 +337,9 @@ void test_robotics()
         UR5.setJoint<3>({"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}});
         UR5.setJoint<4>({"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}});
         UR5.setJoint<5>({"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6});
-        PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Forward(R6) = ");
-        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Jacobi = ");
-        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * gl_rep_pi, 0.0, 0.0, 0.5 * gl_rep_pi, 0.0}), "Jacobi(3) = ");
+        PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
+        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
+        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
         SE3 TargetPose{0.0, 1.0, 0.0, 0.0,
                        -1.0, 0.0, 0.0, 0.0,
                        0.0, 0.0, 1.0, 0.0,

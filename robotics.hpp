@@ -8,7 +8,7 @@ namespace ppx
     struct joint
     {
         std::string name{"Anon"};
-        std::pair<double, double> range{-gl_rep_max, gl_rep_max};
+        std::pair<double, double> range{-MAX_SP, MAX_SP};
         se3 screw;
         SE3 pose;
         joint() = default;
@@ -110,7 +110,7 @@ namespace ppx
                 auto err_w = norm2(Vs.w());
                 auto err_v = norm2(Vs.v());
                 printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
-                converage = err_w < gl_rep_eps && err_v < gl_rep_eps;
+                converage = err_w < EPS_SP && err_v < EPS_SP;
                 init += solve<factorization::SVD>(jacobiSpace(init), Vs, sing);
                 ++iter;
             }

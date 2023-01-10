@@ -115,7 +115,7 @@ namespace ppx
                 auto d = rho * c + phi * a;
                 auto yd = func(d);
                 auto its = 0u;
-                while (fabs(a - c) > gl_rep_eps && its < ITMAX)
+                while (fabs(a - c) > EPS_SP && its < ITMAX)
                 {
                     R.x = rho * a + phi * c;
                     R.y = func(R.x);
@@ -150,7 +150,7 @@ namespace ppx
                 yb = func(b);
                 yc = func(c);
                 auto its = 0u;
-                while (fabs(a - c) > gl_rep_eps && fabs(b - c) > gl_rep_eps && fabs(a - b) > gl_rep_eps && its < ITMAX)
+                while (fabs(a - c) > EPS_SP && fabs(b - c) > EPS_SP && fabs(a - b) > EPS_SP && its < ITMAX)
                 {
                     R.x = 0.5 * (ya * (b * b - c * c) + yb * (c * c - a * a) + yc * (a * a - b * b)) /
                           (ya * (b - c) + yb * (c - a) + yc * (a - b));
@@ -215,7 +215,7 @@ namespace ppx
                     double e = 0.0;
                     double u = 0.0;
                     auto xm = 0.5 * (a + c);
-                    auto tol1 = gl_rep_eps * fabs(x);
+                    auto tol1 = EPS_SP * fabs(x);
                     auto tol2 = 2.0 * tol1;
                     if (fabs(x - xm) < tol2 - 0.5 * (c - a))
                     {
@@ -327,7 +327,7 @@ namespace ppx
         {
             OptResult<N> R;
             size_t ITMAX = 200;
-            double FTOLA = gl_rep_eps;
+            double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
@@ -359,7 +359,7 @@ namespace ppx
         {
             OptResult<N> R;
             size_t ITMAX = 200;
-            double FTOLA = gl_rep_eps;
+            double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
@@ -398,7 +398,7 @@ namespace ppx
         {
             OptResult<N> R;
             size_t ITMAX = 20;
-            double FTOLA = gl_rep_eps;
+            double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
             OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
@@ -444,7 +444,7 @@ namespace ppx
         {
             OptResult<N> R;
             size_t ITMAX = 200;
-            double FTOLA = gl_rep_eps;
+            double FTOLA = EPS_SP;
 
             template <typename T>
             OptResult<N> operator()(const T &f, const Matrix<N, 1> &x0)

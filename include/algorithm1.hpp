@@ -244,7 +244,7 @@ namespace ppx
                     ip = row;
                 }
             }
-            if (valmax < gl_rep_eps)
+            if (valmax < EPS_SP)
             {
                 sing = true;
                 return {};
@@ -317,7 +317,7 @@ namespace ppx
             {
                 scale = std::max(scale, fabs(a(i, k)));
             }
-            if (scale < gl_rep_eps)
+            if (scale < EPS_SP)
             {
                 sing = true;
                 c[k] = 0.0;
@@ -334,7 +334,7 @@ namespace ppx
                 {
                     sum += a(i, k) * a(i, k);
                 }
-                sigma = fabs(a(k, k)) < gl_rep_eps ? sqrt(sum) : SIGN(sqrt(sum), a(k, k));
+                sigma = fabs(a(k, k)) < EPS_SP ? sqrt(sum) : SIGN(sqrt(sum), a(k, k));
                 a(k, k) += sigma;
                 c[k] = sigma * a(k, k);
                 // d[k] = -scale * sigma;
@@ -356,7 +356,7 @@ namespace ppx
             }
         }
         // d[N - 1] = a(N - 1, N - 1);
-        if (fabs(d[IN - 1]) < gl_rep_eps)
+        if (fabs(d[IN - 1]) < EPS_SP)
         {
             sing = true;
         }
@@ -420,7 +420,7 @@ namespace ppx
                 {
                     scale += fabs(u(k, i));
                 }
-                if (scale > gl_rep_eps)
+                if (scale > EPS_SP)
                 {
                     for (k = i; k < IM; k++)
                     {
@@ -457,7 +457,7 @@ namespace ppx
                 {
                     scale += fabs(u(i, k));
                 }
-                if (scale > gl_rep_eps)
+                if (scale > EPS_SP)
                 {
                     for (k = l - 1; k < IN; k++)
                     {
@@ -495,7 +495,7 @@ namespace ppx
         {
             if (i < IN - 1)
             {
-                if (fabs(g) > gl_rep_eps)
+                if (fabs(g) > EPS_SP)
                 {
                     for (j = l; j < IN; j++)
                     {
@@ -531,7 +531,7 @@ namespace ppx
             {
                 u(i, j) = 0.0;
             }
-            if (fabs(g) > gl_rep_eps)
+            if (fabs(g) > EPS_SP)
             {
                 g = 1.0 / g;
                 for (j = l; j < IN; j++)
@@ -569,12 +569,12 @@ namespace ppx
                 for (l = k; l >= 0; l--)
                 {
                     nm = l - 1;
-                    if (l == 0 || fabs(rv1[l]) <= gl_rep_eps * anorm)
+                    if (l == 0 || fabs(rv1[l]) <= EPS_SP * anorm)
                     {
                         flag = false;
                         break;
                     }
-                    if (fabs(w[nm]) <= gl_rep_eps * anorm)
+                    if (fabs(w[nm]) <= EPS_SP * anorm)
                     {
                         break;
                     }
@@ -587,7 +587,7 @@ namespace ppx
                     {
                         f = s * rv1[i];
                         rv1[i] = c * rv1[i];
-                        if (fabs(f) <= gl_rep_eps * anorm)
+                        if (fabs(f) <= EPS_SP * anorm)
                         {
                             break;
                         }
@@ -688,7 +688,7 @@ namespace ppx
         constexpr int IM = M;
         double tmp[N];
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * gl_rep_eps;
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
         for (int j = 0; j < IN; j++)
         {
             auto s = 0.0;
@@ -771,7 +771,7 @@ namespace ppx
         }
         Matrix<N, N> W{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * gl_rep_eps;
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
         for (size_t i = 0; i < N; i++)
         {
             if (fabs(w[i]) > tsh)
@@ -800,7 +800,7 @@ namespace ppx
                     {
                         scale += fabs(z(i, k));
                     }
-                    if (fabs(scale) < gl_rep_eps)
+                    if (fabs(scale) < EPS_SP)
                     {
                         e[i] = z(i, l);
                     }
@@ -860,7 +860,7 @@ namespace ppx
         void tliq_no_vec(Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
             constexpr int IN = N;
-            constexpr double EPS = std::numeric_limits<double>::epsilon();
+            // constexpr double EPS = std::numeric_limits<double>::epsilon();
             for (int i = 1; i < IN; i++)
             {
                 e[i - 1] = e[i];
@@ -874,7 +874,7 @@ namespace ppx
                 {
                     for (m = l; m < IN - 1; m++)
                     {
-                        if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
+                        if (fabs(e[m]) < EPS_DP * (fabs(d[m]) + fabs(d[m + 1])))
                         {
                             break;
                         }
@@ -899,7 +899,7 @@ namespace ppx
                             double b = c * e[i];
                             r = sqrt(f * f + g * g);
                             e[i + 1] = r;
-                            if (fabs(r) < gl_rep_eps)
+                            if (fabs(r) < EPS_SP)
                             {
                                 d[i + 1] -= p;
                                 e[m] = 0.0;
@@ -913,7 +913,7 @@ namespace ppx
                             d[i + 1] = g + p;
                             g = c * r - b;
                         }
-                        if (fabs(r) < gl_rep_eps && i >= l)
+                        if (fabs(r) < EPS_SP && i >= l)
                         {
                             continue;
                         }
@@ -940,7 +940,7 @@ namespace ppx
                     {
                         scale += fabs(z(i, k));
                     }
-                    if (fabs(scale) < gl_rep_eps)
+                    if (fabs(scale) < EPS_SP)
                     {
                         e[i] = z(i, l);
                     }
@@ -994,7 +994,7 @@ namespace ppx
             e[0] = 0.0;
             for (int i = 0; i < IN; i++)
             {
-                if (fabs(d[i]) > gl_rep_eps)
+                if (fabs(d[i]) > EPS_SP)
                 {
                     for (int j = 0; j < i; j++)
                     {
@@ -1024,7 +1024,7 @@ namespace ppx
         void tliq_with_vec(Matrix<N, N> &z, Matrix<N, 1> &d, Matrix<N, 1> &e)
         {
             constexpr int IN = N;
-            constexpr double EPS = std::numeric_limits<double>::epsilon();
+            // constexpr double EPS = std::numeric_limits<double>::epsilon();
             for (int i = 1; i < IN; i++)
             {
                 e[i - 1] = e[i];
@@ -1038,7 +1038,7 @@ namespace ppx
                 {
                     for (m = l; m < IN - 1; m++)
                     {
-                        if (fabs(e[m]) < EPS * (fabs(d[m]) + fabs(d[m + 1])))
+                        if (fabs(e[m]) < EPS_DP * (fabs(d[m]) + fabs(d[m + 1])))
                         {
                             break;
                         }
@@ -1063,7 +1063,7 @@ namespace ppx
                             double b = c * e[i];
                             r = sqrt(f * f + g * g);
                             e[i + 1] = r;
-                            if (fabs(r) < gl_rep_eps)
+                            if (fabs(r) < EPS_SP)
                             {
                                 d[i + 1] -= p;
                                 e[m] = 0.0;
@@ -1083,7 +1083,7 @@ namespace ppx
                                 z(k, i) = c * z(k, i) - s * f;
                             }
                         }
-                        if (fabs(r) < gl_rep_eps && i >= l)
+                        if (fabs(r) < EPS_SP && i >= l)
                         {
                             continue;
                         }

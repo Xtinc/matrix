@@ -13,27 +13,29 @@
 namespace ppx
 {
     // constexpr
-    constexpr size_t gl_sm_limit = 260;
-    constexpr double gl_rep_pi = 3.141592653589793;
-    constexpr double gl_rep_eps = std::numeric_limits<float>::epsilon();
-    constexpr double gl_rep_max = std::numeric_limits<float>::max();
-    constexpr double gl_deg_rad(double deg)
+    constexpr size_t MSIZE_LIMIT = 260;
+    constexpr double PI = 3.141592653589793;
+    constexpr double EPS_SP = std::numeric_limits<float>::epsilon();
+    constexpr double EPS_DP = std::numeric_limits<double>::epsilon();
+    constexpr double MAX_SP = std::numeric_limits<float>::max();
+    constexpr double MAX_DP = std::numeric_limits<double>::max();
+    constexpr double DEG_RAD(double deg)
     {
-        return deg * gl_rep_pi / 180;
+        return deg * PI / 180;
     }
-    constexpr double gl_rad_deg(double rad)
+    constexpr double RAD_DEG(double rad)
     {
-        return 180 * rad / gl_rep_pi;
+        return 180 * rad / PI;
     }
 
     template <typename T, typename RT = void>
-    using enable_arith_type_t = typename std::enable_if<std::is_arithmetic<T>::value, RT>::type;
+    using enable_arith_type_t = std::enable_if_t<std::is_arithmetic<T>::value, RT>;
     template <typename T, typename RT = void>
-    using disable_arith_type_t = typename std::enable_if<!std::is_arithmetic<T>::value, RT>::type;
+    using disable_arith_type_t = std::enable_if_t<!std::is_arithmetic<T>::value, RT>;
     template <size_t A, size_t B, typename RT = void>
-    using enable_when_array_t = typename std::enable_if<A == 1 || B == 1, RT>::type;
+    using enable_when_array_t = std::enable_if_t<A == 1 || B == 1, RT>;
     template <size_t A, size_t B, typename RT = void>
-    using enable_when_matrix_t = typename std::enable_if<A != 1 && B != 1, RT>::type;
+    using enable_when_matrix_t = std::enable_if_t<A != 1 && B != 1, RT>;
 
     enum class StatusCode : char
     {
@@ -68,7 +70,7 @@ namespace ppx
     {
         inline bool is_same(double a, double b)
         {
-            return fabs(a - b) < gl_rep_eps;
+            return fabs(a - b) < EPS_SP;
         }
         inline bool near_zero(double a)
         {
@@ -190,7 +192,8 @@ namespace ppx
             explicit expr() = default;
             constexpr size_t size() { return self().size_impl(); }
             auto operator[](size_t idx) const { return self().at_impl(idx); }
-            auto operator()() const { return self()(); };
+            auto operator()() const { return self()(); }
+            auto eval() const { return self().eval(); }
         };
 
         template <typename T>
@@ -206,6 +209,7 @@ namespace ppx
             size_t size_impl() const { return value.size(); };
             auto at_impl(size_t idx) const { return value[idx]; };
             decltype(auto) operator()() const { return (value); }
+            decltype(auto) eval() const { return (value); }
 
         private:
             typename expr_traits<T>::ExprRef value;
@@ -225,7 +229,7 @@ namespace ppx
             constexpr size_t size_impl() { return gl_get_more(m_lxpr.size(), m_rxpr.size()); };
             auto at_impl(size_t idx) const { return m_ops(m_lxpr[idx], m_rxpr[idx]); };
             template <typename T>
-            operator T()
+            T eval() const
             {
                 T res{};
                 for (size_t idx = 0; idx < res.size(); ++idx)
@@ -233,6 +237,11 @@ namespace ppx
                     res[idx] = (*this)[idx];
                 }
                 return res;
+            }
+            template <typename T>
+            operator T() const
+            {
+                return eval<T>();
             }
             template <typename T, disable_arith_type_t<T> * = nullptr, typename T::expr_type>
             auto operator+(const T &rhs)
@@ -309,7 +318,7 @@ namespace ppx
     {
         constexpr size_t gl_sm(size_t A, size_t B)
         {
-            return A * B < gl_sm_limit ? 1 : 0;
+            return A * B < MSIZE_LIMIT ? 1 : 0;
         }
 
         template <size_t M, size_t N, std::size_t A = gl_sm(M, N)>
@@ -354,8 +363,7 @@ namespace ppx
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
-            template <typename T, enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::initializer_list<T> &list) : m_data(M * N, 0.0)
+            MatrixBase(const std::initializer_list<int> &list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -376,9 +384,9 @@ namespace ppx
     class Matrix : public details::MatrixBase<M, N>
     {
         template <size_t A, typename RT = void>
-        using enable_when_squre_t = typename std::enable_if<A == N, RT>::type;
+        using enable_when_squre_t = std::enable_if_t<A == N, RT>;
         template <size_t A, typename RT = void>
-        using disable_when_squre_t = typename std::enable_if<A != N, RT>::type;
+        using disable_when_squre_t = std::enable_if_t<A != N, RT>;
         using IndexRange = std::pair<int, int>;
         using result_t = details::expr_result<Matrix>;
         template <typename T>
@@ -476,87 +484,98 @@ namespace ppx
         {
         public:
             using iterator_category = std::random_access_iterator_tag;
-            inline iterator(value_type *ptr) noexcept : m_ptr(ptr) {}
-            inline iterator(const iterator &itr) noexcept : m_ptr(itr.m_ptr) {}
-            inline iterator &operator=(const iterator &rhs) noexcept
+            iterator(value_type *ptr) noexcept : m_ptr(ptr) {}
+            // iterator(const iterator &itr) noexcept : m_ptr(itr.m_ptr) {}
+
+            pointer operator->() const noexcept
+            {
+                return m_ptr;
+            }
+            reference operator*() const noexcept
+            {
+                return *m_ptr;
+            }
+
+            iterator &operator=(const iterator &rhs) noexcept
             {
                 m_ptr = rhs.m_ptr;
                 return *this;
             }
-            inline bool operator==(const iterator &rhs) const noexcept
+            bool operator==(const iterator &rhs) const noexcept
             {
                 return m_ptr == rhs.m_ptr;
             }
-            inline bool operator!=(const iterator &rhs) const noexcept
+            bool operator!=(const iterator &rhs) const noexcept
             {
                 return m_ptr != rhs.m_ptr;
             }
-            inline bool operator>(const iterator &rhs) const noexcept
+            bool operator>(const iterator &rhs) const noexcept
             {
                 return m_ptr > rhs.m_ptr;
             }
-            inline bool operator<(const iterator &rhs) const noexcept
+            bool operator>=(const iterator &rhs) const noexcept
+            {
+                return m_ptr >= rhs.m_ptr;
+            }
+            bool operator<(const iterator &rhs) const noexcept
+            {
+                return m_ptr < rhs.m_ptr;
+            }
+            bool operator<=(const iterator &rhs) const noexcept
             {
                 return m_ptr <= rhs.m_ptr;
             }
-            inline pointer operator->() const noexcept
-            {
-                return m_ptr;
-            }
-            inline reference operator*() const noexcept
-            {
-                return *m_ptr;
-            }
-            inline iterator &operator++() noexcept
+
+            iterator &operator++() noexcept
             {
                 m_ptr += 1;
                 return *this;
             }
-            inline iterator operator++(int) noexcept
+            iterator operator++(int) noexcept
             {
                 value_type *ret = m_ptr;
                 m_ptr += 1;
                 return ret;
             }
-            inline iterator &operator--() noexcept
+            iterator &operator--() noexcept
             {
                 m_ptr -= 1;
                 return *this;
             }
-            inline iterator operator--(int) noexcept
+            iterator operator--(int) noexcept
             {
                 value_type *ret = m_ptr;
                 m_ptr -= 1;
                 return ret;
             }
-            inline iterator &operator+=(difference_type step) noexcept
+            iterator &operator+=(difference_type step) noexcept
             {
                 m_ptr += step;
                 return *this;
             }
-            inline iterator &operator-=(difference_type step) noexcept
+            iterator &operator-=(difference_type step) noexcept
             {
                 m_ptr -= step;
                 return *this;
             }
-            inline iterator operator+(difference_type step) noexcept
+            iterator operator+(difference_type step) noexcept
             {
                 value_type *ret = m_ptr;
                 ret += step;
                 return ret;
             }
-            inline iterator operator-(difference_type step) noexcept
+            iterator operator-(difference_type step) noexcept
             {
                 value_type *ret = m_ptr;
                 ret -= step;
                 return ret;
             }
-            inline iterator operator[](difference_type n) noexcept
+            iterator operator[](difference_type n) noexcept
             {
                 m_ptr += n;
                 return *this;
             }
-            inline difference_type operator-(const iterator &rhs) const noexcept
+            difference_type operator-(const iterator &rhs) const noexcept
             {
                 return m_ptr - rhs.m_ptr;
             }
@@ -568,91 +587,102 @@ namespace ppx
         {
         public:
             using iterator_category = std::random_access_iterator_tag;
-            inline const_iterator(value_type *const ptr) noexcept : m_ptr(ptr)
+            const_iterator(value_type *const ptr) noexcept : m_ptr(ptr)
             {
             }
-            inline const_iterator(const const_iterator &itr) noexcept : m_ptr(itr.m_ptr)
+
+            pointer operator->() const noexcept
+            {
+                return m_ptr;
+            }
+            reference operator*() const noexcept
+            {
+                return *m_ptr;
+            }
+
+            const_iterator(const const_iterator &itr) noexcept : m_ptr(itr.m_ptr)
             {
             }
-            inline const_iterator &operator=(const const_iterator &rhs) noexcept
+            const_iterator &operator=(const const_iterator &rhs) noexcept
             {
                 m_ptr = rhs.m_ptr;
                 return *this;
             }
-            inline bool operator==(const const_iterator &rhs) const noexcept
+            bool operator==(const const_iterator &rhs) const noexcept
             {
                 return m_ptr == rhs.m_ptr;
             }
-            inline bool operator!=(const const_iterator &rhs) const noexcept
+            bool operator!=(const const_iterator &rhs) const noexcept
             {
                 return m_ptr != rhs.m_ptr;
             }
-            inline bool operator>(const const_iterator &rhs) const noexcept
+            bool operator>(const const_iterator &rhs) const noexcept
             {
                 return m_ptr > rhs.m_ptr;
             }
-            inline bool operator<(const const_iterator &rhs) const noexcept
+            bool operator>=(const const_iterator &rhs) const noexcept
+            {
+                return m_ptr >= rhs.m_ptr;
+            }
+            bool operator<(const const_iterator &rhs) const noexcept
+            {
+                return m_ptr < rhs.m_ptr;
+            }
+            bool operator<=(const const_iterator &rhs) const noexcept
             {
                 return m_ptr <= rhs.m_ptr;
             }
-            inline pointer operator->() const noexcept
-            {
-                return m_ptr;
-            }
-            inline reference operator*() const noexcept
-            {
-                return *m_ptr;
-            }
-            inline const_iterator &operator++() noexcept
+
+            const_iterator &operator++() noexcept
             {
                 m_ptr++;
                 return *this;
             }
-            inline const_iterator operator++(int) noexcept
+            const_iterator operator++(int) noexcept
             {
                 value_type const *ret = m_ptr;
                 m_ptr++;
                 return ret;
             }
-            inline const_iterator &operator--() noexcept
+            const_iterator &operator--() noexcept
             {
                 m_ptr--;
                 return *this;
             }
-            inline const_iterator operator--(int) noexcept
+            const_iterator operator--(int) noexcept
             {
                 value_type const *ret = m_ptr;
                 m_ptr--;
                 return ret;
             }
-            inline const_iterator &operator+=(ptrdiff_t step) noexcept
+            const_iterator &operator+=(ptrdiff_t step) noexcept
             {
                 m_ptr += step;
                 return *this;
             }
-            inline const_iterator &operator-=(ptrdiff_t step) noexcept
+            const_iterator &operator-=(ptrdiff_t step) noexcept
             {
                 m_ptr -= step;
                 return *this;
             }
-            inline const_iterator operator+(ptrdiff_t step) noexcept
+            const_iterator operator+(ptrdiff_t step) noexcept
             {
                 value_type const *ret = m_ptr;
                 ret += step;
                 return ret;
             }
-            inline const_iterator operator-(ptrdiff_t step) noexcept
+            const_iterator operator-(ptrdiff_t step) noexcept
             {
                 value_type const *ret = m_ptr;
                 ret -= step;
                 return ret;
             }
-            inline const_iterator operator[](difference_type n) noexcept
+            const_iterator operator[](difference_type n) noexcept
             {
                 m_ptr += n;
                 return *this;
             }
-            inline difference_type operator-(const const_iterator &rhs) const noexcept
+            difference_type operator-(const const_iterator &rhs) const noexcept
             {
                 return m_ptr - rhs.m_ptr;
             }
@@ -784,7 +814,7 @@ namespace ppx
             Matrix<N, N> W{};
             for (size_t i = 0; i < N; i++)
             {
-                if (fabs(w[i]) > gl_rep_eps)
+                if (fabs(w[i]) > EPS_SP)
                 {
                     W(i, i) = 1.0 / w[i];
                 }
