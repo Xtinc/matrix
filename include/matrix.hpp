@@ -13,7 +13,6 @@
 namespace ppx
 {
     // constexpr
-    constexpr size_t MSIZE_LIMIT = 260;
     constexpr double PI = 3.141592653589793;
     constexpr double EPS_SP = std::numeric_limits<float>::epsilon();
     constexpr double EPS_DP = std::numeric_limits<double>::epsilon();
@@ -68,6 +67,8 @@ namespace ppx
 
     namespace details
     {
+        constexpr size_t MSIZE_LIMIT = 260;
+
         inline bool is_same(double a, double b)
         {
             return fabs(a - b) < EPS_SP;

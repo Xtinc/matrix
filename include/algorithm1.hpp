@@ -32,6 +32,22 @@ namespace ppx
         Matrix<N, 1> val;
     };
 
+    template <size_t N>
+    struct EqnResult
+    {
+        Matrix<N, 1> x;
+        StatusCode s = StatusCode::NORMAL;
+    };
+
+    template <size_t N>
+    std::ostream &operator<<(std::ostream &os, const EqnResult<N> &self)
+    {
+        os << "EqnResult<" << N << ">:\n"
+           << "Status:\t" << self.s << "\n"
+           << "x     =\t" << self.x <<std::endl;
+        return os;
+    }
+
     template <size_t M, size_t N>
     void zeros(Matrix<M, N> &m)
     {
@@ -714,48 +730,51 @@ namespace ppx
     }
 
     template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::LU, Matrix<N, 1>>
-    solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
+    std::enable_if_t<type == factorization::LU, EqnResult<N>>
+    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         std::array<int, M> indx{};
         auto even = true;
+        auto sing = false;
         auto LU = ludcmp(A, indx, even, sing);
-        if (sing)
+        if (!sing)
         {
-            return {};
+            ludbksb(LU, indx, b.data());
         }
-        ludbksb(LU, indx, b.data());
-        return b;
+        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
+        return {b, s};
     }
 
     template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::QR, Matrix<N, 1>>
-    solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
+    std::enable_if_t<type == factorization::QR, EqnResult<N>>
+    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         Matrix<N, 1> c;
         Matrix<N, 1> d;
+        auto sing = false;
         auto R = qrdcmp(A, c, d, sing);
-        if (sing)
+        if (!sing)
         {
-            return {};
+            qrsolv(R, c, d, b.data());
         }
-        qrsolv(R, c, d, b.data());
-        return slice<N, 1>(b, 0, 0);
+        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
+        return {slice<N, 1>(b, 0, 0), s};
     }
 
     template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::SVD, Matrix<N, 1>>
-    solve(const Matrix<M, N> &A, Matrix<M, 1> b, bool &sing)
+    std::enable_if_t<type == factorization::SVD, EqnResult<N>>
+    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         Matrix<N, 1> w{};
         Matrix<N, N> V{};
+        auto sing = false;
         auto U = svdcmp(A, w, V, sing);
-        if (sing)
+        if (!sing)
         {
-            return {};
+            svbksb(U, w, V, b.data());
         }
-        svbksb(U, w, V, b.data());
-        return slice<N, 1>(b, 0, 0);
+        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
+        return {slice<N, 1>(b, 0, 0), s};
     }
 
     template <size_t M, size_t N>

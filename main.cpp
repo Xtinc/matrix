@@ -55,15 +55,15 @@ void test_matrix()
                    2.7, -5.7, -0.8, -9.8,
                    -3.1, -6.0, 1.9, 6.9};
     Matrix<4, 1> Y{1, 1, 1, 1};
-    bool sing = true;
-    PRINT_SINGLE_ELEMENTS(solve<factorization::QR>(X, Y, sing), "QR    x = ");
-    PRINT_SINGLE_ELEMENTS(solve<factorization::SVD>(X, Y, sing), "SVD  x = ");
+    PRINT_SINGLE_ELEMENTS(linsolve<factorization::QR>(X, Y), "solved by QR = ");
+    PRINT_SINGLE_ELEMENTS(linsolve<factorization::SVD>(X, Y), "solved by SVD = ");
     PRINT_SINGLE_ELEMENTS(X, " X = ");
     Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
                    3, 6, 9, 5};
     Matrix<3, 1> v{};
     Matrix<3, 3> w{};
+    bool sing = false;
     u = svdcmp(u, v, w, sing);
     PRINT_SINGLE_ELEMENTS(u, "U = ");
     PRINT_SINGLE_ELEMENTS(v, "S = ");
@@ -83,7 +83,7 @@ void test_linear()
 {
     std::default_random_engine eni((unsigned)time(NULL));
     std::uniform_real_distribution<> uf(-10000, 10000);
-    printf("Test linear solver LU\n");
+    printf("Test linear linsolver LU\n");
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
@@ -97,12 +97,11 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        bool sing = false;
-        auto result = solve<factorization::LU>(A, b, sing);
-        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
+        auto result = linsolve<factorization::LU>(A, b);
+        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
-    printf("Test linear solver SVD\n");
+    printf("Test linear linsolver SVD\n");
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
@@ -116,12 +115,11 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        bool sing = false;
-        auto result = solve<factorization::SVD>(A, b, sing);
-        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
+        auto result = linsolve<factorization::SVD>(A, b);
+        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
-    printf("Test linear solver QR\n");
+    printf("Test linear linsolver QR\n");
     for (size_t i = 0; i < 50; i++)
     {
         Matrix<100, 100> A;
@@ -135,9 +133,8 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        bool sing = false;
-        auto result = solve<factorization::QR>(A, b, sing);
-        auto residual = norm2((result - x).eval<Matrix<100, 1>>());
+        auto result = linsolve<factorization::QR>(A, b);
+        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
 }
