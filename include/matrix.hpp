@@ -9,6 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <cassert>
 
 namespace ppx
 {
@@ -406,21 +407,34 @@ namespace ppx
             }
             SubPart(const SubPart &) = delete;
             SubPart(SubPart &&) = delete;
-
-            SubPart &operator=(const SubPart &) = delete;
-            SubPart &operator=(SubPart &&) = delete;
-
-            template <size_t A, size_t B>
-            void operator=(const Matrix<A, B> &other)
+            SubPart &operator=(const SubPart &other) = delete;
+            SubPart &operator=(SubPart &&other)
             {
-                if (row_idx > row_end || col_idx > col_end)
-                {
-                    return;
-                }
+                assert(row_idx <= row_end && col_idx <= col_end);
                 auto real_row_counts = row_end - row_idx + 1;
                 auto real_col_counts = col_end - col_idx + 1;
-                real_row_counts = real_row_counts > A ? A : real_row_counts;
-                real_col_counts = real_col_counts > B ? B : real_col_counts;
+                auto other_row_counts = other.row_end - other.row_idx + 1;
+                auto other_col_counts = other.col_end - other.col_idx + 1;
+                real_row_counts = std::min(real_row_counts, other_row_counts);
+                real_col_counts = std::min(real_col_counts, other_col_counts);
+                for (size_t i = 0; i < real_row_counts; i++)
+                {
+                    for (size_t j = 0; j < real_col_counts; j++)
+                    {
+                        data(row_idx + i, col_idx + j) = other.data(other.row_idx + i, other.col_idx + j);
+                    }
+                }
+                return *this;
+            }
+
+            template <size_t A, size_t B>
+            SubPart &operator=(const Matrix<A, B> &other)
+            {
+                assert(row_idx <= row_end && col_idx <= col_end);
+                auto real_row_counts = row_end - row_idx + 1;
+                auto real_col_counts = col_end - col_idx + 1;
+                real_row_counts = std::min(real_row_counts, A);
+                real_col_counts = std::min(real_col_counts, B);
                 for (size_t i = 0; i < real_row_counts; i++)
                 {
                     for (size_t j = 0; j < real_col_counts; j++)
@@ -428,22 +442,25 @@ namespace ppx
                         data(row_idx + i, col_idx + j) = other(i, j);
                     }
                 }
-                return;
+                return *this;
             }
             template <typename T, size_t A, enable_arith_type_t<T> * = nullptr>
-            void operator=(const std::array<T, A> &list)
+            SubPart &operator=(const std::array<T, A> &list)
             {
                 generator_by_list(list);
+                return *this;
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
-            void operator=(const std::initializer_list<T> &list)
+            SubPart &operator=(const std::initializer_list<T> &list)
             {
                 generator_by_list(list);
+                return *this;
             }
             template <typename T, enable_arith_type_t<T> * = nullptr>
-            void operator=(const std::vector<T> &list)
+            SubPart &operator=(const std::vector<T> &list)
             {
                 generator_by_list(list);
+                return *this;
             }
 
         private:
@@ -462,6 +479,7 @@ namespace ppx
                 auto real_col_counts = col_end - col_idx + 1;
                 if (real_col_counts == 1)
                 {
+                    real_row_counts = std::min(real_row_counts, A);
                     for (size_t i = 0; i < real_row_counts; i++)
                     {
                         data(row_idx + i, col_idx) = *(iter++);
@@ -470,7 +488,7 @@ namespace ppx
                 }
                 if (real_row_counts == 1)
                 {
-                    real_col_counts = real_col_counts > A ? A : real_col_counts;
+                    real_col_counts = std::min(real_col_counts, A);
                     for (size_t i = 0; i < real_col_counts; i++)
                     {
                         data(row_idx, col_idx + i) = *(iter++);
@@ -742,7 +760,7 @@ namespace ppx
         }
         Matrix<N, 1> row(size_t idx) const
         {
-            // auto real_idx = idx < M ? idx : M;
+            assert(idx < M);
             Matrix<N, 1> result;
             for (auto i = 0u; i < N; ++i)
             {
@@ -752,7 +770,7 @@ namespace ppx
         }
         Matrix<M, 1> col(size_t idx) const
         {
-            // auto real_idx = idx < N ? idx : N;
+            assert(idx < N);
             Matrix<M, 1> result;
             for (auto i = 0u; i < M; ++i)
             {
@@ -850,30 +868,56 @@ namespace ppx
             }
             return res;
         }
+        template <size_t A = std::min(M, N)>
+        enable_when_matrix_t<M, N, Matrix<A, 1>> diag() const
+        {
+            Matrix<A, 1> result;
+            for (size_t i = 0; i < A; i++)
+            {
+                result[i] = (*this)(i, i);
+            }
+            return result;
+        }
+        template <size_t A = std::max(M, N)>
+        enable_when_array_t<M, N, Matrix<A, A>> diag() const
+        {
+            Matrix<A, A> result;
+            for (size_t i = 0; i < A; i++)
+            {
+                result(i, i) = (*this)[i];
+            }
+            return result;
+        }
 
         // Overloaded Operators
         double &operator()(size_t row, size_t col)
         {
+            assert(row < M && col < N);
             return this->m_data.at(row + col * M);
         }
         const double &operator()(size_t row, size_t col) const
         {
+            assert(row < M && col < N);
             return this->m_data.at(row + col * M);
         }
         double &operator()(const std::pair<size_t, size_t> &idx)
         {
+            assert(idx.first < M && idx.second < N);
             return this->m_data.at(idx.first + idx.second * M);
         }
         const double &operator()(const std::pair<size_t, size_t> &idx) const
         {
+            assert(idx.first < M && idx.second < N);
             return this->m_data.at(idx.first + idx.second * M);
         }
         double &operator[](size_t idx)
         {
+            assert(idx < M * N);
             return this->m_data.at(idx);
         }
         const double &operator[](size_t idx) const
         {
+            assert(idx < M * N);
             return this->m_data.at(idx);
         }
         template <typename T, enable_arith_type_t<T> * = nullptr>
@@ -1042,38 +1086,6 @@ namespace ppx
         {
             Matrix<M, N> result{};
             result.fill(0.0);
-            return result;
-        }
-        template <typename T, size_t L = std::min(M, N)>
-        static enable_arith_type_t<T, Matrix<L, L>> diag(const std::initializer_list<T> &list)
-        {
-            Matrix<L, L> result{};
-            auto idx = 0u;
-            for (auto iter = list.begin(); iter != list.end(); iter++)
-            {
-                result(idx, idx) = *iter;
-                ++idx;
-            }
-            return result;
-        }
-        template <size_t L>
-        static Matrix<L, L> diag(const Matrix<L, 1> &list)
-        {
-            Matrix<L, L> result{};
-            for (size_t i = 0; i < N; i++)
-            {
-                result(i, i) = list[i];
-            }
-            return result;
-        }
-        template <size_t L>
-        static Matrix<L, L> diag(const Matrix<1, L> &list)
-        {
-            Matrix<L, L> result{};
-            for (size_t i = 0; i < N; i++)
-            {
-                result(i, i) = list[i];
-            }
             return result;
         }
         constexpr size_t row_counts()

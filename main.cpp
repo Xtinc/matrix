@@ -18,6 +18,12 @@ void test_matrix()
     a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
     PRINT_SINGLE_ELEMENTS(a, "a = ");
     PRINT_LISTED_ELEMENTS(a, "a in list: ");
+    a({2, 3}, {2, 3}) = a({0, 1}, {0, 1});
+    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
+    a(1, {-1, -1}) = a(0, {-1, -1});
+    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
+    a({0, 1}, {0, 1}) = a({2, 3}, {2, 3});
+    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
     PRINT_SINGLE_ELEMENTS(determinant(a), "determinant(a) = ");
     PRINT_SINGLE_ELEMENTS(inverse(a), "inverse(a) = ");
     Matrix<4, 4> A(std::move(a));
@@ -68,7 +74,7 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(u, "U = ");
     PRINT_SINGLE_ELEMENTS(v, "S = ");
     PRINT_SINGLE_ELEMENTS(w, "V = ");
-    PRINT_SINGLE_ELEMENTS(u * Matrix<3, 3>::diag({v[0], v[1], v[2]}) * w.T(), "U*S*V = ");
+    PRINT_SINGLE_ELEMENTS(u * v.diag() * w.T(), "U*S*V = ");
 
     Matrix<4, 4> g{2, -1, 1, 4,
                    -1, 2, -1, 1,
