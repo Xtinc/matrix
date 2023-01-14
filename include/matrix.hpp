@@ -19,10 +19,12 @@ namespace ppx
     constexpr double EPS_DP = std::numeric_limits<double>::epsilon();
     constexpr double MAX_SP = std::numeric_limits<float>::max();
     constexpr double MAX_DP = std::numeric_limits<double>::max();
+
     constexpr double DEG_RAD(double deg)
     {
         return deg * PI / 180;
     }
+
     constexpr double RAD_DEG(double rad)
     {
         return 180 * rad / PI;
@@ -30,8 +32,6 @@ namespace ppx
 
     template <typename T, typename RT = void>
     using enable_arith_type_t = std::enable_if_t<std::is_arithmetic<T>::value, RT>;
-    template <typename T, typename RT = void>
-    using disable_arith_type_t = std::enable_if_t<!std::is_arithmetic<T>::value, RT>;
     template <size_t A, size_t B, typename RT = void>
     using enable_when_array_t = std::enable_if_t<A == 1 || B == 1, RT>;
     template <size_t A, size_t B, typename RT = void>
@@ -68,21 +68,24 @@ namespace ppx
 
     namespace details
     {
-        constexpr size_t MSIZE_LIMIT = 260;
+        constexpr size_t MAX_SIZE_LIMIT = 260;
 
         inline bool is_same(double a, double b)
         {
             return fabs(a - b) < EPS_SP;
         }
+
         inline bool near_zero(double a)
         {
             return fabs(a) < 1.0e-5;
         }
+
         template <typename T>
         inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
         {
             std::cout << optcsrt << coll << std::endl;
         }
+
         template <typename T>
         inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
         {
@@ -93,6 +96,7 @@ namespace ppx
             }
             std::cout << std::endl;
         }
+
         template <typename T>
         inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
         {
@@ -108,33 +112,40 @@ namespace ppx
         struct expr_plus_t
         {
             constexpr explicit expr_plus_t() = default;
+
             template <typename LType, typename RType>
             auto operator()(const LType &lhs, const RType &rhs) const
             {
                 return lhs + rhs;
             }
         };
+
         struct expr_minus_t
         {
             constexpr explicit expr_minus_t() = default;
+
             template <typename LType, typename RType>
             auto operator()(const LType &lhs, const RType &rhs) const
             {
                 return lhs - rhs;
             }
         };
+
         struct expr_mul_t
         {
             constexpr explicit expr_mul_t() = default;
+
             template <typename LType, typename RType>
             auto operator()(const LType &lhs, const RType &rhs) const
             {
                 return lhs * rhs;
             }
         };
+
         struct expr_div_t
         {
             constexpr explicit expr_div_t() = default;
+
             template <typename LType, typename RType>
             auto operator()(const LType &lhs, const RType &rhs) const
             {
@@ -156,15 +167,18 @@ namespace ppx
             const T &s;
 
         public:
-            constexpr expr_scalar(const T &v)
-                : s(v)
-            {
-            }
-            constexpr T const &operator[](std::size_t) const
+            constexpr expr_scalar(const T &v) : s(v) {}
+
+            constexpr T const &
+
+            operator[](std::size_t) const
             {
                 return s;
             }
-            constexpr std::size_t size() const
+
+            constexpr std::size_t
+
+            size() const
             {
                 return 0;
             }
@@ -186,16 +200,39 @@ namespace ppx
         class expr
         {
         public:
-            using expr_type = expr<T>;
-            const T &self() const { return static_cast<const T &>(*this); }
-            T &self() { return static_cast<T &>(*this); }
+            const T &self() const
+            {
+                return static_cast<const T &>(*this);
+            }
+
+            T &self()
+            {
+                return static_cast<T &>(*this);
+            }
+
+            template <typename S>
+            auto eval() const
+            {
+                return (S)self();
+            }
 
         protected:
             explicit expr() = default;
-            constexpr size_t size() { return self().size_impl(); }
-            auto operator[](size_t idx) const { return self().at_impl(idx); }
-            auto operator()() const { return self()(); }
-            auto eval() const { return self().eval(); }
+
+            constexpr size_t size()
+            {
+                return self().size_impl();
+            }
+
+            auto operator[](size_t idx) const
+            {
+                return self().at_impl(idx);
+            }
+
+            auto operator()() const
+            {
+                return self()();
+            }
         };
 
         template <typename T>
@@ -208,10 +245,21 @@ namespace ppx
             friend base_type;
 
             explicit expr_result(const T &val) : value(val) {}
-            size_t size_impl() const { return value.size(); };
-            auto at_impl(size_t idx) const { return value[idx]; };
-            decltype(auto) operator()() const { return (value); }
-            decltype(auto) eval() const { return (value); }
+
+            size_t size_impl() const
+            {
+                return value.size();
+            };
+
+            auto at_impl(size_t idx) const
+            {
+                return value[idx];
+            };
+
+            decltype(auto) operator()() const
+            {
+                return (value);
+            }
 
         private:
             typename expr_traits<T>::ExprRef value;
@@ -226,12 +274,20 @@ namespace ppx
             using base_type::operator[];
             friend base_type;
 
-            explicit biops(const Ops &ops, const lExpr &lxpr, const rExpr &rxpr)
-                : m_ops(ops), m_lxpr(lxpr), m_rxpr(rxpr){};
-            constexpr size_t size_impl() { return gl_get_more(m_lxpr.size(), m_rxpr.size()); };
-            auto at_impl(size_t idx) const { return m_ops(m_lxpr[idx], m_rxpr[idx]); };
+            explicit biops(const Ops &ops, const lExpr &lxpr, const rExpr &rxpr) : m_ops(ops), m_lxpr(lxpr), m_rxpr(rxpr){};
+
+            constexpr size_t size_impl()
+            {
+                return std::max(m_lxpr.size(), m_rxpr.size());
+            }
+
+            auto at_impl(size_t idx) const
+            {
+                return m_ops(m_lxpr[idx], m_rxpr[idx]);
+            }
+
             template <typename T>
-            T eval() const
+            operator T() const
             {
                 T res{};
                 for (size_t idx = 0; idx < res.size(); ++idx)
@@ -240,57 +296,6 @@ namespace ppx
                 }
                 return res;
             }
-            template <typename T>
-            operator T() const
-            {
-                return eval<T>();
-            }
-            template <typename T, disable_arith_type_t<T> * = nullptr, typename T::expr_type>
-            auto operator+(const T &rhs)
-            {
-                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, T>(expr_plus, *this, rhs);
-            }
-            template <typename T, disable_arith_type_t<T> * = nullptr>
-            auto operator+(const T &rhs)
-            {
-                using result_t = expr_result<T>;
-                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, result_t>(expr_plus, *this, result_t(rhs));
-            }
-            template <typename T, enable_arith_type_t<T> * = nullptr>
-            auto operator+(const T &rhs)
-            {
-                using result_s = expr_result<expr_scalar<T>>;
-                return biops<expr_plus_t, biops<Ops, lExpr, rExpr>, result_s>(expr_plus, *this, result_s(rhs));
-            }
-            template <typename T, disable_arith_type_t<T> * = nullptr, typename T::expr_type>
-            auto operator-(const T &rhs)
-            {
-                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, T>(expr_minus, *this, rhs);
-            }
-            template <typename T, disable_arith_type_t<T> * = nullptr>
-            auto operator-(const T &rhs)
-            {
-                using result_t = expr_result<T>;
-                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, result_t>(expr_minus, *this, result_t(rhs));
-            }
-            template <typename T, enable_arith_type_t<T> * = nullptr>
-            auto operator-(const T &rhs)
-            {
-                using result_s = expr_result<expr_scalar<T>>;
-                return biops<expr_minus_t, biops<Ops, lExpr, rExpr>, result_s>(expr_minus, *this, result_s(rhs));
-            }
-            template <typename T, enable_arith_type_t<T> * = nullptr>
-            auto operator*(const T &rhs)
-            {
-                using result_s = expr_result<expr_scalar<T>>;
-                return biops<expr_mul_t, biops<Ops, lExpr, rExpr>, result_s>(expr_mul, *this, result_s(rhs));
-            }
-            template <typename T, enable_arith_type_t<T> * = nullptr>
-            auto operator/(const T &rhs)
-            {
-                using result_s = expr_result<expr_scalar<T>>;
-                return biops<expr_div_t, biops<Ops, lExpr, rExpr>, result_s>(expr_div, *this, result_s(rhs));
-            }
 
         private:
             Ops m_ops;
@@ -298,7 +303,7 @@ namespace ppx
             rExpr m_rxpr;
         };
 
-    }
+    } // namespace details
 
     // forward declare
     template <size_t M, size_t N>
@@ -318,12 +323,12 @@ namespace ppx
 
     namespace details
     {
-        constexpr size_t gl_sm(size_t A, size_t B)
+        constexpr size_t is_samll_matrix(size_t A, size_t B)
         {
-            return A * B < MSIZE_LIMIT ? 1 : 0;
+            return A * B < MAX_SIZE_LIMIT ? 1 : 0;
         }
 
-        template <size_t M, size_t N, std::size_t A = gl_sm(M, N)>
+        template <size_t M, size_t N, std::size_t A = is_samll_matrix(M, N)>
         class MatrixBase;
 
         template <std::size_t M, std::size_t N>
@@ -331,20 +336,23 @@ namespace ppx
         {
         protected:
             MatrixBase() : m_data{} {}
+
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::array<T, L> &list) : m_data{}
+            explicit MatrixBase(const std::array<T, L> &list) : m_data{}
             {
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
+
             template <typename T, enable_arith_type_t<T> * = nullptr>
             MatrixBase(const std::initializer_list<T> &list) : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
+
             template <typename T, enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::vector<T> &list) : m_data{}
+            explicit MatrixBase(const std::vector<T> &list) : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -359,19 +367,22 @@ namespace ppx
         {
         protected:
             MatrixBase() : m_data(M * N, 0.0) {}
+
             template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
+            explicit MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
             {
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
+
             MatrixBase(const std::initializer_list<int> &list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
+
             template <typename T, enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
+            explicit MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -380,7 +391,8 @@ namespace ppx
         protected:
             std::vector<double> m_data;
         };
-    }
+
+    } // namespace details
 
     template <std::size_t M, std::size_t N>
     class Matrix : public details::MatrixBase<M, N>
@@ -390,9 +402,6 @@ namespace ppx
         template <size_t A, typename RT = void>
         using disable_when_squre_t = std::enable_if_t<A != N, RT>;
         using IndexRange = std::pair<int, int>;
-        using result_t = details::expr_result<Matrix>;
-        template <typename T>
-        using result_s = details::expr_result<details::expr_scalar<T>>;
 
         struct SubPart
         {
@@ -405,27 +414,14 @@ namespace ppx
                 row_end = r.second >= 0 ? r.second : M - 1;
                 col_end = c.second >= 0 ? c.second : N - 1;
             }
+
             SubPart(const SubPart &) = delete;
+
             SubPart(SubPart &&) = delete;
+
             SubPart &operator=(const SubPart &other) = delete;
-            SubPart &operator=(SubPart &&other)
-            {
-                assert(row_idx <= row_end && col_idx <= col_end);
-                auto real_row_counts = row_end - row_idx + 1;
-                auto real_col_counts = col_end - col_idx + 1;
-                auto other_row_counts = other.row_end - other.row_idx + 1;
-                auto other_col_counts = other.col_end - other.col_idx + 1;
-                real_row_counts = std::min(real_row_counts, other_row_counts);
-                real_col_counts = std::min(real_col_counts, other_col_counts);
-                for (size_t i = 0; i < real_row_counts; i++)
-                {
-                    for (size_t j = 0; j < real_col_counts; j++)
-                    {
-                        data(row_idx + i, col_idx + j) = other.data(other.row_idx + i, other.col_idx + j);
-                    }
-                }
-                return *this;
-            }
+
+            SubPart &operator=(SubPart &&other) = delete;
 
             template <size_t A, size_t B>
             SubPart &operator=(const Matrix<A, B> &other)
@@ -444,18 +440,21 @@ namespace ppx
                 }
                 return *this;
             }
+
             template <typename T, size_t A, enable_arith_type_t<T> * = nullptr>
             SubPart &operator=(const std::array<T, A> &list)
             {
                 generator_by_list(list);
                 return *this;
             }
+
             template <typename T, enable_arith_type_t<T> * = nullptr>
             SubPart &operator=(const std::initializer_list<T> &list)
             {
                 generator_by_list(list);
                 return *this;
             }
+
             template <typename T, enable_arith_type_t<T> * = nullptr>
             SubPart &operator=(const std::vector<T> &list)
             {
@@ -736,14 +735,17 @@ namespace ppx
 
     public:
         Matrix() = default;
+
         template <typename T, size_t L, enable_arith_type_t<T> * = nullptr>
         Matrix(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
         {
         }
+
         template <typename T, enable_arith_type_t<T> * = nullptr>
         Matrix(const std::initializer_list<T> &list) : details::MatrixBase<M, N>(list)
         {
         }
+
         template <typename T, enable_arith_type_t<T> * = nullptr>
         Matrix(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
         {
@@ -754,10 +756,12 @@ namespace ppx
         {
             return this->m_data.data();
         }
+
         const double *data() const
         {
             return this->m_data.data();
         }
+
         Matrix<N, 1> row(size_t idx) const
         {
             assert(idx < M);
@@ -768,6 +772,7 @@ namespace ppx
             }
             return result;
         }
+
         Matrix<M, 1> col(size_t idx) const
         {
             assert(idx < N);
@@ -778,22 +783,27 @@ namespace ppx
             }
             return result;
         }
+
         SubPart operator()(const IndexRange &row_range, const IndexRange &col_range)
         {
             return {*this, row_range, col_range};
         }
+
         SubPart operator()(size_t row_idx, const IndexRange &col_range)
         {
             return {*this, {(int)row_idx, (int)row_idx}, col_range};
         }
+
         SubPart operator()(const IndexRange &row_range, size_t col_idx)
         {
             return {*this, row_range, {(int)col_idx, (int)col_idx}};
         }
+
         void fill(double val)
         {
             std::fill(this->m_data.begin(), this->m_data.end(), val);
         }
+
         Matrix<N, M> T() const
         {
             Matrix<N, M> res{};
@@ -806,6 +816,7 @@ namespace ppx
             }
             return res;
         }
+
         template <size_t A = M>
         enable_when_squre_t<A, Matrix> I() const
         {
@@ -824,6 +835,7 @@ namespace ppx
             }
             return result;
         }
+
         template <size_t A = M>
         disable_when_squre_t<A, Matrix<N, M>> I() const
         {
@@ -840,6 +852,7 @@ namespace ppx
             }
             return V * W * U.T();
         }
+
         template <size_t A = M>
         enable_when_squre_t<A, double> det() const
         {
@@ -858,6 +871,7 @@ namespace ppx
             }
             return D;
         }
+
         template <size_t A = M>
         enable_when_squre_t<A, double> trace() const
         {
@@ -868,6 +882,7 @@ namespace ppx
             }
             return res;
         }
+
         template <size_t A = std::min(M, N)>
         enable_when_matrix_t<M, N, Matrix<A, 1>> diag() const
         {
@@ -878,6 +893,7 @@ namespace ppx
             }
             return result;
         }
+
         template <size_t A = std::max(M, N)>
         enable_when_array_t<M, N, Matrix<A, A>> diag() const
         {
@@ -895,69 +911,37 @@ namespace ppx
             assert(row < M && col < N);
             return this->m_data.at(row + col * M);
         }
+
         const double &operator()(size_t row, size_t col) const
         {
             assert(row < M && col < N);
             return this->m_data.at(row + col * M);
         }
+
         double &operator()(const std::pair<size_t, size_t> &idx)
         {
             assert(idx.first < M && idx.second < N);
             return this->m_data.at(idx.first + idx.second * M);
         }
+
         const double &operator()(const std::pair<size_t, size_t> &idx) const
         {
             assert(idx.first < M && idx.second < N);
             return this->m_data.at(idx.first + idx.second * M);
         }
+
         double &operator[](size_t idx)
         {
             assert(idx < M * N);
             return this->m_data.at(idx);
         }
+
         const double &operator[](size_t idx) const
         {
             assert(idx < M * N);
             return this->m_data.at(idx);
         }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        auto operator+(const T &other) const
-        {
-            return details::biops<details::expr_plus_t, result_t, result_s<T>>(details::expr_plus, result_t(*this), result_s<T>(other));
-        }
-        template <typename T, disable_arith_type_t<T> * = nullptr>
-        auto operator+(const T &other) const
-        {
-            return details::biops<details::expr_plus_t, result_t, T>(details::expr_plus, result_t(*this), other);
-        }
-        auto operator+(const Matrix &other) const
-        {
-            return details::biops<details::expr_plus_t, result_t, result_t>(details::expr_plus, result_t(*this), result_t(other));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        auto operator-(const T &other) const
-        {
-            return details::biops<details::expr_minus_t, result_t, result_s<T>>(details::expr_minus, result_t(*this), result_s<T>(other));
-        }
-        template <typename T, disable_arith_type_t<T> * = nullptr>
-        auto operator-(const T &other) const
-        {
-            return details::biops<details::expr_minus_t, result_t, T>(details::expr_minus, result_t(*this), other);
-        }
-        auto operator-(const Matrix &other) const
-        {
-            return details::biops<details::expr_minus_t, result_t, result_t>(details::expr_minus, result_t(*this), result_t(other));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        auto operator*(const T &t) const
-        {
-            return details::biops<details::expr_mul_t, result_t, result_s<T>>(details::expr_mul, result_t(*this), result_s<T>(t));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        auto operator/(const T &t) const
-        {
-            return details::biops<details::expr_div_t, result_t, result_s<T>>(details::expr_div, result_t(*this), result_s<T>(t));
-        }
+
         template <size_t L>
         Matrix<M, L> operator*(const Matrix<N, L> &other) const
         {
@@ -977,6 +961,7 @@ namespace ppx
             }
             return result;
         }
+
         Matrix &operator+=(const Matrix &other)
         {
             for (size_t i = 0; i < M * N; i++)
@@ -985,6 +970,7 @@ namespace ppx
             }
             return *this;
         }
+
         Matrix &operator-=(const Matrix &other)
         {
             for (size_t i = 0; i < M * N; i++)
@@ -993,11 +979,14 @@ namespace ppx
             }
             return *this;
         }
+
         bool operator==(const Matrix &other) const
         {
-            return std::equal(this->m_data.begin(), this->m_data.end(), other.data(), [](double ele1, double ele2)
+            return std::equal(this->m_data.begin(), this->m_data.end(), other.data(),
+                              [](double ele1, double ele2)
                               { return details::is_same(ele1, ele2); });
         }
+
         template <typename T>
         enable_arith_type_t<T, Matrix &> operator+=(T ele)
         {
@@ -1007,6 +996,7 @@ namespace ppx
             }
             return *this;
         }
+
         template <typename T>
         enable_arith_type_t<T, Matrix &> operator-=(T ele)
         {
@@ -1016,6 +1006,7 @@ namespace ppx
             }
             return *this;
         }
+
         template <typename T>
         enable_arith_type_t<T, Matrix &> operator*=(T ele)
         {
@@ -1025,6 +1016,7 @@ namespace ppx
             }
             return *this;
         }
+
         template <typename T>
         enable_arith_type_t<T, Matrix &> operator/=(T ele)
         {
@@ -1050,27 +1042,6 @@ namespace ppx
             return os;
         }
 
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        friend auto operator+(const T &t, const Matrix<M, N> &self)
-        {
-            return details::biops<details::expr_plus_t, result_t, result_s<T>>(details::expr_plus, result_t(self), result_s<T>(t));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        friend auto operator-(const T &t, const Matrix<M, N> &self)
-        {
-            return details::biops<details::expr_minus_t, result_t, result_s<T>>(details::expr_minus, result_t(self), result_s<T>(t));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        friend auto operator*(const T &t, const Matrix<M, N> &self)
-        {
-            return details::biops<details::expr_mul_t, result_t, result_s<T>>(details::expr_mul, result_t(self), result_s<T>(t));
-        }
-        template <typename T, enable_arith_type_t<T> * = nullptr>
-        friend auto operator/(const T &t, const Matrix<M, N> &self)
-        {
-            return details::biops<details::expr_div_t, result_t, result_s<T>>(details::expr_div, result_t(self), result_s<T>(t));
-        }
-
         // Static function.
         static Matrix eye()
         {
@@ -1082,25 +1053,237 @@ namespace ppx
             }
             return result;
         }
+
         static Matrix zero()
         {
             Matrix<M, N> result{};
             result.fill(0.0);
             return result;
         }
+
         constexpr size_t row_counts()
         {
             return M;
         }
+
         constexpr size_t col_counts()
         {
             return N;
         }
+
         constexpr size_t size()
         {
             return M * N;
         }
     };
 
+    namespace details
+    {
+
+        template <size_t M, size_t N>
+        using result_t = details::expr_result<Matrix<M, N>>;
+
+        template <typename T>
+        using result_s = details::expr_result<details::expr_scalar<T>>;
+
+        template <typename T>
+        constexpr bool is_expr_v()
+        {
+            return std::is_base_of<details::expr<T>, T>::value;
+        }
+
+        template <typename T1, typename T2>
+        using enable_expr_expr_t = std::enable_if_t<is_expr_v<T1>() && is_expr_v<T2>()>;
+        template <typename T1, typename T2>
+        using enable_expr_num_t = std::enable_if_t<is_expr_v<T1>() && std::is_arithmetic<T2>::value>;
+        template <typename T1, typename T2>
+        using enable_num_expr_t = std::enable_if_t<std::is_arithmetic<T1>::value && is_expr_v<T2>()>;
+
+    } // namespace details
+
+    template <typename T, typename RT = void>
+    using enable_expr_type_t = std::enable_if_t<details::is_expr_v<T>(), RT>;
+
+    // Ops +
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto operator+(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_plus_t, T1, T2>(details::expr_plus, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto operator+(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_plus_t, T1,
+                              details::result_s<T2>>(details::expr_plus, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, size_t M, size_t N, enable_expr_type_t<T1> * = nullptr>
+    auto operator+(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_plus_t, T1,
+                              details::result_t<M, N>>(details::expr_plus, t1, details::result_t<M, N>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto operator+(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_plus_t,
+                              details::result_s<T1>, T2>(details::expr_plus, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, size_t M, size_t N, enable_arith_type_t<T1> * = nullptr>
+    auto operator+(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_plus_t, details::result_s<T1>,
+                              details::result_t<M, N>>(details::expr_plus, details::result_s<T1>(t1), details::result_t<M, N>(t2));
+    }
+
+    template <size_t M, size_t N, typename T2, enable_expr_type_t<T2> * = nullptr>
+    auto operator+(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_plus_t,
+                              details::result_t<M, N>, T2>(details::expr_plus, details::result_t<M, N>(t1), t2);
+    }
+
+    template <size_t M, size_t N, typename T2, enable_arith_type_t<T2> * = nullptr>
+    auto operator+(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_plus_t, details::result_t<M, N>,
+                              details::result_s<T2>>(details::expr_plus, details::result_t<M, N>(t1), details::result_s<T2>(t2));
+    }
+
+    template <size_t M, size_t N>
+    auto operator+(const Matrix<M, N> &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_plus_t, details::result_t<M, N>,
+                              details::result_t<M, N>>(details::expr_plus, details::result_t<M, N>(t1), details::result_t<M, N>(t2));
+    }
+
+    // Ops -
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto operator-(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_minus_t, T1, T2>(details::expr_minus, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto operator-(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_minus_t, T1,
+                              details::result_s<T2>>(details::expr_minus, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, size_t M, size_t N, enable_expr_type_t<T1> * = nullptr>
+    auto operator-(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_minus_t, T1,
+                              details::result_t<M, N>>(details::expr_minus, t1, details::result_t<M, N>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto operator-(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_minus_t,
+                              details::result_s<T1>, T2>(details::expr_minus, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, size_t M, size_t N, enable_arith_type_t<T1> * = nullptr>
+    auto operator-(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_minus_t, details::result_s<T1>,
+                              details::result_t<M, N>>(details::expr_minus, details::result_s<T1>(t1), details::result_t<M, N>(t2));
+    }
+
+    template <size_t M, size_t N, typename T2, enable_expr_type_t<T2> * = nullptr>
+    auto operator-(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_minus_t,
+                              details::result_t<M, N>, T2>(details::expr_minus, details::result_t<M, N>(t1), t2);
+    }
+
+    template <size_t M, size_t N, typename T2, enable_arith_type_t<T2> * = nullptr>
+    auto operator-(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_minus_t, details::result_t<M, N>,
+                              details::result_s<T2>>(details::expr_minus, details::result_t<M, N>(t1), details::result_s<T2>(t2));
+    }
+
+    template <size_t M, size_t N>
+    auto operator-(const Matrix<M, N> &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_minus_t, details::result_t<M, N>,
+                              details::result_t<M, N>>(details::expr_minus, details::result_t<M, N>(t1), details::result_t<M, N>(t2));
+    }
+
+    // Ops *
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, T1, T2>(details::expr_mul, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, T1,
+                              details::result_s<T2>>(details::expr_mul, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t,
+                              details::result_s<T1>, T2>(details::expr_mul, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, size_t M, size_t N, enable_arith_type_t<T1> * = nullptr>
+    auto operator*(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_mul_t, details::result_s<T1>,
+                              details::result_t<M, N>>(details::expr_mul, details::result_s<T1>(t1), details::result_t<M, N>(t2));
+    }
+
+    template <size_t M, size_t N, typename T2, enable_arith_type_t<T2> * = nullptr>
+    auto operator*(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, details::result_t<M, N>,
+                              details::result_s<T2>>(details::expr_mul, details::result_t<M, N>(t1), details::result_s<T2>(t2));
+    }
+
+    // Ops /
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto operator/(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, T1, T2>(details::expr_div, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto operator/(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, T1,
+                              details::result_s<T2>>(details::expr_div, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto operator/(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t,
+                              details::result_s<T1>, T2>(details::expr_div, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, size_t M, size_t N, enable_arith_type_t<T1> * = nullptr>
+    auto operator/(const T1 &t1, const Matrix<M, N> &t2)
+    {
+        return details::biops<details::expr_div_t, details::result_s<T1>,
+                              details::result_t<M, N>>(details::expr_div, details::result_s<T1>(t1), details::result_t<M, N>(t2));
+    }
+
+    template <size_t M, size_t N, typename T2, enable_arith_type_t<T2> * = nullptr>
+    auto operator/(const Matrix<M, N> &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, details::result_t<M, N>,
+                              details::result_s<T2>>(details::expr_div, details::result_t<M, N>(t1), details::result_s<T2>(t2));
+    }
 }
 #endif

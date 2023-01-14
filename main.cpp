@@ -18,12 +18,6 @@ void test_matrix()
     a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
     PRINT_SINGLE_ELEMENTS(a, "a = ");
     PRINT_LISTED_ELEMENTS(a, "a in list: ");
-    a({2, 3}, {2, 3}) = a({0, 1}, {0, 1});
-    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
-    a(1, {-1, -1}) = a(0, {-1, -1});
-    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
-    a({0, 1}, {0, 1}) = a({2, 3}, {2, 3});
-    PRINT_SINGLE_ELEMENTS(a, "a after op = ");
     PRINT_SINGLE_ELEMENTS(determinant(a), "determinant(a) = ");
     PRINT_SINGLE_ELEMENTS(inverse(a), "inverse(a) = ");
     Matrix<4, 4> A(std::move(a));
