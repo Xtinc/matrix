@@ -1,7 +1,7 @@
 #include "robotics.hpp"
 #include "ppxlog.h"
 #include <random>
-#include <cassert>
+#include <future>
 
 using namespace ppx;
 using namespace ppx::details;
@@ -348,10 +348,12 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
+    auto t2 = std::async(std::launch::async, [&]()
+                         {
+                            LOG_INFO << "test_linear";
+                            test_linear(); });
     LOG_INFO << "test_matrix";
     test_matrix();
-    LOG_INFO << "test_linear";
-    test_linear();
     LOG_INFO << "test_statics";
     test_statics();
     LOG_INFO << "test_lieGroup";
@@ -361,4 +363,5 @@ int main(int, char **)
     LOG_INFO << "test_nonlinear";
     test_nonlinear();
     LOG_INFO << "test end";
+    t2.get();
 }
