@@ -1,19 +1,64 @@
-#include "Eigen/Dense"
-#include "modern_robotics.h"
+#include "eigen3/Eigen/Dense"
 #include <benchmark/benchmark.h>
-#include "LieGroup.hpp"
+#include "liegroup.hpp"
 #include <random>
 
 using namespace ppx;
+
+#define GENERATE_MUL_N(N)                                  \
+    static void BM_MatrixMul_##N(benchmark::State &state)  \
+    {                                                      \
+        std::default_random_engine e;                      \
+        std::uniform_real_distribution<> u(-1.0e6, 1.0e6); \
+        Matrix<N, N> M{};                                  \
+        for (size_t i = 0; i < N; i++)                     \
+        {                                                  \
+            for (size_t j = 0; j < N; j++)                 \
+            {                                              \
+                double t = u(e);                           \
+                M(i, j) = t;                               \
+            }                                              \
+        }                                                  \
+        auto b = M.T();                                    \
+        Matrix<N, N> M2{};                                 \
+        for (auto _ : state)                               \
+        {                                                  \
+            benchmark::DoNotOptimize(M2 = M * b);          \
+        }                                                  \
+    }
+
+#define GENERATE_SVD_N(N)                                             \
+    static void BM_MatrixSVD_##N(benchmark::State &state)             \
+    {                                                                 \
+        std::default_random_engine e;                                 \
+        std::uniform_real_distribution<> u(-1.0e6, 1.0e6);            \
+        Matrix<N, N> M;                                               \
+        for (size_t i = 0; i < N; i++)                                \
+        {                                                             \
+            for (size_t j = 0; j < N; j++)                            \
+            {                                                         \
+                double t = u(e);                                      \
+                M(i, j) = t;                                          \
+            }                                                         \
+        }                                                             \
+        Matrix<N, N> result;                                          \
+        Matrix<N, 1> d;                                               \
+        Matrix<N, N> v;                                               \
+        bool sing = false;                                            \
+        for (auto _ : state)                                          \
+        {                                                             \
+            benchmark::DoNotOptimize(result = svdcmp(M, d, v, sing)); \
+        }                                                             \
+    }
 
 static void BM_MatrixMul(benchmark::State &state)
 {
     std::default_random_engine e;
     std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
-    Matrix<20, 12> M{};
+    Matrix<20, 25> M{};
     for (size_t i = 0; i < 20; i++)
     {
-        for (size_t j = 0; i < 12; i++)
+        for (size_t j = 0; i < 25; i++)
         {
             double t = u(e);
             M(i, j) = t;
@@ -23,9 +68,29 @@ static void BM_MatrixMul(benchmark::State &state)
     Matrix<20, 20> M2{};
     for (auto _ : state)
     {
-        M2 = M * b;
+        benchmark::DoNotOptimize(M2 = M * b);
     }
 }
+
+GENERATE_MUL_N(4);
+GENERATE_MUL_N(8);
+GENERATE_MUL_N(16);
+GENERATE_MUL_N(32);
+GENERATE_MUL_N(64);
+GENERATE_MUL_N(128);
+GENERATE_MUL_N(256);
+GENERATE_MUL_N(512);
+GENERATE_MUL_N(1024);
+
+GENERATE_SVD_N(4);
+GENERATE_SVD_N(8);
+GENERATE_SVD_N(16);
+GENERATE_SVD_N(32);
+GENERATE_SVD_N(64);
+GENERATE_SVD_N(128);
+GENERATE_SVD_N(256);
+GENERATE_SVD_N(512);
+GENERATE_SVD_N(1024);
 
 static void BM_MatrixInv(benchmark::State &state)
 {
@@ -44,10 +109,11 @@ static void BM_MatrixMulEigen(benchmark::State &state)
 {
     std::default_random_engine e;
     std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
-    Eigen::MatrixXd M2(20, 12);
-    for (size_t i = 0; i < 20; i++)
+    auto n = state.range(0);
+    Eigen::MatrixXd M2(n, n);
+    for (size_t i = 0; i < n; i++)
     {
-        for (size_t j = 0; i < 12; i++)
+        for (size_t j = 0; i < n; i++)
         {
             double t = u(e);
             M2(i, j) = t;
@@ -55,7 +121,7 @@ static void BM_MatrixMulEigen(benchmark::State &state)
     }
 
     auto b = M2.transpose();
-    Eigen::MatrixXd M3(20, 20);
+    Eigen::MatrixXd M3;
     for (auto _ : state)
     {
         M3 = M2 * b;
@@ -123,28 +189,6 @@ static void BM_MatrixExp(benchmark::State &state)
     }
 }
 
-static void BM_MatrixEigenLog(benchmark::State &state)
-{
-    Eigen::MatrixXd result(4, 4);
-    Eigen::MatrixXd tmp{};
-    result << 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 3, 0, 0, 0, 1;
-    for (auto _ : state)
-    {
-        tmp = mr::MatrixLog6(result);
-    }
-}
-
-static void BM_MatrixEigenExp(benchmark::State &state)
-{
-    Eigen::MatrixXd result(4, 4);
-    Eigen::MatrixXd tmp{};
-    result << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.5708, 2.3562, 0.0, 1.5708, 0.0, 2.3562, 0.0, 0.0, 0.0, 0.0;
-    for (auto _ : state)
-    {
-        tmp = mr::MatrixExp6(result);
-    }
-}
-
 static void BM_MatrixQR(benchmark::State &state)
 {
     Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
@@ -202,37 +246,62 @@ static void BM_MatrixSVD(benchmark::State &state)
 
 static void BM_MatrixEigenSVD(benchmark::State &state)
 {
-    Eigen::MatrixXd u(5, 6);
-    u << 1233, 997, -442, 235, 222, -86,
-        415, -122, -0.987, 98.87, -87.8, 999,
-        87.7, 35.4, 355, -827, 546, 65.2,
-        11.6, 889, -346, 876, -101, 902,
-        243, 111.1, 3419, 34, 122.1, 54.2;
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(u, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    Eigen::MatrixXd U(5, 6), S, V(6, 6);
+    std::default_random_engine e;
+    std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
+    int n = state.range(0);
+    Eigen::MatrixXd M(n, n);
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < n; j++)
+        {
+            double t = u(e);
+            M(i, j) = t;
+        }
+    }
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(M, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::MatrixXd U(n, n), S, V(n, n);
     for (auto _ : state)
     {
         U = svd.matrixU();
         S = svd.singularValues();
         V = svd.matrixV();
-        Eigen::MatrixXd RES = U * S * V;
+        Eigen::MatrixXd RES = U * S.asDiagonal() * V;
     }
 }
 
 // Register the function as a benchmark
-BENCHMARK(BM_MatrixMul);
-BENCHMARK(BM_MatrixMulEigen);
-BENCHMARK(BM_MatrixInv);
-BENCHMARK(BM_MatrixEigenInv);
-BENCHMARK(BM_MatrixExpr);
-BENCHMARK(BM_MatrixEigenExpr);
-BENCHMARK(BM_MatrixLog);
-BENCHMARK(BM_MatrixEigenLog);
-BENCHMARK(BM_MatrixExp);
-BENCHMARK(BM_MatrixEigenExp);
-BENCHMARK(BM_MatrixQR);
-BENCHMARK(BM_MatrixEigenQR);
-BENCHMARK(BM_MatrixSVD);
-BENCHMARK(BM_MatrixEigenSVD);
+// BENCHMARK(BM_MatrixMul);
+// BENCHMARK(BM_MatrixMulEigen)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024);
+// BENCHMARK(BM_MatrixMul_4);
+// BENCHMARK(BM_MatrixMul_8);
+// BENCHMARK(BM_MatrixMul_16);
+// BENCHMARK(BM_MatrixMul_32);
+// BENCHMARK(BM_MatrixMul_64);
+// BENCHMARK(BM_MatrixMul_128);
+// BENCHMARK(BM_MatrixMul_256);
+// BENCHMARK(BM_MatrixMul_512);
+// BENCHMARK(BM_MatrixMul_1024);
+
+BENCHMARK(BM_MatrixEigenSVD)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+BENCHMARK(BM_MatrixSVD_4);
+BENCHMARK(BM_MatrixSVD_8);
+BENCHMARK(BM_MatrixSVD_16);
+BENCHMARK(BM_MatrixSVD_32);
+BENCHMARK(BM_MatrixSVD_64);
+BENCHMARK(BM_MatrixSVD_128);
+BENCHMARK(BM_MatrixSVD_256);
+BENCHMARK(BM_MatrixSVD_512);
+// BENCHMARK(BM_MatrixSVD_1024);
+
+// BENCHMARK(BM_MatrixInv);
+// BENCHMARK(BM_MatrixEigenInv);
+// BENCHMARK(BM_MatrixExpr);
+// BENCHMARK(BM_MatrixEigenExpr);
+// BENCHMARK(BM_MatrixLog);
+// BENCHMARK(BM_MatrixExp);
+// BENCHMARK(BM_MatrixQR);
+// BENCHMARK(BM_MatrixEigenQR);
+// BENCHMARK(BM_MatrixSVD);
+// BENCHMARK(BM_MatrixEigenSVD);
 // Run the benchmark
 BENCHMARK_MAIN();

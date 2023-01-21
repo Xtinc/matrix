@@ -945,20 +945,30 @@ namespace ppx
         template <size_t L>
         Matrix<M, L> operator*(const Matrix<N, L> &other) const
         {
-            Matrix<M, L> result{};
-            Matrix<N, M> AT = this->T();
-            auto iter_A = AT.data();
-            auto iter_B = other.data();
-            for (size_t i = 0; i < M; i++)
+            Matrix<M, L> result;
+            for (size_t k = 0; k < N; k++)
             {
-                iter_B = other.data();
                 for (size_t j = 0; j < L; j++)
                 {
-                    result(i, j) = std::inner_product(iter_A, iter_A + N, iter_B, 0.0);
-                    iter_B += N;
+                    for (size_t i = 0; i < M; i++)
+                    {
+                        result(i, j) += (*this)(i, k) * other(k, j);
+                    }
                 }
-                iter_A += N;
             }
+            // Matrix<N, M> AT = this->T();
+            // auto iter_A = AT.data();
+            // auto iter_B = other.data();
+            // for (size_t i = 0; i < M; i++)
+            // {
+            //     iter_B = other.data();
+            //     for (size_t j = 0; j < L; j++)
+            //     {
+            //         result(i, j) = std::inner_product(iter_A, iter_A + N, iter_B, 0.0);
+            //         iter_B += N;
+            //     }
+            //     iter_A += N;
+            // }
             return result;
         }
 
