@@ -247,6 +247,7 @@ void test_statics()
     {
         x1.emplace_back(mg());
     }
+    PRINT_SINGLE_ELEMENTS(mean(x1), "mean = ");
     // for (size_t i = 0; i < ITMAX; i++)
     // {
     //     PRINT_LISTED_ELEMENTS(x1[i]);

@@ -498,6 +498,7 @@ namespace ppx
         };
 
     public:
+        using value_type = double;
         struct iterator : public std::iterator<std::random_access_iterator_tag, double>
         {
         public:

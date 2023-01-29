@@ -6,20 +6,23 @@
 
 namespace ppx
 {
+    // Moments of a Distribution: Mean, Variance, Skewness
     template <typename T>
-    double mean(const T &vec)
+    auto mean(const T &vec)
     {
-        return std::accumulate(vec.begin(), vec.end(), 0.0) / vec.size();
+        using value_t = typename T::value_type;
+        return static_cast<value_t>(std::accumulate(vec.begin(), vec.end(), value_t()) / vec.size());
     }
 
     template <typename T>
     double var(const T &vec)
     {
-        auto e = mean(vec);
+        using value_t = typename T::value_type;
+        value_t e = mean(vec);
         double sum = 0.0;
         for (size_t i = 0; i < vec.size(); i++)
         {
-            auto tmp = vec[i] - e;
+            value_t tmp = vec[i] - e;
             sum += tmp * tmp;
         }
         return sum / (vec.size() - 1);
