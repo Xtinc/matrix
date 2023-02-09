@@ -39,7 +39,8 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(adjugate(M), "adjoint(M) = ");
     Matrix<4, 4> x = {1, 2, 3, 4, 5, 6, 7, 8};
     Matrix<4, 4> y = x.T();
-    Matrix<4, 4> z = x * 2 + y * 2 + 3.3 + x * y;
+    Matrix<4, 4> z;
+    z({0, 2}, 1) = x * 2 + y * 2 + 3.3 + x * y;
     PRINT_SINGLE_ELEMENTS(z, "2*(x + x^T) + 3.3 +x*x^T = ");
     Matrix<3, 3> so3mat = {0, 3, -2, -3, 0, 1, 2, -1, 0};
     PRINT_SINGLE_ELEMENTS(vee(so3mat).exp(), "exp(s) = ");
@@ -103,7 +104,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<factorization::LU>(A, b);
-        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
+        auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear linsolver SVD\n");
@@ -121,7 +122,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<factorization::SVD>(A, b);
-        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
+        auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear linsolver QR\n");
@@ -139,7 +140,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<factorization::QR>(A, b);
-        auto residual = norm2((result.x - x).eval<Matrix<100, 1>>());
+        auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
 }
@@ -354,19 +355,17 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
-    // auto t2 = std::async(std::launch::async, [&]()
-    //                      {
-    //                         LOG_INFO << "test_linear";
-    //                         test_linear(); });
     LOG_INFO << "test_matrix";
     test_matrix();
-    // LOG_INFO << "test_statics";
-    // test_statics();
-    // LOG_INFO << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_INFO << "test_robotics";
-    // test_robotics();
-    // LOG_INFO << "test_nonlinear";
-    // test_nonlinear();
-    // LOG_INFO << "test end";
+    LOG_INFO << "test_linear";
+    test_linear();
+    LOG_INFO << "test_statics";
+    test_statics();
+    LOG_INFO << "test_lieGroup";
+    test_lieGroup();
+    LOG_INFO << "test_robotics";
+    test_robotics();
+    LOG_INFO << "test_nonlinear";
+    test_nonlinear();
+    LOG_INFO << "test end";
 }

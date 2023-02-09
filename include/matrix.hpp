@@ -97,17 +97,6 @@ namespace ppx
             std::cout << std::endl;
         }
 
-        template <typename T>
-        inline void PRINT_MAPPED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
-        {
-            std::cout << optcsrt;
-            for (auto ele : coll)
-            {
-                std::cout << '[' << ele.first << ',' << ele.second << "] ";
-            }
-            std::cout << std::endl;
-        }
-
         // operators
         struct expr_plus_t
         {
@@ -158,8 +147,10 @@ namespace ppx
         constexpr expr_mul_t expr_mul{};
         constexpr expr_div_t expr_div{};
 
-        // expr templates
+        struct expr_mtx_process;
+        struct expr_sca_process;
 
+        // expr templates
         template <typename T>
         struct expr_scalar
         {
@@ -187,13 +178,17 @@ namespace ppx
         template <typename T>
         struct expr_traits
         {
-            using ExprRef = T const &;
+            using value_tag = expr_mtx_process;
+            using value_type = T;
+            using expr_ref = T const &;
         };
 
         template <typename T>
         struct expr_traits<expr_scalar<T>>
         {
-            using ExprRef = expr_scalar<T>;
+            using value_tag = expr_sca_process;
+            using value_type = T;
+            using expr_ref = expr_scalar<T>;
         };
 
         template <typename T>
@@ -210,10 +205,9 @@ namespace ppx
                 return static_cast<T &>(*this);
             }
 
-            template <typename S>
             auto eval() const
             {
-                return (S)self();
+                return (typename T::value_type)self();
             }
 
         protected:
@@ -236,9 +230,17 @@ namespace ppx
         };
 
         template <typename T>
+        constexpr bool is_expr_v()
+        {
+            return std::is_base_of<details::expr<T>, T>::value;
+        }
+
+        template <typename T>
         class expr_result : expr<expr_result<T>>
         {
         public:
+            using value_tag = typename expr_traits<T>::value_tag;
+            using value_type = typename expr_traits<T>::value_type;
             using base_type = expr<expr_result<T>>;
             using base_type::size;
             using base_type::operator[];
@@ -246,7 +248,7 @@ namespace ppx
 
             explicit expr_result(const T &val) : value(val) {}
 
-            size_t size_impl() const
+            constexpr size_t size_impl()
             {
                 return value.size();
             };
@@ -262,13 +264,19 @@ namespace ppx
             }
 
         private:
-            typename expr_traits<T>::ExprRef value;
+            typename expr_traits<T>::expr_ref value;
         };
 
         template <typename Ops, typename lExpr, typename rExpr>
         class biops : public expr<biops<Ops, lExpr, rExpr>>
         {
         public:
+            using value_tag =
+                std::conditional_t<std::is_same<typename lExpr::value_tag, expr_sca_process>::value,
+                                   typename rExpr::value_tag, typename lExpr::value_tag>;
+            using value_type =
+                std::conditional_t<std::is_same<typename lExpr::value_tag, expr_sca_process>::value,
+                                   typename rExpr::value_type, typename lExpr::value_type>;
             using base_type = expr<biops<Ops, lExpr, rExpr>>;
             using base_type::size;
             using base_type::operator[];
@@ -285,7 +293,7 @@ namespace ppx
             {
                 return m_ops(m_lxpr[idx], m_rxpr[idx]);
             }
-
+            // dangerous but powerful;
             template <typename T>
             operator T() const
             {
@@ -296,6 +304,16 @@ namespace ppx
                 }
                 return res;
             }
+
+            // operator value_type() const
+            // {
+            //     value_type res{};
+            //     for (size_t idx = 0; idx < res.size(); ++idx)
+            //     {
+            //         res[idx] = (*this)[idx];
+            //     }
+            //     return res;
+            // }
 
         private:
             Ops m_ops;
@@ -438,6 +456,14 @@ namespace ppx
                         data(row_idx + i, col_idx + j) = other(i, j);
                     }
                 }
+                return *this;
+            }
+
+            template <typename T>
+            std::enable_if_t<details::is_expr_v<T>(), SubPart &>
+            operator=(const T &expr)
+            {
+                (*this) = expr.eval();
                 return *this;
             }
 
@@ -1095,12 +1121,6 @@ namespace ppx
 
         template <typename T>
         using result_s = details::expr_result<details::expr_scalar<T>>;
-
-        template <typename T>
-        constexpr bool is_expr_v()
-        {
-            return std::is_base_of<details::expr<T>, T>::value;
-        }
 
         template <typename T1, typename T2>
         using enable_expr_expr_t = std::enable_if_t<is_expr_v<T1>() && is_expr_v<T2>()>;
