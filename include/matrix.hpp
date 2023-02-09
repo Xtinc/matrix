@@ -1090,7 +1090,6 @@ namespace ppx
 
     namespace details
     {
-
         template <size_t M, size_t N>
         using result_t = details::expr_result<Matrix<M, N>>;
 

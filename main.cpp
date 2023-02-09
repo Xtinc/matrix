@@ -77,6 +77,11 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(g, "g = ");
     PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymValAndVecSorted>(g).vec, "eigen vector of g : ");
     PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymOnlyVal>(g), "eigen value of g : ");
+    // Matrix<3, 3> TA{1, 2, 3, 9, 8, 7, 5, 6, 4};
+    // Unsymmeig<3> eigsolver;
+    // eigsolver(TA);
+    // PRINT_LISTED_ELEMENTS(eigsolver.wri, "eigvalue: ");
+    // PRINT_SINGLE_ELEMENTS(eigsolver.zz, "eigen_vec: ");
 }
 
 void test_linear()
@@ -349,20 +354,19 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
-    auto t2 = std::async(std::launch::async, [&]()
-                         {
-                            LOG_INFO << "test_linear";
-                            test_linear(); });
+    // auto t2 = std::async(std::launch::async, [&]()
+    //                      {
+    //                         LOG_INFO << "test_linear";
+    //                         test_linear(); });
     LOG_INFO << "test_matrix";
     test_matrix();
-    LOG_INFO << "test_statics";
-    test_statics();
-    LOG_INFO << "test_lieGroup";
-    test_lieGroup();
-    LOG_INFO << "test_robotics";
-    test_robotics();
-    LOG_INFO << "test_nonlinear";
-    test_nonlinear();
-    LOG_INFO << "test end";
-    t2.get();
+    // LOG_INFO << "test_statics";
+    // test_statics();
+    // LOG_INFO << "test_lieGroup";
+    // test_lieGroup();
+    // LOG_INFO << "test_robotics";
+    // test_robotics();
+    // LOG_INFO << "test_nonlinear";
+    // test_nonlinear();
+    // LOG_INFO << "test end";
 }
