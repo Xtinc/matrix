@@ -148,8 +148,8 @@ namespace ppx
         SE3(Rep &&other) : Matrix(std::forward<Rep>(other)) {}
         SE3(const SO3 &Rot, const T3 &Pos) : Matrix(Rep::eye())
         {
-            (*this)({0, 2}, {0, 2}) = Rot;
-            (*this)({0, 2}, 3) = Pos;
+            (*this).sub<3, 3>(0, 0) = Rot;
+            (*this).sub<3, 1>(0, 3) = Pos;
         }
         SE3() : Matrix(Rep::eye()) {}
 
@@ -170,9 +170,9 @@ namespace ppx
             Matrix<6, 6> result{};
             const auto &R = Rot();
             const auto &p = Pos();
-            result({0, 2}, {0, 2}) = R;
-            result({3, 5}, {0, 2}) = hat(p) * R;
-            result({3, 5}, {3, 5}) = R;
+            result.sub<3, 3>(0, 0) = R;
+            result.sub<3, 3>(3, 0) = hat(p) * R;
+            result.sub<3, 3>(3, 3) = R;
             return result;
         }
         SE3 I() const

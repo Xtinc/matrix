@@ -470,10 +470,13 @@ namespace ppx
                     }
                     for (size_t i = 0; i < N - 1; i++)
                     {
-                        U({-1, -1}, i) = U.col(i + 1);
+
+                        U.template sub<N, 1>(0, i) = U.template sub<N, 1>(0, i + 1);
+                        // U({-1, -1}, i) = U.col(i + 1);
                     }
                     d = x - R.x;
-                    U({-1, -1}, N - 1) = d;
+                    U.template sub<N, 1>(0, N - 1) = d;
+                    // U({-1, -1}, N - 1) = d;
                     auto lr = lnsrch(f, x, d);
                     if (lr.s == StatusCode::DIVERGED)
                     {

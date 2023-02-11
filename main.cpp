@@ -9,16 +9,35 @@ using namespace ppx::details;
 #define EXPECT_EQ(A, B) assert(A == B)
 #define EXPECT_NEAR(A, B, C) assert(fabs(A - B) < C)
 
+template <typename T>
+inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
+{
+    std::cout << optcsrt << coll << std::endl;
+}
+
+template <typename T>
+inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
+{
+    std::cout << optcsrt;
+    for (const auto ele : coll)
+    {
+        std::cout << ele << ' ';
+    }
+    std::cout << std::endl;
+}
+
 void test_matrix()
 {
     Matrix<4, 4> a = {1, 2, 3, 4, 5, 6, 7, 8};
     PRINT_SINGLE_ELEMENTS(a);
     PRINT_SINGLE_ELEMENTS(a(maxloc(a)), "max of a : ");
-    a({2, 3}, {2, 3}) = Matrix<2, 2>{1, 1, 1, 1};
+    a.sub<2, 2>(2, 2) = Matrix<2, 2>{1, 1, 1, 1} + 1;
+    // a({2, 3}, {2, 3}) = Matrix<2, 2>{1, 1, 1, 1};
+    a.sub<2, 2>(0, 0) = a.sub<2, 2>(1, 1);
     a *= -1;
     PRINT_SINGLE_ELEMENTS(a);
     PRINT_SINGLE_ELEMENTS(Abs(a).eval());
-    a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
+    // a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
     PRINT_SINGLE_ELEMENTS(a, "a = ");
     PRINT_LISTED_ELEMENTS(a, "a in list: ");
     PRINT_SINGLE_ELEMENTS(determinant(a), "determinant(a) = ");
@@ -43,7 +62,7 @@ void test_matrix()
     Matrix<4, 4> x = {1, 2, 3, 4, 5, 6, 7, 8};
     Matrix<4, 4> y = x.T();
     Matrix<4, 4> z;
-    z({0, 2}, 1) = x * 2 + y * 2 + 3.3 + x * y;
+    z.sub<4, 4>(0, 0) = x * 2 + y * 2 + 3.3 + x * y;
     PRINT_SINGLE_ELEMENTS(z, "2*(x + x^T) + 3.3 +x*x^T = ");
     Matrix<3, 3> so3mat = {0, 3, -2, -3, 0, 1, 2, -1, 0};
     PRINT_SINGLE_ELEMENTS(vee(so3mat).exp(), "exp(s) = ");
@@ -357,22 +376,18 @@ void test_robotics()
 
 int main(int, char **)
 {
-    Matrix<5, 5> a{1, 2, 3, 4, 5};
-    auto b = a.T();
-    PRINT_SINGLE_ELEMENTS((2 * a + b / 2.0 + 2 * Abs(b)).eval());
-    // a.sub<2, 2>(0, 0) = Abs(Matrix<2, 2>{1, 2, 3, 4}) + a.sub<2, 2>(1, 1);
-    // ppx::initialize_log("./", "test", 10);
-    // LOG_INFO << "test_matrix";
-    // test_matrix();
-    // LOG_INFO << "test_linear";
-    // test_linear();
-    // LOG_INFO << "test_statics";
-    // test_statics();
-    // LOG_INFO << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_INFO << "test_robotics";
-    // test_robotics();
-    // LOG_INFO << "test_nonlinear";
-    // test_nonlinear();
-    // LOG_INFO << "test end";
+    ppx::initialize_log("./", "test", 10);
+    LOG_INFO << "test_matrix";
+    test_matrix();
+    LOG_INFO << "test_linear";
+    test_linear();
+    LOG_INFO << "test_statics";
+    test_statics();
+    LOG_INFO << "test_lieGroup";
+    test_lieGroup();
+    LOG_INFO << "test_robotics";
+    test_robotics();
+    LOG_INFO << "test_nonlinear";
+    test_nonlinear();
+    LOG_INFO << "test end";
 }

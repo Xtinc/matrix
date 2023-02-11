@@ -75,7 +75,7 @@ public:
         {
             se3 screw = JList[i - 1].screw * jointAngle[i - 1];
             T = T * screw.exp();
-            Js({-1, -1}, i) = T.Adt() * JList[i].screw;
+            Js.template sub<6, 1>(0, i) = T.Adt() * JList[i].screw;
         }
         return Js;
     }
@@ -91,7 +91,7 @@ public:
             if (iter != JList.end())
             {
                 auto col_idx = std::distance(JList.begin(), iter);
-                Js({-1, -1}, i) = JsAll.col(col_idx);
+                Js.template sub<6, 1>(0, i) = JsAll.template sub<6, 1>(0, col_idx);
             }
         }
         return Js;
