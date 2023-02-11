@@ -110,7 +110,7 @@ public:
             auto err_v = norm2(Vs.v());
             printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
             converage = err_w < EPS_SP && err_v < EPS_SP;
-            init += linsolve<factorization::SVD>(jacobiSpace(init), Vs).x;
+            init += linsolve<Factorization::SVD>(jacobiSpace(init), Vs).x;
             ++iter;
         }
         return init;
@@ -126,7 +126,7 @@ public:
         //     se3 Vs = Tsb.Adt() * (Tsb.I() * pose).log();
         //     return Q(jacobiSpace(x) * Vs);
         // };
-        // return fminunc<optimization::GradientDescent>(fn, dfn, init).x;
+        // return fminunc<Optimization::GradientDescent>(fn, dfn, init).x;
     }
 };
 

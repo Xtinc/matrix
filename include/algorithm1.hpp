@@ -8,14 +8,14 @@ namespace ppx
 {
     // matrix related
 
-    enum class factorization : char
+    enum class Factorization : char
     {
         LU,
         QR,
         SVD
     };
 
-    enum class eigensystem : char
+    enum class EigenSystem : char
     {
         SymOnlyVal,
         SymValAndVec,
@@ -735,8 +735,8 @@ namespace ppx
         }
     }
 
-    template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::LU, EqnResult<N>>
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::LU, EqnResult<N>>
     linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         std::array<int, M> indx{};
@@ -751,8 +751,8 @@ namespace ppx
         return {b, s};
     }
 
-    template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::QR, EqnResult<N>>
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::QR, EqnResult<N>>
     linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         Matrix<N, 1> c;
@@ -767,8 +767,8 @@ namespace ppx
         return {slice<N, 1>(b, 0, 0), s};
     }
 
-    template <factorization type, size_t M, size_t N>
-    std::enable_if_t<type == factorization::SVD, EqnResult<N>>
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
     linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
     {
         Matrix<N, 1> w{};
@@ -1823,8 +1823,8 @@ namespace ppx
         };*/
     }
 
-    template <eigensystem type, size_t N>
-    std::enable_if_t<type == eigensystem::SymValAndVec, EigResult<N>>
+    template <EigenSystem type, size_t N>
+    std::enable_if_t<type == EigenSystem::SymValAndVec, EigResult<N>>
     eig(const Matrix<N, N> &mat)
     {
         Matrix<N, 1> e, eig_value;
@@ -1833,8 +1833,8 @@ namespace ppx
         return {result, eig_value};
     }
 
-    template <eigensystem type, size_t N>
-    std::enable_if_t<type == eigensystem::SymValAndVecSorted, EigResult<N>>
+    template <EigenSystem type, size_t N>
+    std::enable_if_t<type == EigenSystem::SymValAndVecSorted, EigResult<N>>
     eig(const Matrix<N, N> &mat)
     {
         Matrix<N, 1> e, eig_value;
@@ -1844,8 +1844,8 @@ namespace ppx
         return {result, eig_value};
     }
 
-    template <eigensystem type, size_t N>
-    std::enable_if_t<type == eigensystem::SymOnlyVal, Matrix<N, 1>>
+    template <EigenSystem type, size_t N>
+    std::enable_if_t<type == EigenSystem::SymOnlyVal, Matrix<N, 1>>
     eig(const Matrix<N, N> &mat)
     {
         Matrix<N, 1> e, eig_value;

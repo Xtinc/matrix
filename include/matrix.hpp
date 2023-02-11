@@ -142,11 +142,30 @@ namespace ppx
             }
         };
 
+        struct expr_abs_t
+        {
+            constexpr explicit expr_abs_t() = default;
+
+            template <typename Type>
+            auto operator()(const Type &ele) const
+            {
+                return std::fabs(ele);
+            }
+        };
+
         constexpr expr_plus_t expr_plus{};
         constexpr expr_minus_t expr_minus{};
         constexpr expr_mul_t expr_mul{};
         constexpr expr_div_t expr_div{};
+        constexpr expr_abs_t expr_abs{};
 
+        struct ElemTags
+        {
+            struct Scalar;
+            struct Matrix;
+            struct Mblock;
+        };
+        
         struct expr_mtx_process;
         struct expr_sca_process;
 
@@ -230,23 +249,17 @@ namespace ppx
         };
 
         template <typename T>
-        constexpr bool is_expr_v()
-        {
-            return std::is_base_of<details::expr<T>, T>::value;
-        }
-
-        template <typename T>
-        class expr_result : expr<expr_result<T>>
+        class expr_elem : expr<expr_elem<T>>
         {
         public:
             using value_tag = typename expr_traits<T>::value_tag;
             using value_type = typename expr_traits<T>::value_type;
-            using base_type = expr<expr_result<T>>;
+            using base_type = expr<expr_elem<T>>;
             using base_type::size;
             using base_type::operator[];
             friend base_type;
 
-            explicit expr_result(const T &val) : value(val) {}
+            explicit expr_elem(const T &val) : value(val) {}
 
             constexpr size_t size_impl()
             {
@@ -267,6 +280,47 @@ namespace ppx
             typename expr_traits<T>::expr_ref value;
         };
 
+        template <typename Ops, typename Expr>
+        class unops : public expr<unops<Ops, Expr>>
+        {
+        public:
+            using value_tag = typename Expr::value_tag;
+            using value_type = typename Expr::value_type;
+
+            using base_type = expr<unops<Ops, Expr>>;
+            using base_type::size;
+            using base_type::operator[];
+            friend base_type;
+
+            explicit unops(const Ops &ops, const Expr &expr)
+                : m_ops(ops), m_expr(expr) {}
+
+            constexpr size_t size_impl()
+            {
+                return m_expr.size();
+            }
+
+            auto at_impl(size_t idx) const
+            {
+                return m_ops(m_expr[idx]);
+            }
+
+            template <typename T>
+            operator T() const
+            {
+                T res{};
+                for (size_t idx = 0; idx < res.size(); ++idx)
+                {
+                    res[idx] = (*this)[idx];
+                }
+                return res;
+            }
+
+        private:
+            Ops m_ops;
+            Expr m_expr;
+        };
+
         template <typename Ops, typename lExpr, typename rExpr>
         class biops : public expr<biops<Ops, lExpr, rExpr>>
         {
@@ -282,7 +336,7 @@ namespace ppx
             using base_type::operator[];
             friend base_type;
 
-            explicit biops(const Ops &ops, const lExpr &lxpr, const rExpr &rxpr) : m_ops(ops), m_lxpr(lxpr), m_rxpr(rxpr){};
+            explicit biops(const Ops &ops, const lExpr &lxpr, const rExpr &rxpr) : m_ops(ops), m_lxpr(lxpr), m_rxpr(rxpr) {}
 
             constexpr size_t size_impl()
             {
@@ -305,23 +359,29 @@ namespace ppx
                 return res;
             }
 
-            // operator value_type() const
-            // {
-            //     value_type res{};
-            //     for (size_t idx = 0; idx < res.size(); ++idx)
-            //     {
-            //         res[idx] = (*this)[idx];
-            //     }
-            //     return res;
-            // }
-
         private:
             Ops m_ops;
             lExpr m_lxpr;
             rExpr m_rxpr;
         };
 
+        template <typename T>
+        constexpr bool is_expr_v()
+        {
+            return std::is_base_of<details::expr<T>, T>::value;
+        }
+
+        template <typename T1, typename T2>
+        using enable_expr_expr_t = std::enable_if_t<is_expr_v<T1>() && is_expr_v<T2>()>;
+        template <typename T1, typename T2>
+        using enable_expr_num_t = std::enable_if_t<is_expr_v<T1>() && std::is_arithmetic<T2>::value>;
+        template <typename T1, typename T2>
+        using enable_num_expr_t = std::enable_if_t<std::is_arithmetic<T1>::value && is_expr_v<T2>()>;
+
     } // namespace details
+
+    template <typename T, typename RT = void>
+    using enable_expr_type_t = std::enable_if_t<details::is_expr_v<T>(), RT>;
 
     // forward declare
     template <size_t M, size_t N>
@@ -420,6 +480,65 @@ namespace ppx
         template <size_t A, typename RT = void>
         using disable_when_squre_t = std::enable_if_t<A != N, RT>;
         using IndexRange = std::pair<int, int>;
+
+        template <size_t A, size_t B>
+        class SubMatrix
+        {
+
+        public:
+            SubMatrix(Matrix<M, N> &self, size_t r, size_t c)
+                : row_idx(r), col_idx(c), data(self)
+            {
+                assert(row_idx + A <= M && col_idx + B <= N);
+            }
+
+            SubMatrix(const SubMatrix &) = delete;
+
+            SubMatrix(SubMatrix &&) = delete;
+
+            SubMatrix &operator=(const SubMatrix &other) = delete;
+
+            SubMatrix &operator=(SubMatrix &&other) = delete;
+
+            SubMatrix &operator=(const Matrix<A, B> &other)
+            {
+                assert(row_idx <= row_end && col_idx <= col_end);
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) = other(i, j);
+                    }
+                }
+                return *this;
+            }
+
+            template <typename T>
+            enable_expr_type_t<T, SubMatrix &>
+            operator=(const T &expr)
+            {
+                (*this) = expr.eval();
+                return *this;
+            }
+
+        private:
+            size_t row_idx;
+            size_t col_idx;
+            Matrix<M, N> &data;
+
+            Matrix<A, B> val() const
+            {
+                Matrix<A, B> result;
+                for (size_t i = 0; i < M; i++)
+                {
+                    for (size_t j = 0; j < N; j++)
+                    {
+                        result(i, j) = data(row_idx + i, col_idx + j);
+                    }
+                }
+                return result;
+            }
+        };
 
         struct SubPart
         {
@@ -826,6 +945,12 @@ namespace ppx
             return {*this, row_range, {(int)col_idx, (int)col_idx}};
         }
 
+        template <size_t A, size_t B>
+        SubMatrix<A, B> sub(size_t row_start, size_t col_start)
+        {
+            return {*this, row_start, col_start};
+        }
+
         void fill(double val)
         {
             std::fill(this->m_data.begin(), this->m_data.end(), val);
@@ -1117,22 +1242,25 @@ namespace ppx
     namespace details
     {
         template <size_t M, size_t N>
-        using result_t = details::expr_result<Matrix<M, N>>;
+        using result_t = details::expr_elem<Matrix<M, N>>;
 
         template <typename T>
-        using result_s = details::expr_result<details::expr_scalar<T>>;
-
-        template <typename T1, typename T2>
-        using enable_expr_expr_t = std::enable_if_t<is_expr_v<T1>() && is_expr_v<T2>()>;
-        template <typename T1, typename T2>
-        using enable_expr_num_t = std::enable_if_t<is_expr_v<T1>() && std::is_arithmetic<T2>::value>;
-        template <typename T1, typename T2>
-        using enable_num_expr_t = std::enable_if_t<std::is_arithmetic<T1>::value && is_expr_v<T2>()>;
-
+        using result_s = details::expr_elem<details::expr_scalar<T>>;
     } // namespace details
 
-    template <typename T, typename RT = void>
-    using enable_expr_type_t = std::enable_if_t<details::is_expr_v<T>(), RT>;
+    // Ops abs
+    template <typename T, std::enable_if_t<details::is_expr_v<T>()> * = nullptr>
+    auto Abs(const T &t)
+    {
+        return details::unops<details::expr_abs_t, T>(details::expr_abs, t);
+    }
+
+    template <size_t M, size_t N>
+    auto Abs(const Matrix<M, N> &t)
+    {
+        return details::unops<details::expr_abs_t,
+                              details::result_t<M, N>>(details::expr_abs, details::result_t<M, N>(t));
+    }
 
     // Ops +
     template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>

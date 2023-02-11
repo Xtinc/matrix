@@ -15,6 +15,9 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(a);
     PRINT_SINGLE_ELEMENTS(a(maxloc(a)), "max of a : ");
     a({2, 3}, {2, 3}) = Matrix<2, 2>{1, 1, 1, 1};
+    a *= -1;
+    PRINT_SINGLE_ELEMENTS(a);
+    PRINT_SINGLE_ELEMENTS(Abs(a).eval());
     a(0, {0, -1}) = {89.0, 23.0, 44.0, 9.8};
     PRINT_SINGLE_ELEMENTS(a, "a = ");
     PRINT_LISTED_ELEMENTS(a, "a in list: ");
@@ -56,8 +59,8 @@ void test_matrix()
                    2.7, -5.7, -0.8, -9.8,
                    -3.1, -6.0, 1.9, 6.9};
     Matrix<4, 1> Y{1, 1, 1, 1};
-    PRINT_SINGLE_ELEMENTS(linsolve<factorization::QR>(X, Y), "solved by QR = ");
-    PRINT_SINGLE_ELEMENTS(linsolve<factorization::SVD>(X, Y), "solved by SVD = ");
+    PRINT_SINGLE_ELEMENTS(linsolve<Factorization::QR>(X, Y), "solved by QR = ");
+    PRINT_SINGLE_ELEMENTS(linsolve<Factorization::SVD>(X, Y), "solved by SVD = ");
     PRINT_SINGLE_ELEMENTS(X, " X = ");
     Matrix<4, 3> u{1, 4, 7, 11,
                    2, 5, 8, 1,
@@ -76,8 +79,8 @@ void test_matrix()
                    1, -1, 2, -2,
                    4, 1, -2, 3};
     PRINT_SINGLE_ELEMENTS(g, "g = ");
-    PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymValAndVecSorted>(g).vec, "eigen vector of g : ");
-    PRINT_SINGLE_ELEMENTS(eig<eigensystem::SymOnlyVal>(g), "eigen value of g : ");
+    PRINT_SINGLE_ELEMENTS(eig<EigenSystem::SymValAndVecSorted>(g).vec, "eigen vector of g : ");
+    PRINT_SINGLE_ELEMENTS(eig<EigenSystem::SymOnlyVal>(g), "eigen value of g : ");
     // Matrix<3, 3> TA{1, 2, 3, 9, 8, 7, 5, 6, 4};
     // Unsymmeig<3> eigsolver;
     // eigsolver(TA);
@@ -103,7 +106,7 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        auto result = linsolve<factorization::LU>(A, b);
+        auto result = linsolve<Factorization::LU>(A, b);
         auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
@@ -121,7 +124,7 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        auto result = linsolve<factorization::SVD>(A, b);
+        auto result = linsolve<Factorization::SVD>(A, b);
         auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
@@ -139,7 +142,7 @@ void test_linear()
             ele = uf(eni);
         }
         auto b = A * x;
-        auto result = linsolve<factorization::QR>(A, b);
+        auto result = linsolve<Factorization::QR>(A, b);
         auto residual = norm2((result.x - x).eval());
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
@@ -158,27 +161,27 @@ void test_nonlinear()
         return y;
     };
 
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f1, 1.0, 3.0), "f1 by GoldenSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f1, 1.0, 3.0), "f1 by QuadraticSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f1, 1.0, 3.0), "f1 by BrentSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::GoldenSearch>(f1, 1.0, 3.0), "f1 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::QuadraticSearch>(f1, 1.0, 3.0), "f1 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::BrentSearch>(f1, 1.0, 3.0), "f1 by BrentSearch: ");
 
     auto f2 = [](double x)
     {
         return sin(x);
     };
 
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f2, 0.0, 2.0 * PI), "f2 by GoldenSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f2, 0.0, 2.0 * PI), "f2 by QuadraticSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f2, 0.0, 2.0 * PI), "f2 by BrentSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::GoldenSearch>(f2, 0.0, 2.0 * PI), "f2 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::QuadraticSearch>(f2, 0.0, 2.0 * PI), "f2 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::BrentSearch>(f2, 0.0, 2.0 * PI), "f2 by BrentSearch: ");
 
     auto f3 = [](double x)
     {
         return sin(x - 9.0 / 7.0);
     };
 
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::GoldenSearch>(f3, 1, 2.0 * PI), "f3 by GoldenSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::QuadraticSearch>(f3, 1, 2.0 * PI), "f3 by QuadraticSearch: ");
-    PRINT_SINGLE_ELEMENTS(fminbnd<optimization::BrentSearch>(f3, 1, 2.0 * PI), "f3 by BrentSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::GoldenSearch>(f3, 1, 2.0 * PI), "f3 by GoldenSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::QuadraticSearch>(f3, 1, 2.0 * PI), "f3 by QuadraticSearch: ");
+    PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::BrentSearch>(f3, 1, 2.0 * PI), "f3 by BrentSearch: ");
 
     printf("test nonlinear ND:\n");
     auto f4 = [](const Matrix<2, 1> &x)
@@ -186,7 +189,7 @@ void test_nonlinear()
         return 3 * x[0] * x[0] + 2 * x[0] * x[1] + x[1] * x[1] - 4 * x[0] + 5 * x[1];
     };
 
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f4, Matrix<2, 1>{1, 1}), "f4 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f4, Matrix<2, 1>{1, 1}), "f4 by Powell: ");
 
     auto f5 = [](const Matrix<2, 1> &x)
     {
@@ -194,7 +197,7 @@ void test_nonlinear()
         return x[0] * x[1] * exp(-sqr) + sqr / 20.0;
     };
 
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f5, Matrix<2, 1>{1, 2}), "f5 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f5, Matrix<2, 1>{1, 2}), "f5 by Powell: ");
 
     auto f6 = [](const Matrix<2, 1> &x)
     {
@@ -209,10 +212,10 @@ void test_nonlinear()
         return y;
     };
 
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f6, Matrix<2, 1>{4, -8}), "f6 by Powell: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::GradientDescent>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by GradientDescent: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::ConjuateGradient>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by ConjuateGradient: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by BGFS: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f6, Matrix<2, 1>{4, -8}), "f6 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::GradientDescent>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by GradientDescent: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjuateGradient>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::BGFS>(f6, d6, Matrix<2, 1>{4, -8}), "f6 by BGFS: ");
 
     auto f7 = [](const Matrix<2, 1> &x)
     {
@@ -227,10 +230,10 @@ void test_nonlinear()
         return y;
     };
 
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::Powell>(f7, Matrix<2, 1>{9, 8}), "f7 by Powell: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::GradientDescent>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by GradientDescent: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::ConjuateGradient>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by ConjuateGradient: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<optimization::BGFS>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by BGFS: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f7, Matrix<2, 1>{9, 8}), "f7 by Powell: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::GradientDescent>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by GradientDescent: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjuateGradient>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::BGFS>(f7, d7, Matrix<2, 1>{9, 8}), "f7 by BGFS: ");
 }
 
 void test_statics()
@@ -354,18 +357,22 @@ void test_robotics()
 
 int main(int, char **)
 {
-    ppx::initialize_log("./", "test", 10);
-    LOG_INFO << "test_matrix";
-    test_matrix();
-    LOG_INFO << "test_linear";
-    test_linear();
-    LOG_INFO << "test_statics";
-    test_statics();
-    LOG_INFO << "test_lieGroup";
-    test_lieGroup();
-    LOG_INFO << "test_robotics";
-    test_robotics();
-    LOG_INFO << "test_nonlinear";
-    test_nonlinear();
-    LOG_INFO << "test end";
+    Matrix<5, 5> a{1, 2, 3, 4, 5};
+    auto b = a.T();
+    PRINT_SINGLE_ELEMENTS((2 * a + b / 2.0 + 2 * Abs(b)).eval());
+    // a.sub<2, 2>(0, 0) = Abs(Matrix<2, 2>{1, 2, 3, 4}) + a.sub<2, 2>(1, 1);
+    // ppx::initialize_log("./", "test", 10);
+    // LOG_INFO << "test_matrix";
+    // test_matrix();
+    // LOG_INFO << "test_linear";
+    // test_linear();
+    // LOG_INFO << "test_statics";
+    // test_statics();
+    // LOG_INFO << "test_lieGroup";
+    // test_lieGroup();
+    // LOG_INFO << "test_robotics";
+    // test_robotics();
+    // LOG_INFO << "test_nonlinear";
+    // test_nonlinear();
+    // LOG_INFO << "test end";
 }

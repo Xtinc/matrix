@@ -42,7 +42,7 @@ namespace ppx
             std::random_device rd{};
             std::mt19937 gen{rd()};
             std::normal_distribution<> d{0, 1};
-            auto eigsys = eig<eigensystem::SymValAndVec>(m_cov);
+            auto eigsys = eig<EigenSystem::SymValAndVec>(m_cov);
             Matrix<N, N> diag;
             for (size_t i = 0; i < N; i++)
             {

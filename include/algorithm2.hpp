@@ -5,7 +5,7 @@
 
 namespace ppx
 {
-    enum class optimization : char
+    enum class Optimization : char
     {
         GoldenSearch,
         QuadraticSearch,
@@ -491,8 +491,8 @@ namespace ppx
         };
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::GoldenSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::GoldenSearch, OptResult<1>>
     fminbnd(const T &fn, double a, double b)
     {
         details::GoldenSearch gs;
@@ -500,8 +500,8 @@ namespace ppx
         return gs(fn);
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::QuadraticSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::QuadraticSearch, OptResult<1>>
     fminbnd(const T &fn, double a, double b)
     {
         details::QuadraticSearch qs;
@@ -509,8 +509,8 @@ namespace ppx
         return qs(fn);
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::BrentSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::BrentSearch, OptResult<1>>
     fminbnd(const T &fn, double a, double b)
     {
         details::BrentSearch brent;
@@ -518,8 +518,8 @@ namespace ppx
         return brent(fn);
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::GoldenSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::GoldenSearch, OptResult<1>>
     fminunc(const T &fn, double a)
     {
         details::GoldenSearch gs;
@@ -527,8 +527,8 @@ namespace ppx
         return gs(fn);
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::QuadraticSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::QuadraticSearch, OptResult<1>>
     fminunc(const T &fn, double a)
     {
         details::QuadraticSearch qs;
@@ -536,8 +536,8 @@ namespace ppx
         return qs(fn);
     }
 
-    template <optimization etype, typename T>
-    std::enable_if_t<etype == optimization::BrentSearch, OptResult<1>>
+    template <Optimization etype, typename T>
+    std::enable_if_t<etype == Optimization::BrentSearch, OptResult<1>>
     fminunc(const T &fn, double a)
     {
         details::BrentSearch brent;
@@ -545,32 +545,32 @@ namespace ppx
         return brent(fn);
     }
 
-    template <optimization etype, size_t N, typename T>
-    std::enable_if_t<etype == optimization::Powell, OptResult<N>>
+    template <Optimization etype, size_t N, typename T>
+    std::enable_if_t<etype == Optimization::Powell, OptResult<N>>
     fminunc(const T &func, const Matrix<N, 1> &x0)
     {
         details::Powell<N> pw;
         return pw(func, x0);
     }
 
-    template <optimization etype, size_t N, typename T, typename T2>
-    std::enable_if_t<etype == optimization::GradientDescent, OptResult<N>>
+    template <Optimization etype, size_t N, typename T, typename T2>
+    std::enable_if_t<etype == Optimization::GradientDescent, OptResult<N>>
     fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
     {
         details::GradientDescent<N> gd;
         return gd(func, dfunc, x0);
     }
 
-    template <optimization etype, size_t N, typename T, typename T2>
-    std::enable_if_t<etype == optimization::ConjuateGradient, OptResult<N>>
+    template <Optimization etype, size_t N, typename T, typename T2>
+    std::enable_if_t<etype == Optimization::ConjuateGradient, OptResult<N>>
     fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
     {
         details::ConjuateGradient<N> cg;
         return cg(func, dfunc, x0);
     }
 
-    template <optimization etype, size_t N, typename T, typename T2>
-    std::enable_if_t<etype == optimization::BGFS, OptResult<N>>
+    template <Optimization etype, size_t N, typename T, typename T2>
+    std::enable_if_t<etype == Optimization::BGFS, OptResult<N>>
     fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
     {
         details::BFGS<N> bfgs;
