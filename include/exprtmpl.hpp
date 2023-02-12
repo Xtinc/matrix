@@ -110,8 +110,6 @@ namespace ppx
             struct Mblock;
         };
 
-        struct matrix_tag;
-
         // expr templates
         template <typename T>
         struct scalar
@@ -160,7 +158,7 @@ namespace ppx
         {
             using elem_tag = ElemTags::Mblock;
             using elem_type = typename T::cast_type;
-            using elem_ref = typename T::cast_type;
+            using elem_ref = typename T::cast_type const &;
         };
 
         template <typename T>
@@ -221,7 +219,7 @@ namespace ppx
             {
             }
             template <typename U = elem_tag, std::enable_if_t<std::is_same<U, ElemTags::Mblock>::value> * = nullptr>
-            expr_elem(const T &val) : value(val.val())
+            expr_elem(const T &val) : value(val.snap())
             {
             }
 
@@ -335,7 +333,7 @@ namespace ppx
         };
 
         template <typename T>
-        struct is_matrix<T, void_t<typename T::matrix_tag>> : public std::true_type
+        struct is_matrix<T, void_t<typename T::cast_type>> : public std::true_type
         {
         };
 

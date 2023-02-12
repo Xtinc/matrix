@@ -28,12 +28,12 @@ inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = ""
 
 void test_expr()
 {
-    Matrix<80, 4> m;
+    Matrix<8, 4> m;
     ones(m);
     PRINT_SINGLE_ELEMENTS(m, "m = ");
     // elem 0
-    // m.sub<2, 2>(0, 0) = {3, 3, 3};
-    m.sub<1, 1>(0, 0) = m.sub<1, 1>(0, 0) + 1;
+    m.sub<2, 2>(0, 0) = {3, 3, 3};
+    m.sub<3, 1>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 20 - 1) * 4 + 222;
     PRINT_SINGLE_ELEMENTS(m, "m = ");
 }
 
@@ -390,17 +390,17 @@ int main(int, char **)
     ppx::initialize_log("./", "test", 10);
     LOG_INFO << "test_expr";
     test_expr();
-    // LOG_INFO << "test_matrix";
-    // test_matrix();
-    // LOG_INFO << "test_linear";
-    // test_linear();
-    // LOG_INFO << "test_statics";
-    // test_statics();
-    // LOG_INFO << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_INFO << "test_robotics";
-    // test_robotics();
-    // LOG_INFO << "test_nonlinear";
-    // test_nonlinear();
+    LOG_INFO << "test_matrix";
+    test_matrix();
+    LOG_INFO << "test_linear";
+    test_linear();
+    LOG_INFO << "test_statics";
+    test_statics();
+    LOG_INFO << "test_lieGroup";
+    test_lieGroup();
+    LOG_INFO << "test_robotics";
+    test_robotics();
+    LOG_INFO << "test_nonlinear";
+    test_nonlinear();
     LOG_INFO << "test end";
 }

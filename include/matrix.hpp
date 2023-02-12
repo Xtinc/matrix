@@ -4,6 +4,7 @@
 #include "exprtmpl.hpp"
 #include <iostream>
 #include <iomanip>
+#include <memory>
 #include <array>
 #include <vector>
 #include <numeric>
@@ -154,7 +155,6 @@ namespace ppx
         {
 
         public:
-            using matrix_tag = void;
             using elem_tag = details::ElemTags::Mblock;
             using cast_type = Matrix<A, B>;
 
@@ -162,11 +162,32 @@ namespace ppx
                 : row_idx(r), col_idx(c), data(self)
             {
                 assert(row_idx + A <= M && col_idx + B <= N);
+                take_snap();
             }
 
-            SubMatrix(const SubMatrix &) = delete;
+            SubMatrix(const SubMatrix &other) : copy(other.copy)
+            {
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) =
+                            other.data(other.row_idx + i, other.col_idx + j);
+                    }
+                }
+            }
 
-            SubMatrix(SubMatrix &&) = delete;
+            SubMatrix(SubMatrix &&other) : copy(std::move(other.copy))
+            {
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) =
+                            other.data(other.row_idx + i, other.col_idx + j);
+                    }
+                }
+            }
 
             SubMatrix &operator=(const SubMatrix &other)
             {
@@ -178,6 +199,21 @@ namespace ppx
                             other.data(other.row_idx + i, other.col_idx + j);
                     }
                 }
+                copy = other.copy;
+                return *this;
+            }
+
+            SubMatrix &operator=(SubMatrix &&other)
+            {
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) =
+                            other.data(other.row_idx + i, other.col_idx + j);
+                    }
+                }
+                copy = std::move(other.copy);
                 return *this;
             }
 
@@ -218,11 +254,11 @@ namespace ppx
             details::enable_expr_type_t<T, SubMatrix &>
             operator=(const T &expr)
             {
-                for (size_t i = 0; i < A; i++)
+                for (size_t j = 0; j < B; j++)
                 {
-                    for (size_t j = 0; j < B; j++)
+                    for (size_t i = 0; i < A; i++)
                     {
-                        data(row_idx + i, col_idx + j) = expr[i * A + j];
+                        data(row_idx + i, col_idx + j) = expr[i + j * A];
                     }
                 }
                 // (*this) = expr.eval();
@@ -230,11 +266,6 @@ namespace ppx
             }
 
             operator cast_type()
-            {
-                return val();
-            }
-
-            cast_type val() const
             {
                 Matrix<A, B> result;
                 for (size_t i = 0; i < A; i++)
@@ -247,10 +278,29 @@ namespace ppx
                 return result;
             }
 
+            const cast_type &snap() const
+            {
+                return copy;
+            }
+
         private:
             size_t row_idx;
             size_t col_idx;
             Matrix<M, N> &data;
+            // std::unique_ptr<Matrix<A, B>> copy;
+            Matrix<A, B> copy;
+
+            void take_snap()
+            {
+                // copy = std::make_unique<Matrix<A, B>>();
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        copy(i, j) = data(row_idx + i, col_idx + j);
+                    }
+                }
+            }
 
             template <typename T>
             void ctor_by_list(const T &list)
@@ -274,7 +324,7 @@ namespace ppx
 
     public:
         using value_type = double;
-        using matrix_tag = void;
+        using cast_type = Matrix<M, N>;
         using elem_tag = details::ElemTags::Matrix;
 
         struct iterator : public std::iterator<std::random_access_iterator_tag, double>
@@ -514,11 +564,6 @@ namespace ppx
 
     public:
         Matrix() = default;
-
-        ~Matrix()
-        {
-            printf("dtor!\n");
-        }
 
         template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
         Matrix(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
