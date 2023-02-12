@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_MATRIX_HEADER
 #define VVERY_SIMPLE_MATRIX_HEADER
 
-#include "expr_tmpl.hpp"
+#include "exprtmpl.hpp"
 #include <iostream>
 #include <iomanip>
 #include <array>
@@ -148,7 +148,6 @@ namespace ppx
         using enable_when_squre_t = std::enable_if_t<A == N, RT>;
         template <size_t A, typename RT = void>
         using disable_when_squre_t = std::enable_if_t<A != N, RT>;
-        // using IndexRange = std::pair<int, int>;
 
         template <size_t A, size_t B>
         class SubMatrix
@@ -171,13 +170,14 @@ namespace ppx
 
             SubMatrix &operator=(const SubMatrix &other)
             {
-                *this = other.val();
-                return *this;
-            }
-
-            SubMatrix &operator=(SubMatrix &&other)
-            {
-                *this = other.val();
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) =
+                            other.data(other.row_idx + i, other.col_idx + j);
+                    }
+                }
                 return *this;
             }
 
@@ -193,11 +193,39 @@ namespace ppx
                 return *this;
             }
 
+            template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
+            SubMatrix &operator=(const std::array<T, L> &list)
+            {
+                ctor_by_list(list);
+                return *this;
+            }
+
+            template <typename T, details::enable_arith_type_t<T> * = nullptr>
+            SubMatrix &operator=(const std::initializer_list<T> &list)
+            {
+                ctor_by_list(list);
+                return *this;
+            }
+
+            template <typename T, details::enable_arith_type_t<T> * = nullptr>
+            SubMatrix &operator=(const std::vector<T> &list)
+            {
+                ctor_by_list(list);
+                return *this;
+            }
+
             template <typename T>
             details::enable_expr_type_t<T, SubMatrix &>
             operator=(const T &expr)
             {
-                (*this) = expr.eval();
+                for (size_t i = 0; i < A; i++)
+                {
+                    for (size_t j = 0; j < B; j++)
+                    {
+                        data(row_idx + i, col_idx + j) = expr[i * A + j];
+                    }
+                }
+                // (*this) = expr.eval();
                 return *this;
             }
 
@@ -223,109 +251,26 @@ namespace ppx
             size_t row_idx;
             size_t col_idx;
             Matrix<M, N> &data;
+
+            template <typename T>
+            void ctor_by_list(const T &list)
+            {
+                auto iter = list.begin();
+                for (auto j = 0u; j < B; j++)
+                {
+                    for (auto i = 0u; i < A; i++)
+                    {
+                        auto value = iter == list.end() ? typename T::value_type{} : *(iter++);
+                        data(i + row_idx, j + col_idx) = value;
+                        // which one is better?
+                        // if (iter != list.end())
+                        // {
+                        //     data(i + row_idx, j + col_idx) = *(iter++);
+                        // }
+                    }
+                }
+            }
         };
-
-        // struct SubPart
-        // {
-        // public:
-        //     SubPart(Matrix<M, N> &self, IndexRange r, IndexRange c)
-        //         : row_idx(0), col_idx(0), row_end(0), col_end(0), data(self)
-        //     {
-        //         row_idx = r.first >= 0 ? r.first : 0;
-        //         col_idx = c.first >= 0 ? c.first : 0;
-        //         row_end = r.second >= 0 ? r.second : M - 1;
-        //         col_end = c.second >= 0 ? c.second : N - 1;
-        //     }
-
-        //     SubPart(const SubPart &) = delete;
-
-        //     SubPart(SubPart &&) = delete;
-
-        //     SubPart &operator=(const SubPart &other) = delete;
-
-        //     SubPart &operator=(SubPart &&other) = delete;
-
-        //     template <size_t A, size_t B>
-        //     SubPart &operator=(const Matrix<A, B> &other)
-        //     {
-        //         assert(row_idx <= row_end && col_idx <= col_end);
-        //         auto real_row_counts = row_end - row_idx + 1;
-        //         auto real_col_counts = col_end - col_idx + 1;
-        //         real_row_counts = std::min(real_row_counts, A);
-        //         real_col_counts = std::min(real_col_counts, B);
-        //         for (size_t i = 0; i < real_row_counts; i++)
-        //         {
-        //             for (size_t j = 0; j < real_col_counts; j++)
-        //             {
-        //                 data(row_idx + i, col_idx + j) = other(i, j);
-        //             }
-        //         }
-        //         return *this;
-        //     }
-
-        //     template <typename T>
-        //     std::enable_if_t<details::is_expr_v<T>(), SubPart &>
-        //     operator=(const T &expr)
-        //     {
-        //         (*this) = expr.eval();
-        //         return *this;
-        //     }
-
-        //     template <typename T, size_t A, details::enable_arith_type_t<T> * = nullptr>
-        //     SubPart &operator=(const std::array<T, A> &list)
-        //     {
-        //         generator_by_list(list);
-        //         return *this;
-        //     }
-
-        //     template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        //     SubPart &operator=(const std::initializer_list<T> &list)
-        //     {
-        //         generator_by_list(list);
-        //         return *this;
-        //     }
-
-        //     template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        //     SubPart &operator=(const std::vector<T> &list)
-        //     {
-        //         generator_by_list(list);
-        //         return *this;
-        //     }
-
-        // private:
-        //     size_t row_idx;
-        //     size_t col_idx;
-        //     size_t row_end;
-        //     size_t col_end;
-        //     Matrix<M, N> &data;
-
-        //     template <typename T>
-        //     void generator_by_list(const T &list)
-        //     {
-        //         auto A = list.size();
-        //         auto iter = list.begin();
-        //         auto real_row_counts = row_end - row_idx + 1;
-        //         auto real_col_counts = col_end - col_idx + 1;
-        //         if (real_col_counts == 1)
-        //         {
-        //             real_row_counts = std::min(real_row_counts, A);
-        //             for (size_t i = 0; i < real_row_counts; i++)
-        //             {
-        //                 data(row_idx + i, col_idx) = *(iter++);
-        //             }
-        //             return;
-        //         }
-        //         if (real_row_counts == 1)
-        //         {
-        //             real_col_counts = std::min(real_col_counts, A);
-        //             for (size_t i = 0; i < real_col_counts; i++)
-        //             {
-        //                 data(row_idx, col_idx + i) = *(iter++);
-        //             }
-        //             return;
-        //         }
-        //     }
-        // };
 
     public:
         using value_type = double;
@@ -570,6 +515,11 @@ namespace ppx
     public:
         Matrix() = default;
 
+        ~Matrix()
+        {
+            printf("dtor!\n");
+        }
+
         template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
         Matrix(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
         {
@@ -617,21 +567,6 @@ namespace ppx
             }
             return result;
         }
-
-        // SubPart operator()(const IndexRange &row_range, const IndexRange &col_range)
-        // {
-        //     return {*this, row_range, col_range};
-        // }
-
-        // SubPart operator()(size_t row_idx, const IndexRange &col_range)
-        // {
-        //     return {*this, {(int)row_idx, (int)row_idx}, col_range};
-        // }
-
-        // SubPart operator()(const IndexRange &row_range, size_t col_idx)
-        // {
-        //     return {*this, row_range, {(int)col_idx, (int)col_idx}};
-        // }
 
         template <size_t A, size_t B>
         SubMatrix<A, B> sub(size_t row_start, size_t col_start)

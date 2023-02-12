@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_LIEGROUP_HEADER
 #define VVERY_SIMPLE_LIEGROUP_HEADER
 
-#include "algorithm3.hpp"
+#include "statistics.hpp"
 
 namespace ppx
 {

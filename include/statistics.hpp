@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_ALGORITHM3_HEADER
 #define VVERY_SIMPLE_ALGORITHM3_HEADER
 
-#include "algorithm2.hpp"
+#include "optimization.hpp"
 #include <random>
 
 namespace ppx

@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_ALGORITHM2_HEADER
 #define VVERY_SIMPLE_ALGORITHM2_HEADER
 
-#include "algorithm1.hpp"
+#include "linalg.hpp"
 
 namespace ppx
 {
