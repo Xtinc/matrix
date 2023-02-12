@@ -33,7 +33,7 @@ void test_expr()
     PRINT_SINGLE_ELEMENTS(m, "m = ");
     // elem 0
     m.sub<2, 2>(0, 0) = {3, 3, 3};
-    m.sub<3, 1>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 20 - 1) * 4 + 222;
+    m.sub<3, 1>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - Matrix<3, 1>::eye());
     PRINT_SINGLE_ELEMENTS(m, "m = ");
 }
 
