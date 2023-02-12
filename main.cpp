@@ -28,12 +28,12 @@ inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = ""
 
 void test_expr()
 {
-    Matrix<80, 4> m;
+    Matrix<8, 4> m;
     ones(m);
     PRINT_SINGLE_ELEMENTS(m, "m = ");
     // elem 0
-    // m.sub<2, 2>(0, 0) = {3, 3, 3};
-    m.sub<1, 1>(0, 0) = m.sub<1, 1>(0, 0) + 1;
+    m.sub<2, 2>(0, 0) = {3, 3, 3};
+    m.sub<3, 1>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - Matrix<3, 1>::eye());
     PRINT_SINGLE_ELEMENTS(m, "m = ");
 }
 
