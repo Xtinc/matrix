@@ -19,7 +19,7 @@ namespace ppx
     template <size_t N>
     struct OptResult
     {
-        Matrix<N, 1> x;
+        MatrixS<N, 1> x;
         double y = 0.0;
         StatusCode s = StatusCode::NORMAL;
     };
@@ -309,7 +309,7 @@ namespace ppx
         };
 
         template <typename T, size_t N>
-        OptResult<1> lnsrch(const T &f, const Matrix<N, 1> &x, const Matrix<N, 1> &d)
+        OptResult<1> lnsrch(const T &f, const MatrixS<N, 1> &x, const MatrixS<N, 1> &d)
         {
             auto func = [&f, &x, &d](double a)
             {
@@ -330,10 +330,10 @@ namespace ppx
             double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
-            OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
+            OptResult<N> operator()(const T1 &f, const T2 &df, const MatrixS<N, 1> &x)
             {
                 R.x = x;
-                Matrix<N, 1> dx;
+                MatrixS<N, 1> dx;
                 dx.fill(1.0);
                 auto its = 0u;
                 while (norminf(dx) > FTOLA && its < ITMAX)
@@ -362,17 +362,17 @@ namespace ppx
             double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
-            OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
+            OptResult<N> operator()(const T1 &f, const T2 &df, const MatrixS<N, 1> &x)
             {
                 R.x = x;
                 auto its = 0u;
-                Matrix<N, 1> g = df(R.x);
-                Matrix<N, 1> d = -1.0 * g;
-                Matrix<N, 1> dh;
+                MatrixS<N, 1> g = df(R.x);
+                MatrixS<N, 1> d = -1.0 * g;
+                MatrixS<N, 1> dh;
                 dh.fill(1.0);
                 while (norminf(dh) > FTOLA && its < ITMAX)
                 {
-                    Matrix<N, 1> gh = df(R.x);
+                    MatrixS<N, 1> gh = df(R.x);
                     double beta =
                         std::max(0.0, inner_product<N>(gh, gh - g) / inner_product(g, g));
                     dh = -1 * gh + beta * d;
@@ -401,13 +401,13 @@ namespace ppx
             double FTOLA = EPS_SP;
 
             template <typename T1, typename T2>
-            OptResult<N> operator()(const T1 &f, const T2 &df, const Matrix<N, 1> &x)
+            OptResult<N> operator()(const T1 &f, const T2 &df, const MatrixS<N, 1> &x)
             {
                 R.x = x;
-                auto Q = Matrix<N, N>::eye();
-                Matrix<N, 1> g = df(x);
-                Matrix<N, 1> dg;
-                Matrix<N, 1> dx;
+                auto Q = MatrixS<N, N>::eye();
+                MatrixS<N, 1> g = df(x);
+                MatrixS<N, 1> dg;
+                MatrixS<N, 1> dx;
                 dg.fill(1.0);
                 dx.fill(1.0);
                 auto its = 0u;
@@ -447,16 +447,16 @@ namespace ppx
             double FTOLA = EPS_SP;
 
             template <typename T>
-            OptResult<N> operator()(const T &f, const Matrix<N, 1> &x0)
+            OptResult<N> operator()(const T &f, const MatrixS<N, 1> &x0)
             {
                 R.x = x0;
-                auto U = Matrix<N, N>::eye();
+                auto U = MatrixS<N, N>::eye();
                 auto dx = 1.0;
                 auto its = 0u;
                 while (dx > FTOLA && its < ITMAX)
                 {
                     auto x = R.x;
-                    Matrix<N, 1> d;
+                    MatrixS<N, 1> d;
                     for (size_t i = 0; i < N; i++)
                     {
                         d = U.col(i);
@@ -550,7 +550,7 @@ namespace ppx
 
     template <Optimization etype, size_t N, typename T>
     std::enable_if_t<etype == Optimization::Powell, OptResult<N>>
-    fminunc(const T &func, const Matrix<N, 1> &x0)
+    fminunc(const T &func, const MatrixS<N, 1> &x0)
     {
         details::Powell<N> pw;
         return pw(func, x0);
@@ -558,7 +558,7 @@ namespace ppx
 
     template <Optimization etype, size_t N, typename T, typename T2>
     std::enable_if_t<etype == Optimization::GradientDescent, OptResult<N>>
-    fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
+    fminunc(const T &func, const T2 &dfunc, const MatrixS<N, 1> &x0)
     {
         details::GradientDescent<N> gd;
         return gd(func, dfunc, x0);
@@ -566,7 +566,7 @@ namespace ppx
 
     template <Optimization etype, size_t N, typename T, typename T2>
     std::enable_if_t<etype == Optimization::ConjuateGradient, OptResult<N>>
-    fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
+    fminunc(const T &func, const T2 &dfunc, const MatrixS<N, 1> &x0)
     {
         details::ConjuateGradient<N> cg;
         return cg(func, dfunc, x0);
@@ -574,7 +574,7 @@ namespace ppx
 
     template <Optimization etype, size_t N, typename T, typename T2>
     std::enable_if_t<etype == Optimization::BGFS, OptResult<N>>
-    fminunc(const T &func, const T2 &dfunc, const Matrix<N, 1> &x0)
+    fminunc(const T &func, const T2 &dfunc, const MatrixS<N, 1> &x0)
     {
         details::BFGS<N> bfgs;
         return bfgs(func, dfunc, x0);

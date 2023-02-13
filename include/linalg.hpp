@@ -6,6 +6,16 @@
 
 namespace ppx
 {
+    inline double SIGN(double a, double b)
+    {
+        return b > 0.0 ? fabs(a) : -fabs(a);
+    }
+
+    inline double SQR(double a)
+    {
+        return a * a;
+    }
+
     // matrix related
 
     enum class Factorization : char
@@ -29,14 +39,14 @@ namespace ppx
     template <size_t N>
     struct EigResult
     {
-        Matrix<N, N> vec;
-        Matrix<N, 1> val;
+        MatrixS<N, N> vec;
+        MatrixS<N, 1> val;
     };
 
     template <size_t N>
     struct EqnResult
     {
-        Matrix<N, 1> x;
+        MatrixS<N, 1> x;
         StatusCode s = StatusCode::NORMAL;
     };
 
@@ -50,65 +60,21 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    void zeros(Matrix<M, N> &m)
+    void zeros(MatrixS<M, N> &m)
     {
         m.fill(0.0);
     }
 
     template <size_t M, size_t N>
-    void ones(Matrix<M, N> &m)
+    void ones(MatrixS<M, N> &m)
     {
         m.fill(1.0);
     }
 
-    template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<std::max(M, A), N + B> catcol(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
-    {
-        constexpr size_t N_M = std::max(M, A);
-        Matrix<N_M, N + B> result{};
-        for (size_t j = 0; j < N; j++)
-        {
-            for (size_t i = 0; i < M; i++)
-            {
-                result(i, j) = m1(i, j);
-            }
-        }
-        for (size_t j = N, idx = 0; j < N + B; ++j, ++idx)
-        {
-            for (size_t i = 0; i < A; ++i)
-            {
-                result(i, j) = m2(i, idx);
-            }
-        }
-        return result;
-    }
-
-    template <size_t M, size_t N, size_t A, size_t B>
-    Matrix<M + A, std::max(N, B)> catrow(const Matrix<M, N> &m1, const Matrix<A, B> &m2)
-    {
-        constexpr size_t N_N = std::max(N, B);
-        Matrix<M + A, N_N> result{};
-        for (size_t j = 0; j < N; j++)
-        {
-            for (size_t i = 0; i < M; i++)
-            {
-                result(i, j) = m1(i, j);
-            }
-        }
-        for (size_t j = 0; j < B; ++j)
-        {
-            for (size_t i = A, idx = 0; i < M + A; ++i, ++idx)
-            {
-                result(i, j) = m2(idx, j);
-            }
-        }
-        return result;
-    }
-
     template <size_t M, size_t N>
-    Matrix<M - 1u, N - 1u> cofactor(const Matrix<M, N> &mat, size_t p, size_t q)
+    MatrixS<M - 1u, N - 1u> cofactor(const MatrixS<M, N> &mat, size_t p, size_t q)
     {
-        Matrix<M - 1u, N - 1u> result{};
+        MatrixS<M - 1u, N - 1u> result{};
         size_t i = 0, j = 0;
         for (size_t row = 0; row < M; row++)
         {
@@ -129,9 +95,9 @@ namespace ppx
     }
 
     template <size_t M>
-    Matrix<M, M> adjugate(const Matrix<M, M> &mat)
+    MatrixS<M, M> adjugate(const MatrixS<M, M> &mat)
     {
-        Matrix<M, M> result{};
+        MatrixS<M, M> result{};
         for (size_t i = 0; i < M; i++)
         {
             for (size_t j = 0; j < M; j++)
@@ -144,31 +110,31 @@ namespace ppx
     }
 
     template <>
-    inline Matrix<1, 1> adjugate(const Matrix<1, 1> &)
+    inline MatrixS<1, 1> adjugate(const MatrixS<1, 1> &)
     {
         return {1};
     }
 
     template <size_t M>
-    double determinant(const Matrix<M, M> &mat)
+    double determinant(const MatrixS<M, M> &mat)
     {
         return mat.det();
     }
 
     template <size_t M>
-    Matrix<M, M> inverse(const Matrix<M, M> &mat)
+    MatrixS<M, M> inverse(const MatrixS<M, M> &mat)
     {
         return mat.I();
     }
 
     template <size_t A, size_t B, size_t M, size_t N>
-    Matrix<A, B> slice(const Matrix<M, N> &m, size_t row_start, size_t col_start)
+    MatrixS<A, B> slice(const MatrixS<M, N> &m, size_t row_start, size_t col_start)
     {
         if (row_start + A > M || col_start + B > N)
         {
             return {};
         }
-        Matrix<A, B> res{};
+        MatrixS<A, B> res{};
         for (size_t i = row_start, ix = 0u; i < row_start + A; ++i, ++ix)
         {
             for (size_t j = col_start, iy = 0u; j < col_start + B; ++j, ++iy)
@@ -180,13 +146,13 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    Matrix<N, M> transpose(const Matrix<M, N> &m)
+    MatrixS<N, M> transpose(const MatrixS<M, N> &m)
     {
         return m.T();
     }
 
     template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norm2(const Matrix<M, N> &mat)
+    enable_when_array_t<M, N, double> norm2(const MatrixS<M, N> &mat)
     {
         double res = 0.0;
         for (auto ele : mat)
@@ -197,7 +163,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norminf(const Matrix<M, N> &mat)
+    enable_when_array_t<M, N, double> norminf(const MatrixS<M, N> &mat)
     {
         double max = -std::numeric_limits<double>::max();
         for (auto i : mat)
@@ -212,19 +178,19 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    double trace(const Matrix<M, N> &mat)
+    double trace(const MatrixS<M, N> &mat)
     {
         return mat.trace();
     }
 
     template <size_t N>
-    double inner_product(const Matrix<N, 1> &a, const Matrix<N, 1> &b)
+    double inner_product(const MatrixS<N, 1> &a, const MatrixS<N, 1> &b)
     {
         return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
     }
 
     template <size_t M, size_t N>
-    std::pair<size_t, size_t> maxloc(const Matrix<M, N> &mat)
+    std::pair<size_t, size_t> maxloc(const MatrixS<M, N> &mat)
     {
         auto max_pos = std::max_element(mat.begin(), mat.end());
         auto max_dis = std::div(std::distance(mat.begin(), max_pos), M);
@@ -233,31 +199,23 @@ namespace ppx
 
     // solver linear system
 
-    inline double SIGN(double a, double b)
+    template <typename MatNN, typename VecN1>
+    FacResult<MatNN> ludcmp(MatNN A, VecN1 &indx, bool &even)
     {
-        return b > 0.0 ? fabs(a) : -fabs(a);
-    }
-
-    inline double SQR(double a)
-    {
-        return a * a;
-    }
-
-    template <size_t N>
-    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing)
-    {
-        constexpr int IN = N;
-        sing = false;
+        // static_assert(std::is_same<typename VecN1::value_type, int>::value);
+        assert(A.rows() == A.cols());
+        assert(indx.rows() == A.cols() && indx.cols() == 1);
+        const int n = A.rows();
         even = true;
-        for (int i = 0; i < IN; i++)
+        for (int i = 0; i < n; i++)
         {
             indx[i] = i;
         }
-        for (int k = 0; k < IN; k++)
+        for (int k = 0; k < n; k++)
         {
             auto valmax = fabs(A(k, k));
             auto ip = k;
-            for (int row = k + 1; row < IN; row++)
+            for (int row = k + 1; row < n; row++)
             {
                 double tmp = fabs(A(row, k));
                 if (valmax < tmp)
@@ -268,12 +226,11 @@ namespace ppx
             }
             if (valmax < EPS_SP)
             {
-                sing = true;
-                return {};
+                return {MatNN(), StatusCode::SINGULAR};
             }
             if (ip != k)
             {
-                for (int col = k; col < IN; col++)
+                for (int col = k; col < n; col++)
                 {
                     std::swap(A(ip, col), A(k, col));
                 }
@@ -284,28 +241,31 @@ namespace ppx
                 }
                 even = !even;
             }
-            for (int row = k + 1; row < IN; row++)
+            for (int row = k + 1; row < n; row++)
             {
                 double weight = A(row, k) / A(k, k);
                 A(row, k) = weight;
-                for (int col = k + 1; col < IN; col++)
+                for (int col = k + 1; col < n; col++)
                 {
                     A(row, col) -= weight * A(k, col);
                 }
             }
         }
-        return A;
+        return {A, StatusCode::CONVERGED};
     }
 
-    template <size_t N>
-    void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b)
+    template <typename MatNN, typename VecN1>
+    void ludbksb(const MatNN &A, const VecN1 &indx, double *b)
     {
-        constexpr int n = N;
-        std::array<double, N> y{};
+        // static_assert(std::is_same<typename VecN1::value_type, int>::value);
+        assert(A.rows() == A.cols());
+        assert(indx.rows() == A.cols() && indx.cols() == 1);
+        const int n = A.rows();
+        std::vector<double> y(n, 0.0);
         y[0] = b[indx[0]];
         for (int row = 1; row < n; row++)
         {
-            double sum = 0.0;
+            auto sum = 0.0;
             for (int col = 0; col < row; col++)
             {
                 sum += A(row, col) * y[col];
@@ -316,7 +276,7 @@ namespace ppx
         for (int row = n - 2; row >= 0; row--)
         {
             auto id = row + 1;
-            double sum = 0.0;
+            auto sum = 0.0;
             for (int col = id; col < n; col++)
             {
                 sum += A(row, col) * b[col];
@@ -326,7 +286,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    Matrix<M, N> qrdcmp(Matrix<M, N> a, Matrix<N, 1> &c, Matrix<N, 1> &d, bool &sing)
+    MatrixS<M, N> qrdcmp(MatrixS<M, N> a, MatrixS<N, 1> &c, MatrixS<N, 1> &d, bool &sing)
     {
         constexpr int IN = N;
         constexpr int IM = M;
@@ -386,7 +346,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    void qrsolv(const Matrix<M, N> &a, const Matrix<N, 1> &c, const Matrix<N, 1> &d, double *b)
+    void qrsolv(const MatrixS<M, N> &a, const MatrixS<N, 1> &c, const MatrixS<N, 1> &d, double *b)
     {
         constexpr int IN = N;
         constexpr int IM = M;
@@ -416,7 +376,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v, bool &sing)
+    MatrixS<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v, bool &sing)
     {
         constexpr int IN = N;
         constexpr int IM = M;
@@ -704,7 +664,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    void svbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, const Matrix<N, N> &v, double *b)
+    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b)
     {
         constexpr int IN = N;
         constexpr int IM = M;
@@ -737,26 +697,24 @@ namespace ppx
 
     template <Factorization type, size_t M, size_t N>
     std::enable_if_t<type == Factorization::LU, EqnResult<N>>
-    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
         std::array<int, M> indx{};
         auto even = true;
-        auto sing = false;
-        auto LU = ludcmp(A, indx, even, sing);
-        if (!sing)
+        auto LU = ludcmp(A, indx, even);
+        if (LU.s == StatusCode::CONVERGED)
         {
-            ludbksb(LU, indx, b.data());
+            ludbksb(LU.x, indx, b.data());
         }
-        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
-        return {b, s};
+        return {b, LU.s};
     }
 
     template <Factorization type, size_t M, size_t N>
     std::enable_if_t<type == Factorization::QR, EqnResult<N>>
-    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        Matrix<N, 1> c;
-        Matrix<N, 1> d;
+        MatrixS<N, 1> c;
+        MatrixS<N, 1> d;
         auto sing = false;
         auto R = qrdcmp(A, c, d, sing);
         if (!sing)
@@ -769,10 +727,10 @@ namespace ppx
 
     template <Factorization type, size_t M, size_t N>
     std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
-    linsolve(const Matrix<M, N> &A, Matrix<M, 1> b)
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        Matrix<N, 1> w{};
-        Matrix<N, N> V{};
+        MatrixS<N, 1> w{};
+        MatrixS<N, N> V{};
         auto sing = false;
         auto U = svdcmp(A, w, V, sing);
         if (!sing)
@@ -784,17 +742,17 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    Matrix<N, M> pinv(const Matrix<M, N> &mat)
+    MatrixS<N, M> pinv(const MatrixS<M, N> &mat)
     {
-        Matrix<N, 1> w{};
-        Matrix<N, N> V{};
+        MatrixS<N, 1> w{};
+        MatrixS<N, N> V{};
         bool sing = false;
         auto U = svdcmp(mat, w, V, sing);
         if (sing)
         {
             return {};
         }
-        Matrix<N, N> W{};
+        MatrixS<N, N> W{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
         auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
         for (size_t i = 0; i < N; i++)
@@ -811,7 +769,7 @@ namespace ppx
     namespace details
     {
         template <size_t N>
-        void tred2_no_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        void tred2_no_vec(MatrixS<N, N> z, MatrixS<N, 1> &d, MatrixS<N, 1> &e)
         {
             constexpr int IN = N;
             for (int i = IN - 1; i > 0; i--)
@@ -882,7 +840,7 @@ namespace ppx
         }
 
         template <size_t N>
-        void tliq_no_vec(Matrix<N, 1> &d, Matrix<N, 1> &e)
+        void tliq_no_vec(MatrixS<N, 1> &d, MatrixS<N, 1> &e)
         {
             constexpr int IN = N;
             // constexpr double EPS_SP = std::numeric_limits<double>::epsilon();
@@ -951,7 +909,7 @@ namespace ppx
         }
 
         template <size_t N>
-        Matrix<N, N> tred2_with_vec(Matrix<N, N> z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        MatrixS<N, N> tred2_with_vec(MatrixS<N, N> z, MatrixS<N, 1> &d, MatrixS<N, 1> &e)
         {
             constexpr int IN = N;
             for (int i = IN - 1; i > 0; i--)
@@ -1046,7 +1004,7 @@ namespace ppx
         }
 
         template <size_t N>
-        void tliq_with_vec(Matrix<N, N> &z, Matrix<N, 1> &d, Matrix<N, 1> &e)
+        void tliq_with_vec(MatrixS<N, N> &z, MatrixS<N, 1> &d, MatrixS<N, 1> &e)
         {
             constexpr int IN = N;
             // constexpr double EPS_SP = std::numeric_limits<double>::epsilon();
@@ -1121,7 +1079,7 @@ namespace ppx
         }
 
         template <size_t N>
-        void eigsrt(Matrix<N, N> &mat, Matrix<N, 1> &vec)
+        void eigsrt(MatrixS<N, N> &mat, MatrixS<N, 1> &vec)
         {
             constexpr int IN = N;
             for (size_t i = 0; i < IN - 1; i++)
@@ -1825,9 +1783,9 @@ namespace ppx
 
     template <EigenSystem type, size_t N>
     std::enable_if_t<type == EigenSystem::SymValAndVec, EigResult<N>>
-    eig(const Matrix<N, N> &mat)
+    eig(const MatrixS<N, N> &mat)
     {
-        Matrix<N, 1> e, eig_value;
+        MatrixS<N, 1> e, eig_value;
         auto result = details::tred2_with_vec(mat, eig_value, e);
         details::tliq_with_vec(result, eig_value, e);
         return {result, eig_value};
@@ -1835,9 +1793,9 @@ namespace ppx
 
     template <EigenSystem type, size_t N>
     std::enable_if_t<type == EigenSystem::SymValAndVecSorted, EigResult<N>>
-    eig(const Matrix<N, N> &mat)
+    eig(const MatrixS<N, N> &mat)
     {
-        Matrix<N, 1> e, eig_value;
+        MatrixS<N, 1> e, eig_value;
         auto result = details::tred2_with_vec(mat, eig_value, e);
         details::tliq_with_vec(result, eig_value, e);
         details::eigsrt(result, eig_value);
@@ -1845,10 +1803,10 @@ namespace ppx
     }
 
     template <EigenSystem type, size_t N>
-    std::enable_if_t<type == EigenSystem::SymOnlyVal, Matrix<N, 1>>
-    eig(const Matrix<N, N> &mat)
+    std::enable_if_t<type == EigenSystem::SymOnlyVal, MatrixS<N, 1>>
+    eig(const MatrixS<N, N> &mat)
     {
-        Matrix<N, 1> e, eig_value;
+        MatrixS<N, 1> e, eig_value;
         details::tred2_no_vec(mat, eig_value, e);
         details::tliq_no_vec(eig_value, e);
         std::sort(eig_value.begin(), eig_value.end());

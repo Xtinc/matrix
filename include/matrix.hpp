@@ -20,6 +20,13 @@ namespace ppx
         SINGULAR
     };
 
+    template <typename MatMN>
+    struct FacResult
+    {
+        MatMN x;
+        StatusCode s = StatusCode::NORMAL;
+    };
+
     inline std::ostream &operator<<(std::ostream &os, const StatusCode &self)
     {
         switch (self)
@@ -43,19 +50,19 @@ namespace ppx
 
     // forward declare
     template <size_t M, size_t N>
-    class Matrix;
+    class MatrixS;
 
-    template <size_t N>
-    Matrix<N, N> ludcmp(Matrix<N, N> A, std::array<int, N> &indx, bool &even, bool &sing);
-
-    template <size_t M, size_t N>
-    Matrix<M, N> svdcmp(Matrix<M, N> u, Matrix<N, 1> &w, Matrix<N, N> &v, bool &sing);
-
-    template <size_t N>
-    void ludbksb(const Matrix<N, N> &A, const std::array<int, N> &indx, double *b);
+    template <typename MatNN, typename VecN1>
+    FacResult<MatNN> ludcmp(MatNN A, VecN1 &indx, bool &even);
 
     template <size_t M, size_t N>
-    void svbksb(const Matrix<M, N> &u, const Matrix<N, 1> &w, const Matrix<N, N> &v, double *b);
+    MatrixS<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v, bool &sing);
+
+    template <typename MatNN, typename VecN1>
+    void ludbksb(const MatNN &A, const VecN1 &indx, double *b);
+
+    template <size_t M, size_t N>
+    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b);
 
     namespace details
     {
@@ -83,6 +90,9 @@ namespace ppx
         class MatrixBase<M, N, 1>
         {
         protected:
+            using iterator = typename std::array<double, M * N>::iterator;
+            using const_iterator = typename std::array<double, M * N>::const_iterator;
+
             MatrixBase() : m_data{} {}
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
@@ -114,6 +124,9 @@ namespace ppx
         class MatrixBase<M, N, 0>
         {
         protected:
+            using iterator = typename std::vector<double>::iterator;
+            using const_iterator = typename std::vector<double>::const_iterator;
+
             MatrixBase() : m_data(M * N, 0.0) {}
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
@@ -143,7 +156,7 @@ namespace ppx
     } // namespace details
 
     template <std::size_t M, std::size_t N>
-    class Matrix : public details::MatrixBase<M, N>
+    class MatrixS : public details::MatrixBase<M, N>
     {
         template <size_t A, typename RT = void>
         using enable_when_squre_t = std::enable_if_t<A == N, RT>;
@@ -156,9 +169,9 @@ namespace ppx
 
         public:
             using elem_tag = details::ElemTags::Mblock;
-            using cast_type = Matrix<A, B>;
+            using cast_type = MatrixS<A, B>;
 
-            SubMatrix(Matrix<M, N> &self, size_t r, size_t c)
+            SubMatrix(MatrixS<M, N> &self, size_t r, size_t c)
                 : row_idx(r), col_idx(c), data(self)
             {
                 assert(row_idx + A <= M && col_idx + B <= N);
@@ -217,7 +230,7 @@ namespace ppx
                 return *this;
             }
 
-            SubMatrix &operator=(const Matrix<A, B> &other)
+            SubMatrix &operator=(const MatrixS<A, B> &other)
             {
                 for (size_t i = 0; i < A; i++)
                 {
@@ -267,7 +280,7 @@ namespace ppx
 
             operator cast_type()
             {
-                Matrix<A, B> result;
+                MatrixS<A, B> result;
                 for (size_t i = 0; i < A; i++)
                 {
                     for (size_t j = 0; j < B; j++)
@@ -286,9 +299,9 @@ namespace ppx
         private:
             size_t row_idx;
             size_t col_idx;
-            Matrix<M, N> &data;
+            MatrixS<M, N> &data;
             // std::unique_ptr<Matrix<A, B>> copy;
-            Matrix<A, B> copy;
+            MatrixS<A, B> copy;
 
             void take_snap()
             {
@@ -324,259 +337,51 @@ namespace ppx
 
     public:
         using value_type = double;
-        using cast_type = Matrix<M, N>;
+        using cast_type = MatrixS<M, N>;
         using elem_tag = details::ElemTags::Matrix;
+        using iterator = typename details::MatrixBase<M, N>::iterator;
+        using const_iterator = typename details::MatrixBase<M, N>::const_iterator;
 
-        struct iterator : public std::iterator<std::random_access_iterator_tag, double>
-        {
-        public:
-            using iterator_category = std::random_access_iterator_tag;
-            iterator(value_type *ptr) noexcept : m_ptr(ptr) {}
-            // iterator(const iterator &itr) noexcept : m_ptr(itr.m_ptr) {}
-
-            pointer operator->() const noexcept
-            {
-                return m_ptr;
-            }
-            reference operator*() const noexcept
-            {
-                return *m_ptr;
-            }
-
-            iterator &operator=(const iterator &rhs) noexcept
-            {
-                m_ptr = rhs.m_ptr;
-                return *this;
-            }
-            bool operator==(const iterator &rhs) const noexcept
-            {
-                return m_ptr == rhs.m_ptr;
-            }
-            bool operator!=(const iterator &rhs) const noexcept
-            {
-                return m_ptr != rhs.m_ptr;
-            }
-            bool operator>(const iterator &rhs) const noexcept
-            {
-                return m_ptr > rhs.m_ptr;
-            }
-            bool operator>=(const iterator &rhs) const noexcept
-            {
-                return m_ptr >= rhs.m_ptr;
-            }
-            bool operator<(const iterator &rhs) const noexcept
-            {
-                return m_ptr < rhs.m_ptr;
-            }
-            bool operator<=(const iterator &rhs) const noexcept
-            {
-                return m_ptr <= rhs.m_ptr;
-            }
-
-            iterator &operator++() noexcept
-            {
-                m_ptr += 1;
-                return *this;
-            }
-            iterator operator++(int) noexcept
-            {
-                value_type *ret = m_ptr;
-                m_ptr += 1;
-                return ret;
-            }
-            iterator &operator--() noexcept
-            {
-                m_ptr -= 1;
-                return *this;
-            }
-            iterator operator--(int) noexcept
-            {
-                value_type *ret = m_ptr;
-                m_ptr -= 1;
-                return ret;
-            }
-            iterator &operator+=(difference_type step) noexcept
-            {
-                m_ptr += step;
-                return *this;
-            }
-            iterator &operator-=(difference_type step) noexcept
-            {
-                m_ptr -= step;
-                return *this;
-            }
-            iterator operator+(difference_type step) noexcept
-            {
-                value_type *ret = m_ptr;
-                ret += step;
-                return ret;
-            }
-            iterator operator-(difference_type step) noexcept
-            {
-                value_type *ret = m_ptr;
-                ret -= step;
-                return ret;
-            }
-            iterator operator[](difference_type n) noexcept
-            {
-                m_ptr += n;
-                return *this;
-            }
-            difference_type operator-(const iterator &rhs) const noexcept
-            {
-                return m_ptr - rhs.m_ptr;
-            }
-
-        private:
-            value_type *m_ptr{};
-        };
-        struct const_iterator : public std::iterator<std::random_access_iterator_tag, const double>
-        {
-        public:
-            using iterator_category = std::random_access_iterator_tag;
-            const_iterator(value_type *const ptr) noexcept : m_ptr(ptr)
-            {
-            }
-
-            pointer operator->() const noexcept
-            {
-                return m_ptr;
-            }
-            reference operator*() const noexcept
-            {
-                return *m_ptr;
-            }
-
-            const_iterator(const const_iterator &itr) noexcept : m_ptr(itr.m_ptr)
-            {
-            }
-            const_iterator &operator=(const const_iterator &rhs) noexcept
-            {
-                m_ptr = rhs.m_ptr;
-                return *this;
-            }
-            bool operator==(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr == rhs.m_ptr;
-            }
-            bool operator!=(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr != rhs.m_ptr;
-            }
-            bool operator>(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr > rhs.m_ptr;
-            }
-            bool operator>=(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr >= rhs.m_ptr;
-            }
-            bool operator<(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr < rhs.m_ptr;
-            }
-            bool operator<=(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr <= rhs.m_ptr;
-            }
-
-            const_iterator &operator++() noexcept
-            {
-                m_ptr++;
-                return *this;
-            }
-            const_iterator operator++(int) noexcept
-            {
-                value_type const *ret = m_ptr;
-                m_ptr++;
-                return ret;
-            }
-            const_iterator &operator--() noexcept
-            {
-                m_ptr--;
-                return *this;
-            }
-            const_iterator operator--(int) noexcept
-            {
-                value_type const *ret = m_ptr;
-                m_ptr--;
-                return ret;
-            }
-            const_iterator &operator+=(ptrdiff_t step) noexcept
-            {
-                m_ptr += step;
-                return *this;
-            }
-            const_iterator &operator-=(ptrdiff_t step) noexcept
-            {
-                m_ptr -= step;
-                return *this;
-            }
-            const_iterator operator+(ptrdiff_t step) noexcept
-            {
-                value_type const *ret = m_ptr;
-                ret += step;
-                return ret;
-            }
-            const_iterator operator-(ptrdiff_t step) noexcept
-            {
-                value_type const *ret = m_ptr;
-                ret -= step;
-                return ret;
-            }
-            const_iterator operator[](difference_type n) noexcept
-            {
-                m_ptr += n;
-                return *this;
-            }
-            difference_type operator-(const const_iterator &rhs) const noexcept
-            {
-                return m_ptr - rhs.m_ptr;
-            }
-
-        private:
-            value_type *m_ptr{};
-        };
         iterator begin() noexcept
         {
-            return this->m_data.data();
+            return this->m_data.begin();
         }
         iterator end() noexcept
         {
-            return this->m_data.data() + M * N;
+            return this->m_data.end();
         }
         const_iterator begin() const noexcept
         {
-            return this->m_data.data();
+            return this->m_data.begin();
         }
         const_iterator end() const noexcept
         {
-            return this->m_data.data() + M * N;
+            return this->m_data.end();
         }
         const_iterator cbegin() const noexcept
         {
-            return this->m_data.data();
+            return this->m_data.begin();
         }
         const_iterator cend() const noexcept
         {
-            return this->m_data.data() + M * N;
+            return this->m_data.end();
         }
 
     public:
-        Matrix() = default;
+        MatrixS() = default;
 
         template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-        Matrix(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        Matrix(const std::initializer_list<T> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::initializer_list<T> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        Matrix(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
@@ -591,10 +396,10 @@ namespace ppx
             return this->m_data.data();
         }
 
-        Matrix<N, 1> row(size_t idx) const
+        MatrixS<N, 1> row(size_t idx) const
         {
             assert(idx < M);
-            Matrix<N, 1> result;
+            MatrixS<N, 1> result;
             for (auto i = 0u; i < N; ++i)
             {
                 result[i] = this->m_data.at(idx + i * M);
@@ -602,10 +407,10 @@ namespace ppx
             return result;
         }
 
-        Matrix<M, 1> col(size_t idx) const
+        MatrixS<M, 1> col(size_t idx) const
         {
             assert(idx < N);
-            Matrix<M, 1> result;
+            MatrixS<M, 1> result;
             for (auto i = 0u; i < M; ++i)
             {
                 result[i] = this->m_data.at(idx * M + i);
@@ -624,9 +429,9 @@ namespace ppx
             std::fill(this->m_data.begin(), this->m_data.end(), val);
         }
 
-        Matrix<N, M> T() const
+        MatrixS<N, M> T() const
         {
-            Matrix<N, M> res{};
+            MatrixS<N, M> res{};
             for (auto i = 0u; i < M; i++)
             {
                 for (auto j = 0u; j < N; j++)
@@ -638,31 +443,30 @@ namespace ppx
         }
 
         template <size_t A = M>
-        enable_when_squre_t<A, Matrix> I() const
+        enable_when_squre_t<A, MatrixS> I() const
         {
             std::array<int, M> indx{};
             auto even = true;
-            auto sing = false;
-            auto LU = ludcmp(*this, indx, even, sing);
-            if (sing)
+            auto LU = ludcmp(*this, indx, even);
+            if (LU.s == StatusCode::SINGULAR)
             {
                 return {};
             }
-            auto result = Matrix<M, M>::eye();
+            auto result = MatrixS<M, M>::eye();
             for (size_t j = 0; j < M; j++)
             {
-                ludbksb(LU, indx, result.data() + j * M);
+                ludbksb(LU.x, indx, result.data() + j * M);
             }
             return result;
         }
 
         template <size_t A = M>
-        disable_when_squre_t<A, Matrix<N, M>> I() const
+        disable_when_squre_t<A, MatrixS<N, M>> I() const
         {
-            Matrix<N, 1> w{};
-            Matrix<N, N> V{};
+            MatrixS<N, 1> w{};
+            MatrixS<N, N> V{};
             auto U = svdcmp(*this, w, V);
-            Matrix<N, N> W{};
+            MatrixS<N, N> W{};
             for (size_t i = 0; i < N; i++)
             {
                 if (fabs(w[i]) > EPS_SP)
@@ -677,17 +481,16 @@ namespace ppx
         enable_when_squre_t<A, double> det() const
         {
             auto even = true;
-            auto sing = false;
             std::array<int, M> indx{};
-            auto LU = ludcmp(*this, indx, even, sing);
-            if (sing)
+            auto LU = ludcmp(*this, indx, even);
+            if (LU.s == StatusCode::SINGULAR)
             {
                 return {};
             }
             auto D = even ? 1.0 : -1.0;
             for (size_t i = 0; i < M; i++)
             {
-                D *= LU(i, i);
+                D *= LU.x(i, i);
             }
             return D;
         }
@@ -704,9 +507,9 @@ namespace ppx
         }
 
         template <size_t A = std::min(M, N)>
-        enable_when_matrix_t<M, N, Matrix<A, 1>> diag() const
+        enable_when_matrix_t<M, N, MatrixS<A, 1>> diag() const
         {
-            Matrix<A, 1> result;
+            MatrixS<A, 1> result;
             for (size_t i = 0; i < A; i++)
             {
                 result[i] = (*this)(i, i);
@@ -715,9 +518,9 @@ namespace ppx
         }
 
         template <size_t A = std::max(M, N)>
-        enable_when_array_t<M, N, Matrix<A, A>> diag() const
+        enable_when_array_t<M, N, MatrixS<A, A>> diag() const
         {
-            Matrix<A, A> result;
+            MatrixS<A, A> result;
             for (size_t i = 0; i < A; i++)
             {
                 result(i, i) = (*this)[i];
@@ -763,9 +566,9 @@ namespace ppx
         }
 
         template <size_t L>
-        Matrix<M, L> operator*(const Matrix<N, L> &other) const
+        MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
         {
-            Matrix<M, L> result;
+            MatrixS<M, L> result;
             for (size_t k = 0; k < N; k++)
             {
                 for (size_t j = 0; j < L; j++)
@@ -776,23 +579,10 @@ namespace ppx
                     }
                 }
             }
-            // Matrix<N, M> AT = this->T();
-            // auto iter_A = AT.data();
-            // auto iter_B = other.data();
-            // for (size_t i = 0; i < M; i++)
-            // {
-            //     iter_B = other.data();
-            //     for (size_t j = 0; j < L; j++)
-            //     {
-            //         result(i, j) = std::inner_product(iter_A, iter_A + N, iter_B, 0.0);
-            //         iter_B += N;
-            //     }
-            //     iter_A += N;
-            // }
             return result;
         }
 
-        Matrix &operator+=(const Matrix &other)
+        MatrixS &operator+=(const MatrixS &other)
         {
             for (size_t i = 0; i < M * N; i++)
             {
@@ -801,7 +591,7 @@ namespace ppx
             return *this;
         }
 
-        Matrix &operator-=(const Matrix &other)
+        MatrixS &operator-=(const MatrixS &other)
         {
             for (size_t i = 0; i < M * N; i++)
             {
@@ -810,7 +600,7 @@ namespace ppx
             return *this;
         }
 
-        bool operator==(const Matrix &other) const
+        bool operator==(const MatrixS &other) const
         {
             return std::equal(this->m_data.begin(), this->m_data.end(), other.data(),
                               [](double ele1, double ele2)
@@ -818,7 +608,7 @@ namespace ppx
         }
 
         template <typename T>
-        details::enable_arith_type_t<T, Matrix &> operator+=(T ele)
+        details::enable_arith_type_t<T, MatrixS &> operator+=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -828,7 +618,7 @@ namespace ppx
         }
 
         template <typename T>
-        details::enable_arith_type_t<T, Matrix &> operator-=(T ele)
+        details::enable_arith_type_t<T, MatrixS &> operator-=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -838,7 +628,7 @@ namespace ppx
         }
 
         template <typename T>
-        details::enable_arith_type_t<T, Matrix &> operator*=(T ele)
+        details::enable_arith_type_t<T, MatrixS &> operator*=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -848,7 +638,7 @@ namespace ppx
         }
 
         template <typename T>
-        details::enable_arith_type_t<T, Matrix &> operator/=(T ele)
+        details::enable_arith_type_t<T, MatrixS &> operator/=(T ele)
         {
             for (auto &i : this->m_data)
             {
@@ -858,7 +648,7 @@ namespace ppx
         }
 
         // Generate function.
-        friend std::ostream &operator<<(std::ostream &os, const Matrix &self)
+        friend std::ostream &operator<<(std::ostream &os, const MatrixS &self)
         {
             os << "Matrix<" << M << "," << N << ">:\n";
             for (auto i = 0u; i < M; i++)
@@ -873,9 +663,9 @@ namespace ppx
         }
 
         // Static function.
-        static Matrix eye()
+        static MatrixS eye()
         {
-            Matrix<M, N> result{};
+            MatrixS<M, N> result{};
             auto real_idx = M < N ? M : N;
             for (size_t i = 0; i < real_idx; i++)
             {
@@ -884,19 +674,12 @@ namespace ppx
             return result;
         }
 
-        static Matrix zero()
-        {
-            Matrix<M, N> result{};
-            result.fill(0.0);
-            return result;
-        }
-
-        constexpr size_t row_counts()
+        constexpr size_t rows() const
         {
             return M;
         }
 
-        constexpr size_t col_counts()
+        constexpr size_t cols() const
         {
             return N;
         }
@@ -907,5 +690,250 @@ namespace ppx
         }
     };
 
+    class MatrixD
+    {
+        using value_type = double;
+        using cast_type = MatrixD;
+        using elem_tag = details::ElemTags::Matrix;
+        using iterator = typename std::vector<double>::iterator;
+        using const_iterator = typename std::vector<double>::const_iterator;
+
+        iterator begin() noexcept
+        {
+            return this->m_data.begin();
+        }
+        iterator end() noexcept
+        {
+            return this->m_data.end();
+        }
+        const_iterator begin() const noexcept
+        {
+            return this->m_data.begin();
+        }
+        const_iterator end() const noexcept
+        {
+            return this->m_data.end();
+        }
+        const_iterator cbegin() const noexcept
+        {
+            return this->m_data.begin();
+        }
+        const_iterator cend() const noexcept
+        {
+            return this->m_data.end();
+        }
+
+    public:
+        MatrixD() : m(0), n(0) {}
+
+        MatrixD(size_t M, size_t N) : m(M), n(N), m_data(m * n, 0.0) {}
+
+        template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
+        MatrixD(size_t M, size_t N, const std::array<T, L> &list) : m(M), n(N), m_data(m * n, 0.0)
+        {
+            std::copy_n(list.begin(), std::min(L, m * n), m_data.begin());
+        }
+
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
+        MatrixD(size_t M, size_t N, const std::initializer_list<T> &list) : m(M), n(N), m_data(m * n, 0.0)
+        {
+            std::copy_n(list.begin(), std::min(list.size(), m * n), m_data.begin());
+        }
+
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
+        MatrixD(size_t M, size_t N, const std::vector<T> &list) : m(M), n(N), m_data(m * n, 0.0)
+        {
+            std::copy_n(list.begin(), std::min(list.size(), m * n), m_data.begin());
+        }
+
+        // Member functions
+        double *data()
+        {
+            return this->m_data.data();
+        }
+
+        const double *data() const
+        {
+            return this->m_data.data();
+        }
+
+        MatrixD row(size_t idx) const
+        {
+            assert(idx < m);
+            MatrixD result(n, 1);
+            for (size_t i = 0; i < n; ++i)
+            {
+                result[i] = m_data.at(idx + i * m);
+            }
+            return result;
+        }
+
+        MatrixD col(size_t idx) const
+        {
+            assert(idx < n);
+            MatrixD result(m, 1);
+            for (size_t i = 0; i < m; ++i)
+            {
+                result[i] = m_data.at(idx * m + i);
+            }
+            return result;
+        }
+
+        void fill(double val)
+        {
+            std::fill(m_data.begin(), m_data.end(), val);
+        }
+
+        MatrixD T() const
+        {
+            MatrixD res(n, m);
+            for (size_t i = 0; i < m; i++)
+            {
+                for (size_t j = 0; j < n; j++)
+                {
+                    res(j, i) = (*this)(i, j);
+                }
+            }
+            return res;
+        }
+
+        MatrixD I() const
+        {
+            if (m == n)
+            {
+                std::vector<int> indx(m, 0);
+                auto even = true;
+                auto LU = ludcmp(*this, indx, even);
+                if (LU.s == StatusCode::SINGULAR)
+                {
+                    return {};
+                }
+                auto result = MatrixD::eye(m, m);
+                for (size_t j = 0; j < m; j++)
+                {
+                    ludbksb(LU.x, indx, result.data() + j * m);
+                }
+                return result;
+            }
+            else
+            {
+                return {};
+            }
+        }
+
+        double det() const
+        {
+            assert(m == n);
+            auto even = true;
+            std::vector<int> indx(m, 0.0);
+            auto LU = ludcmp(*this, indx, even);
+            if (LU.s == StatusCode::SINGULAR)
+            {
+                return {};
+            }
+            auto D = even ? 1.0 : -1.0;
+            for (size_t i = 0; i < m; i++)
+            {
+                D *= LU.x(i, i);
+            }
+            return D;
+        }
+
+        double trace() const
+        {
+            assert(m == n);
+            double res = 0.0;
+            for (size_t i = 0; i < m; i++)
+            {
+                res += (*this)(i, i);
+            }
+            return res;
+        }
+
+        // Overloaded Operators
+        double &operator()(size_t row, size_t col)
+        {
+            assert(row < m && col < n);
+            return m_data.at(row + col * m);
+        }
+
+        const double &operator()(size_t row, size_t col) const
+        {
+            assert(row < m && col < n);
+            return m_data.at(row + col * m);
+        }
+
+        double &operator()(const std::pair<size_t, size_t> &idx)
+        {
+            assert(idx.first < m && idx.second < n);
+            return m_data.at(idx.first + idx.second * m);
+        }
+
+        const double &operator()(const std::pair<size_t, size_t> &idx) const
+        {
+            assert(idx.first < m && idx.second < n);
+            return m_data.at(idx.first + idx.second * m);
+        }
+
+        double &operator[](size_t idx)
+        {
+            assert(idx < m * n);
+            return m_data.at(idx);
+        }
+
+        const double &operator[](size_t idx) const
+        {
+            assert(idx < m * n);
+            return m_data.at(idx);
+        }
+
+        // Generate function.
+        friend std::ostream &operator<<(std::ostream &os, const MatrixD &self)
+        {
+            auto m = self.m;
+            auto n = self.n;
+            os << "Matrix<" << m << "," << n << ">:\n";
+            for (auto i = 0u; i < m; i++)
+            {
+                for (auto j = 0u; j < n; j++)
+                {
+                    os << std::setw(12) << self(i, j) << "\t";
+                }
+                os << std::endl;
+            }
+            return os;
+        }
+
+        size_t rows() const
+        {
+            return m;
+        }
+
+        size_t cols() const
+        {
+            return n;
+        }
+
+        size_t size()
+        {
+            return m * n;
+        }
+
+        static MatrixD eye(size_t M, size_t N)
+        {
+            MatrixD result(M, N);
+            auto real_idx = M < N ? M : N;
+            for (size_t i = 0; i < real_idx; i++)
+            {
+                result.data()[i * (M + 1)] = 1.0;
+            }
+            return result;
+        }
+
+    private:
+        size_t m;
+        size_t n;
+        std::vector<double> m_data;
+    };
 }
 #endif

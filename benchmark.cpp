@@ -10,7 +10,7 @@ using namespace ppx;
     {                                                      \
         std::default_random_engine e;                      \
         std::uniform_real_distribution<> u(-1.0e6, 1.0e6); \
-        Matrix<N, N> M{};                                  \
+        MatrixS<N, N> M{};                                  \
         for (size_t i = 0; i < N; i++)                     \
         {                                                  \
             for (size_t j = 0; j < N; j++)                 \
@@ -20,7 +20,7 @@ using namespace ppx;
             }                                              \
         }                                                  \
         auto b = M.T();                                    \
-        Matrix<N, N> M2{};                                 \
+        MatrixS<N, N> M2{};                                 \
         for (auto _ : state)                               \
         {                                                  \
             benchmark::DoNotOptimize(M2 = M * b);          \
@@ -32,7 +32,7 @@ using namespace ppx;
     {                                                                 \
         std::default_random_engine e;                                 \
         std::uniform_real_distribution<> u(-1.0e6, 1.0e6);            \
-        Matrix<N, N> M;                                               \
+        MatrixS<N, N> M;                                               \
         for (size_t i = 0; i < N; i++)                                \
         {                                                             \
             for (size_t j = 0; j < N; j++)                            \
@@ -41,9 +41,9 @@ using namespace ppx;
                 M(i, j) = t;                                          \
             }                                                         \
         }                                                             \
-        Matrix<N, N> result;                                          \
-        Matrix<N, 1> d;                                               \
-        Matrix<N, N> v;                                               \
+        MatrixS<N, N> result;                                          \
+        MatrixS<N, 1> d;                                               \
+        MatrixS<N, N> v;                                               \
         bool sing = false;                                            \
         for (auto _ : state)                                          \
         {                                                             \
@@ -55,7 +55,7 @@ static void BM_MatrixMul(benchmark::State &state)
 {
     std::default_random_engine e;
     std::uniform_real_distribution<> u(-1.0e6, 1.0e6);
-    Matrix<20, 25> M{};
+    MatrixS<20, 25> M{};
     for (size_t i = 0; i < 20; i++)
     {
         for (size_t j = 0; i < 25; i++)
@@ -65,7 +65,7 @@ static void BM_MatrixMul(benchmark::State &state)
         }
     }
     auto b = M.T();
-    Matrix<20, 20> M2{};
+    MatrixS<20, 20> M2{};
     for (auto _ : state)
     {
         benchmark::DoNotOptimize(M2 = M * b);
@@ -94,11 +94,11 @@ GENERATE_SVD_N(1024);
 
 static void BM_MatrixInv(benchmark::State &state)
 {
-    Matrix<10, 10> M =
+    MatrixS<10, 10> M =
         std::array<double, 100>{
             -729046.0, 451678.0, 595857.0, 594560.0, -748207.0, 411549.0, 642492.0, 977043.0, -864809.0, -191583.0, 670017., 962219., -277412, -366899, -579582, -994363, 641682, -335103, 587195, -294475, 937736, -780276, -576151, 744858, -897567, 421408, 880148, -400337, 189007, 185648 - 557932, 596212, 362719, -701772, -927117, 287922, -174667, -972922, 465597, -287310 - 383666, -405941, -202523, 988137, -182538, -87934.4, -153670, -565524, 390466, 929933, 94441.2, -990433, 481294, 643807, -84021.7, 547834, 161913, 814729, 359640, -691123 - 623236, -775071, -50482.6, -749634, -24862.1, 147509, -683885, 696936, -215359, -210184, 985763, 279527, -155825, 527500, 587950, 753515, 523462, 910035, 123115, -225408, 992923, 756861, -652270, -18821.9, 841750, 616351, -539688, 557795, -583864, 453909, 935390, 7325.36, -396174, 327211, 615062, -964452, 619469, 974919, 54742.9, -222860};
     M = M.T();
-    Matrix<10, 10> M2{};
+    MatrixS<10, 10> M2{};
     for (auto _ : state)
     {
         M2 = inverse(M);
@@ -141,11 +141,11 @@ static void BM_MatrixEigenInv(benchmark::State &state)
 
 static void BM_MatrixExpr(benchmark::State &state)
 {
-    Matrix<10, 10> x =
+    MatrixS<10, 10> x =
         std::array<double, 100>{
             -729046.0, 451678.0, 595857.0, 594560.0, -748207.0, 411549.0, 642492.0, 977043.0, -864809.0, -191583.0, 670017., 962219., -277412, -366899, -579582, -994363, 641682, -335103, 587195, -294475, 937736, -780276, -576151, 744858, -897567, 421408, 880148, -400337, 189007, 185648 - 557932, 596212, 362719, -701772, -927117, 287922, -174667, -972922, 465597, -287310 - 383666, -405941, -202523, 988137, -182538, -87934.4, -153670, -565524, 390466, 929933, 94441.2, -990433, 481294, 643807, -84021.7, 547834, 161913, 814729, 359640, -691123 - 623236, -775071, -50482.6, -749634, -24862.1, 147509, -683885, 696936, -215359, -210184, 985763, 279527, -155825, 527500, 587950, 753515, 523462, 910035, 123115, -225408, 992923, 756861, -652270, -18821.9, 841750, 616351, -539688, 557795, -583864, 453909, 935390, 7325.36, -396174, 327211, 615062, -964452, 619469, 974919, 54742.9, -222860};
     auto y = x.T();
-    Matrix<10, 10> z{};
+    MatrixS<10, 10> z{};
     for (auto _ : state)
     {
         z = x * 2 + y * 2 + 3.3 + x * y + x + y + x + y;
@@ -178,7 +178,7 @@ static void BM_MatrixLog(benchmark::State &state)
 
 static void BM_MatrixExp(benchmark::State &state)
 {
-    Matrix<4, 4> se3mat = {0.0, 0.0, 0.0, 0.0,
+    MatrixS<4, 4> se3mat = {0.0, 0.0, 0.0, 0.0,
                            0.0, 0.0, 1.5708, 0.0,
                            0.0, -1.5708, 0.0, 0.0,
                            0.0, 2.3562, 2.3562, 0.0};
@@ -191,15 +191,15 @@ static void BM_MatrixExp(benchmark::State &state)
 
 static void BM_MatrixQR(benchmark::State &state)
 {
-    Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+    MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
                    997.0, -122.0, 35.4, 889.0, 111.1,
                    -442.0, -0.987, 355.0, -346.0, 3419.0,
                    235.0, 98.87, -827.0, 876.0, 34.0,
                    222.0, -87.8, 546.0, -101.0, 122.1,
                    -86.0, 999.0, 65.2, 902.0, 54.2};
-    Matrix<6, 5> result;
-    Matrix<5, 1> c;
-    Matrix<5, 1> d;
+    MatrixS<6, 5> result;
+    MatrixS<5, 1> c;
+    MatrixS<5, 1> d;
     bool sing;
     auto uT = u.T();
     for (auto _ : state)
@@ -227,15 +227,15 @@ static void BM_MatrixEigenQR(benchmark::State &state)
 
 static void BM_MatrixSVD(benchmark::State &state)
 {
-    Matrix<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+    MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
                    997.0, -122.0, 35.4, 889.0, 111.1,
                    -442.0, -0.987, 355.0, -346.0, 3419.0,
                    235.0, 98.87, -827.0, 876.0, 34.0,
                    222.0, -87.8, 546.0, -101.0, 122.1,
                    -86.0, 999.0, 65.2, 902.0, 54.2};
-    Matrix<5, 6> result;
-    Matrix<6, 1> e;
-    Matrix<6, 6> v;
+    MatrixS<5, 6> result;
+    MatrixS<6, 1> e;
+    MatrixS<6, 6> v;
     bool sing = false;
     for (auto _ : state)
     {

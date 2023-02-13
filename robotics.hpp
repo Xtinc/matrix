@@ -25,7 +25,7 @@ private:
     std::array<joint, N> JList;
 
 public:
-    using Q = Matrix<N, 1>;
+    using Q = MatrixS<N, 1>;
     template <size_t L>
     idx_available_t<L, joint &> getJoint()
     {
@@ -67,9 +67,9 @@ public:
         }
         return effector_pose;
     }
-    Matrix<6, N> jacobiSpace(const Q &jointAngle)
+    MatrixS<6, N> jacobiSpace(const Q &jointAngle)
     {
-        Matrix<6, N> Js;
+        MatrixS<6, N> Js;
         SE3 T;
         for (int i = 1; i < (int)N; i++)
         {
@@ -80,9 +80,9 @@ public:
         return Js;
     }
     template <size_t L>
-    idx_available_t<L, Matrix<6, L>> jacobiSpace(const std::array<std::string, L> &namelist, const Q &jointAngle)
+    idx_available_t<L, MatrixS<6, L>> jacobiSpace(const std::array<std::string, L> &namelist, const Q &jointAngle)
     {
-        Matrix<6, L> Js;
+        MatrixS<6, L> Js;
         auto JsAll = jacobiSpace(jointAngle);
         for (size_t i = 0; i < L; i++)
         {

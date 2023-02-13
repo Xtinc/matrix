@@ -32,18 +32,18 @@ namespace ppx
     class MultiNormalDistribution
     {
     public:
-        using samples = std::vector<Matrix<N, 1>>;
-        MultiNormalDistribution() : m_cov(Matrix<N, N>::eye()) {}
-        MultiNormalDistribution(const Matrix<N, 1> &mu, const Matrix<N, N> &sigma)
+        using samples = std::vector<MatrixS<N, 1>>;
+        MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()) {}
+        MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}
-        Matrix<N, 1> operator()() const
+        MatrixS<N, 1> operator()() const
         {
-            Matrix<N, 1> x;
+            MatrixS<N, 1> x;
             std::random_device rd{};
             std::mt19937 gen{rd()};
             std::normal_distribution<> d{0, 1};
             auto eigsys = eig<EigenSystem::SymValAndVec>(m_cov);
-            Matrix<N, N> diag;
+            MatrixS<N, N> diag;
             for (size_t i = 0; i < N; i++)
             {
                 x[i] = d(gen);
@@ -52,27 +52,27 @@ namespace ppx
             return eigsys.vec * diag * x + m_mean;
         }
 
-        double pdf(const Matrix<N, 1> &x) const
+        double pdf(const MatrixS<N, 1> &x) const
         {
             int n = static_cast<int>(N);
-            Matrix<2, 1> normalized_mu = x - m_mean;
+            MatrixS<2, 1> normalized_mu = x - m_mean;
             double quadform = (normalized_mu.T() * m_cov.I() * normalized_mu)[0];
             double norm = pow(sqrt(2 * PI), -n) * pow(m_cov.det(), -0.5);
             return norm * exp(-0.5 * quadform);
         }
-        const Matrix<N, 1> &mean() const
+        const MatrixS<N, 1> &mean() const
         {
             return m_mean;
         }
-        Matrix<N, 1> &mean()
+        MatrixS<N, 1> &mean()
         {
             return m_mean;
         }
-        const Matrix<N, N> &covariance() const
+        const MatrixS<N, N> &covariance() const
         {
             return m_cov;
         }
-        Matrix<N, N> &covariance()
+        MatrixS<N, N> &covariance()
         {
             return m_cov;
         }
@@ -80,20 +80,20 @@ namespace ppx
         void loglikehood(const samples &data)
         {
             auto n = data.size();
-            auto sum_m = std::accumulate(data.begin(), data.end(), Matrix<N, 1>());
+            auto sum_m = std::accumulate(data.begin(), data.end(), MatrixS<N, 1>());
             m_mean = sum_m / n;
-            Matrix<N, N> sum_s;
+            MatrixS<N, N> sum_s;
             for (size_t i = 0; i < n; i++)
             {
-                Matrix<N, N> tpx = data.at(i) - m_mean;
+                MatrixS<N, N> tpx = data.at(i) - m_mean;
                 sum_s += tpx * tpx.T();
             }
             m_cov = sum_s / n;
         }
 
     private:
-        Matrix<N, 1> m_mean;
-        Matrix<N, N> m_cov;
+        MatrixS<N, 1> m_mean;
+        MatrixS<N, N> m_cov;
     };
 
     template <size_t N>
@@ -110,9 +110,9 @@ namespace ppx
     {
     public:
         using dist = MultiNormalDistribution<N>;
-        using samples = std::vector<Matrix<N, 1>>;
+        using samples = std::vector<MatrixS<N, 1>>;
 
-        double pdf(const Matrix<N, 1> &x)
+        double pdf(const MatrixS<N, 1> &x)
         {
             double sum = 0.0;
             for (size_t i = 0; i < K; i++)
@@ -122,7 +122,7 @@ namespace ppx
             return sum;
         }
 
-        Matrix<N, 1> operator()() const
+        MatrixS<N, 1> operator()() const
         {
             // auto total_p = std::accumulate(m_prior.begin(), m_prior.end(), 0.0);
             // how?
@@ -178,25 +178,25 @@ namespace ppx
                 std::vector<std::vector<double>> a(c, std::vector<double>(n));
                 for (size_t k = 0; k < c; k++)
                 {
-                    std::transform(data.begin(), data.end(), a[k].begin(), [&](const Matrix<N, 1> &x)
+                    std::transform(data.begin(), data.end(), a[k].begin(), [&](const MatrixS<N, 1> &x)
                                    { return m_prior[k] * m_guassian[k].pdf(x) / pdf(x); });
                 }
                 for (size_t k = 0; k < c; k++)
                 {
                     auto sum_g = std::accumulate(a[k].begin(), a[k].end(), 0.0);
                     m_prior[k] = sum_g / n;
-                    Matrix<N, 1> sum_m = std::inner_product(a[k].begin(), a[k].end(), data.begin(), Matrix<N, 1>());
+                    MatrixS<N, 1> sum_m = std::inner_product(a[k].begin(), a[k].end(), data.begin(), MatrixS<N, 1>());
                     sum_m /= sum_g;
-                    Matrix<N, N> sum_s;
+                    MatrixS<N, N> sum_s;
                     for (size_t i = 0; i < n; i++)
                     {
-                        Matrix<N, 1> tpx = data.at(i) - sum_m;
+                        MatrixS<N, 1> tpx = data.at(i) - sum_m;
                         sum_s += tpx * tpx.T() * a[k][i];
                     }
                     m_guassian[k].mean() = sum_m;
                     m_guassian[k].covariance() = sum_s / sum_g;
                 }
-                double tpp = std::accumulate(data.begin(), data.end(), 0.0, [&](double y0, const Matrix<N, 1> &x)
+                double tpp = std::accumulate(data.begin(), data.end(), 0.0, [&](double y0, const MatrixS<N, 1> &x)
                                              { return y0 + log(pdf(x)); });
                 residual = fabs(last_p - tpp);
                 last_p = tpp;
