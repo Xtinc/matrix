@@ -1,7 +1,7 @@
 #ifndef VVERY_SIMPLE_ALGORITHM1_HEADER
 #define VVERY_SIMPLE_ALGORITHM1_HEADER
 
-#include "matrix.hpp"
+#include "matrixs.hpp"
 #include <complex>
 
 namespace ppx

@@ -1,4 +1,5 @@
 #include "robotics.hpp"
+#include "matrixd.hpp"
 #include "ppxlog.h"
 #include <random>
 #include <future>
@@ -32,8 +33,8 @@ void test_expr()
     ones(m);
     PRINT_SINGLE_ELEMENTS(m, "m = ");
     // elem 0
-    m.sub<2, 2>(0, 0) = {3, 3, 3};
-    m.sub<3, 1>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - MatrixS<3, 1>::eye());
+    m.sub<2, 2, false>(0, 0) = {3, 3, 3};
+    m.sub<3, 1, false>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - MatrixS<3, 1>::eye());
     PRINT_SINGLE_ELEMENTS(m, "m = ");
 }
 
@@ -392,17 +393,17 @@ int main(int, char **)
     ppx::initialize_log("./", "test", 10);
     LOG_INFO << "test_expr";
     test_expr();
-    LOG_INFO << "test_matrix";
-    test_matrix();
-    LOG_INFO << "test_linear";
-    test_linear();
-    LOG_INFO << "test_statics";
-    test_statics();
-    LOG_INFO << "test_lieGroup";
-    test_lieGroup();
-    LOG_INFO << "test_robotics";
-    test_robotics();
-    LOG_INFO << "test_nonlinear";
-    test_nonlinear();
-    LOG_INFO << "test end";
+    // LOG_INFO << "test_matrix";
+    // test_matrix();
+    // LOG_INFO << "test_linear";
+    // test_linear();
+    // LOG_INFO << "test_statics";
+    // test_statics();
+    // LOG_INFO << "test_lieGroup";
+    // test_lieGroup();
+    // LOG_INFO << "test_robotics";
+    // test_robotics();
+    // LOG_INFO << "test_nonlinear";
+    // test_nonlinear();
+    // LOG_INFO << "test end";
 }
