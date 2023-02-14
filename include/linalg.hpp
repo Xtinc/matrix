@@ -17,7 +17,6 @@ namespace ppx
     }
 
     // matrix related
-
     enum class Factorization : char
     {
         LU,
@@ -198,7 +197,6 @@ namespace ppx
     }
 
     // solver linear system
-
     template <typename MatNN, typename VecN1>
     FacResult<MatNN> ludcmp(MatNN A, VecN1 &indx, bool &even)
     {
@@ -307,10 +305,6 @@ namespace ppx
             }
             else
             {
-                // for (int i = k; i < M; i++)
-                // {
-                //     a(i, k) /= scale;
-                // }
                 sum = 0.0;
                 for (int i = k; i < IM; i++)
                 {
@@ -375,36 +369,36 @@ namespace ppx
         }
     }
 
-    template <size_t M, size_t N>
-    MatrixS<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v, bool &sing)
+    template <typename MatMN, typename VecN1, typename MatNN>
+    FacResult<MatMN> svdcmp(MatMN u, VecN1 &w, MatNN &v)
     {
-        constexpr int IN = N;
-        constexpr int IM = M;
-        sing = false;
-        bool flag;
-        int i, its, j, jj, k, l, nm;
-        double anorm, c, f, g, h, s, scale, x, y, z;
-        double rv1[N];
-        g = 0.0;
-        scale = 0.0;
-        anorm = 0.0;
-        l = 0;
-        for (i = 0; i < IN; i++)
+        const int m = u.rows();
+        const int n = u.cols();
+        assert(w.rows() == n && w.cols() == 1);
+        assert(v.rows() == n && v.cols() == n);
+        int i, its, j, jj, k, nm;
+        double c, f, h, s, x, y, z;
+        std::vector<double> rv1(n, 0.0);
+        double g = 0.0;
+        double scale = 0.0;
+        double anorm = 0.0;
+        int l = 0;
+        for (i = 0; i < n; i++)
         {
             l = i + 2;
             rv1[i] = scale * g;
             g = 0.0;
             s = 0.0;
             scale = 0.0;
-            if (i < IM)
+            if (i < m)
             {
-                for (k = i; k < IM; k++)
+                for (k = i; k < m; k++)
                 {
                     scale += fabs(u(k, i));
                 }
                 if (scale > EPS_SP)
                 {
-                    for (k = i; k < IM; k++)
+                    for (k = i; k < m; k++)
                     {
                         u(k, i) /= scale;
                         s += u(k, i) * u(k, i);
@@ -413,19 +407,19 @@ namespace ppx
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
                     u(i, i) = f - g;
-                    for (j = l - 1; j < IN; j++)
+                    for (j = l - 1; j < n; j++)
                     {
-                        for (s = 0.0, k = i; k < IM; k++)
+                        for (s = 0.0, k = i; k < m; k++)
                         {
                             s += u(k, i) * u(k, j);
                         }
                         f = s / h;
-                        for (k = i; k < IM; k++)
+                        for (k = i; k < m; k++)
                         {
                             u(k, j) += f * u(k, i);
                         }
                     }
-                    for (k = i; k < IM; k++)
+                    for (k = i; k < m; k++)
                     {
                         u(k, i) *= scale;
                     }
@@ -433,15 +427,15 @@ namespace ppx
             }
             w[i] = scale * g;
             g = s = scale = 0.0;
-            if (i + 1 <= IM && i + 1 != N)
+            if (i + 1 <= m && i + 1 != n)
             {
-                for (k = l - 1; k < IN; k++)
+                for (k = l - 1; k < n; k++)
                 {
                     scale += fabs(u(i, k));
                 }
                 if (scale > EPS_SP)
                 {
-                    for (k = l - 1; k < IN; k++)
+                    for (k = l - 1; k < n; k++)
                     {
                         u(i, k) /= scale;
                         s += u(i, k) * u(i, k);
@@ -450,22 +444,22 @@ namespace ppx
                     g = -SIGN(sqrt(s), f);
                     h = f * g - s;
                     u(i, l - 1) = f - g;
-                    for (k = l - 1; k < IN; k++)
+                    for (k = l - 1; k < n; k++)
                     {
                         rv1[k] = u(i, k) / h;
                     }
-                    for (j = l - 1; j < IM; j++)
+                    for (j = l - 1; j < m; j++)
                     {
-                        for (s = 0.0, k = l - 1; k < IN; k++)
+                        for (s = 0.0, k = l - 1; k < n; k++)
                         {
                             s += u(j, k) * u(i, k);
                         }
-                        for (k = l - 1; k < IN; k++)
+                        for (k = l - 1; k < n; k++)
                         {
                             u(j, k) += s * rv1[k];
                         }
                     }
-                    for (k = l - 1; k < IN; k++)
+                    for (k = l - 1; k < n; k++)
                     {
                         u(i, k) *= scale;
                     }
@@ -473,29 +467,29 @@ namespace ppx
             }
             anorm = std::max(anorm, fabs(w[i]) + fabs(rv1[i]));
         }
-        for (i = IN - 1; i >= 0; i--)
+        for (i = n - 1; i >= 0; i--)
         {
-            if (i < IN - 1)
+            if (i < n - 1)
             {
                 if (fabs(g) > EPS_SP)
                 {
-                    for (j = l; j < IN; j++)
+                    for (j = l; j < n; j++)
                     {
                         v(j, i) = (u(i, j) / u(i, l)) / g;
                     }
-                    for (j = l; j < IN; j++)
+                    for (j = l; j < n; j++)
                     {
-                        for (s = 0.0, k = l; k < IN; k++)
+                        for (s = 0.0, k = l; k < n; k++)
                         {
                             s += u(i, k) * v(k, j);
                         }
-                        for (k = l; k < IN; k++)
+                        for (k = l; k < n; k++)
                         {
                             v(k, j) += s * v(k, i);
                         }
                     }
                 }
-                for (j = l; j < IN; j++)
+                for (j = l; j < n; j++)
                 {
                     v(i, j) = 0.0;
                     v(j, i) = 0.0;
@@ -505,48 +499,48 @@ namespace ppx
             g = rv1[i];
             l = i;
         }
-        for (i = std::min(IM, IN) - 1; i >= 0; i--)
+        for (i = std::min(m, n) - 1; i >= 0; i--)
         {
             l = i + 1;
             g = w[i];
-            for (j = l; j < IN; j++)
+            for (j = l; j < n; j++)
             {
                 u(i, j) = 0.0;
             }
             if (fabs(g) > EPS_SP)
             {
                 g = 1.0 / g;
-                for (j = l; j < IN; j++)
+                for (j = l; j < n; j++)
                 {
-                    for (s = 0.0, k = l; k < IM; k++)
+                    for (s = 0.0, k = l; k < m; k++)
                     {
                         s += u(k, i) * u(k, j);
                     }
                     f = (s / u(i, i)) * g;
-                    for (k = i; k < IM; k++)
+                    for (k = i; k < m; k++)
                     {
                         u(k, j) += f * u(k, i);
                     }
                 }
-                for (j = i; j < IM; j++)
+                for (j = i; j < m; j++)
                 {
                     u(j, i) *= g;
                 }
             }
             else
             {
-                for (j = i; j < IM; j++)
+                for (j = i; j < m; j++)
                 {
                     u(j, i) = 0.0;
                 }
             }
             u(i, i) += 1.0;
         }
-        for (k = IN - 1; k >= 0; k--)
+        for (k = n - 1; k >= 0; k--)
         {
             for (its = 0; its < 30; its++)
             {
-                flag = true;
+                bool flag = true;
                 nm = k - 1;
                 for (l = k; l >= 0; l--)
                 {
@@ -579,7 +573,7 @@ namespace ppx
                         h = 1.0 / h;
                         c = g * h;
                         s = -f * h;
-                        for (j = 0; j < IM; j++)
+                        for (j = 0; j < m; j++)
                         {
                             y = u(j, nm);
                             z = u(j, i);
@@ -594,7 +588,7 @@ namespace ppx
                     if (z < 0.0)
                     {
                         w[k] = -z;
-                        for (j = 0; j < IN; j++)
+                        for (j = 0; j < n; j++)
                         {
                             v(j, k) = -v(j, k);
                         }
@@ -603,8 +597,7 @@ namespace ppx
                 }
                 if (its == 29)
                 {
-                    sing = true;
-                    return {};
+                    return {MatMN(), StatusCode::SINGULAR};
                 }
                 x = w[l];
                 nm = k - 1;
@@ -630,7 +623,7 @@ namespace ppx
                     g = g * c - x * s;
                     h = y * s;
                     y *= c;
-                    for (jj = 0; jj < IN; jj++)
+                    for (jj = 0; jj < n; jj++)
                     {
                         x = v(jj, j);
                         z = v(jj, i);
@@ -647,7 +640,7 @@ namespace ppx
                     }
                     f = c * g + s * y;
                     x = c * y - s * g;
-                    for (jj = 0; jj < IM; jj++)
+                    for (jj = 0; jj < m; jj++)
                     {
                         y = u(jj, j);
                         z = u(jj, i);
@@ -660,23 +653,25 @@ namespace ppx
                 w[k] = x;
             }
         }
-        return u;
+        return {u, StatusCode::CONVERGED};
     }
 
-    template <size_t M, size_t N>
-    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b)
+    template <typename MatMN, typename VecN1, typename MatNN>
+    void svbksb(const MatMN &u, const VecN1 &w, const MatNN &v, double *b)
     {
-        constexpr int IN = N;
-        constexpr int IM = M;
-        double tmp[N];
+        const int m = u.rows();
+        const int n = u.cols();
+        assert(w.rows() == n && w.cols() == 1);
+        assert(v.rows() == n && v.cols() == n);
+        std::vector<double> tmp(n, 0.0);
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
-        for (int j = 0; j < IN; j++)
+        auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_SP;
+        for (int j = 0; j < n; j++)
         {
             auto s = 0.0;
             if (w[j] > tsh)
             {
-                for (int i = 0; i < IM; i++)
+                for (int i = 0; i < m; i++)
                 {
                     s += u(i, j) * b[i];
                 }
@@ -684,10 +679,10 @@ namespace ppx
             }
             tmp[j] = s;
         }
-        for (int j = 0; j < IN; j++)
+        for (int j = 0; j < n; j++)
         {
             auto s = 0.0;
-            for (int jj = 0; jj < IN; jj++)
+            for (int jj = 0; jj < n; jj++)
             {
                 s += v(j, jj) * tmp[jj];
             }
@@ -729,16 +724,14 @@ namespace ppx
     std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        MatrixS<N, 1> w{};
-        MatrixS<N, N> V{};
-        auto sing = false;
-        auto U = svdcmp(A, w, V, sing);
-        if (!sing)
+        MatrixS<N, 1> w;
+        MatrixS<N, N> V;
+        auto U = svdcmp(A, w, V);
+        if (U.s == StatusCode::CONVERGED)
         {
-            svbksb(U, w, V, b.data());
+            svbksb(U.x, w, V, b.data());
         }
-        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
-        return {slice<N, 1>(b, 0, 0), s};
+        return {slice<N, 1>(b, 0, 0), U.s};
     }
 
     template <size_t M, size_t N>
@@ -747,12 +740,12 @@ namespace ppx
         MatrixS<N, 1> w{};
         MatrixS<N, N> V{};
         bool sing = false;
-        auto U = svdcmp(mat, w, V, sing);
-        if (sing)
+        auto U = svdcmp(mat, w, V);
+        if (U.s == StatusCode::SINGULAR)
         {
             return {};
         }
-        MatrixS<N, N> W{};
+        MatrixS<N, N> W;
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
         auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
         for (size_t i = 0; i < N; i++)
@@ -762,7 +755,7 @@ namespace ppx
                 W(i, i) = 1.0 / w[i];
             }
         }
-        return V * W * U.T();
+        return V * W * U.x.T();
     }
 
     // eigen system

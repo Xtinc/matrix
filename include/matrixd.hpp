@@ -140,7 +140,22 @@ namespace ppx
             }
             else
             {
-                return {};
+                MatrixD w(n, 1);
+                MatrixD V(n, n);
+                auto U = svdcmp(*this, w, V);
+                if (U.s == StatusCode::SINGULAR)
+                {
+                    return {};
+                }
+                MatrixD W(n, n);
+                for (size_t i = 0; i < n; i++)
+                {
+                    if (fabs(w[i]) > EPS_SP)
+                    {
+                        W(i, i) = 1.0 / w[i];
+                    }
+                }
+                return V * W * U.x.T();
             }
         }
 
@@ -171,6 +186,24 @@ namespace ppx
                 res += (*this)(i, i);
             }
             return res;
+        }
+
+        MatrixD operator*(const MatrixD &other) const
+        {
+            assert(this->cols() == other.rows());
+            auto l = other.cols();
+            MatrixD result(m, l);
+            for (size_t k = 0; k < n; k++)
+            {
+                for (size_t j = 0; j < l; j++)
+                {
+                    for (size_t i = 0; i < m; i++)
+                    {
+                        result(i, j) += (*this)(i, k) * other(k, j);
+                    }
+                }
+            }
+            return result;
         }
 
         // Overloaded Operators

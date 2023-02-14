@@ -44,7 +44,6 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(a);
     PRINT_SINGLE_ELEMENTS(a(maxloc(a)), "max of a : ");
     a.sub<2, 2>(2, 2) = MatrixS<2, 2>{1, 1, 1, 1} + 1;
-    // a({2, 3}, {2, 3}) = Matrix<2, 2>{1, 1, 1, 1};
     a.sub<2, 2>(0, 0) = a.sub<2, 2>(1, 1);
     a *= -1;
     PRINT_SINGLE_ELEMENTS(a);
@@ -91,6 +90,11 @@ void test_matrix()
     MatrixS<4, 3> X{3.5, 1.6, 3.7, 4.3,
                     2.7, -5.7, -0.8, -9.8,
                     -3.1, -6.0, 1.9, 6.9};
+    MatrixD Xd(4, 3, {3.5, 1.6, 3.7, 4.3, 2.7, -5.7, -0.8, -9.8, -3.1, -6.0, 1.9, 6.9});
+    PRINT_SINGLE_ELEMENTS(X.I(), "Pinv of X = ");
+    PRINT_SINGLE_ELEMENTS(X.I() * X, "X.I() * X = ");
+    PRINT_SINGLE_ELEMENTS(Xd.I(), "Pinv of Xd = ");
+    PRINT_SINGLE_ELEMENTS(Xd.I() * Xd, "Xd.I() * Xd = ");
     MatrixS<4, 1> Y{1, 1, 1, 1};
     PRINT_SINGLE_ELEMENTS(linsolve<Factorization::QR>(X, Y), "solved by QR = ");
     PRINT_SINGLE_ELEMENTS(linsolve<Factorization::SVD>(X, Y), "solved by SVD = ");
@@ -100,12 +104,11 @@ void test_matrix()
                     3, 6, 9, 5};
     MatrixS<3, 1> v{};
     MatrixS<3, 3> w{};
-    bool sing = false;
-    u = svdcmp(u, v, w, sing);
-    PRINT_SINGLE_ELEMENTS(u, "U = ");
+    auto ru = svdcmp(u, v, w);
+    PRINT_SINGLE_ELEMENTS(ru.x, "U = ");
     PRINT_SINGLE_ELEMENTS(v, "S = ");
     PRINT_SINGLE_ELEMENTS(w, "V = ");
-    PRINT_SINGLE_ELEMENTS(u * v.diag() * w.T(), "U*S*V = ");
+    PRINT_SINGLE_ELEMENTS(ru.x * v.diag() * w.T(), "U*S*V = ");
 
     MatrixS<4, 4> g{2, -1, 1, 4,
                     -1, 2, -1, 1,
@@ -393,17 +396,17 @@ int main(int, char **)
     ppx::initialize_log("./", "test", 10);
     LOG_INFO << "test_expr";
     test_expr();
-    // LOG_INFO << "test_matrix";
-    // test_matrix();
-    // LOG_INFO << "test_linear";
-    // test_linear();
-    // LOG_INFO << "test_statics";
-    // test_statics();
-    // LOG_INFO << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_INFO << "test_robotics";
-    // test_robotics();
-    // LOG_INFO << "test_nonlinear";
-    // test_nonlinear();
-    // LOG_INFO << "test end";
+    LOG_INFO << "test_matrix";
+    test_matrix();
+    LOG_INFO << "test_linear";
+    test_linear();
+    LOG_INFO << "test_statics";
+    test_statics();
+    LOG_INFO << "test_lieGroup";
+    test_lieGroup();
+    LOG_INFO << "test_robotics";
+    test_robotics();
+    LOG_INFO << "test_nonlinear";
+    test_nonlinear();
+    LOG_INFO << "test end";
 }

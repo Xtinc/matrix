@@ -55,14 +55,14 @@ namespace ppx
     template <typename MatNN, typename VecN1>
     FacResult<MatNN> ludcmp(MatNN A, VecN1 &indx, bool &even);
 
-    template <size_t M, size_t N>
-    MatrixS<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v, bool &sing);
+    template <typename MatMN, typename VecN1, typename MatNN>
+    FacResult<MatMN> svdcmp(MatMN u, VecN1 &w, MatNN &v);
 
     template <typename MatNN, typename VecN1>
     void ludbksb(const MatNN &A, const VecN1 &indx, double *b);
 
-    template <size_t M, size_t N>
-    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b);
+    template <typename MatMN, typename VecN1, typename MatNN>
+    void svbksb(const MatMN &u, const VecN1 &w, const MatNN &v, double *b);
 
     namespace details
     {
@@ -557,10 +557,14 @@ namespace ppx
         template <size_t A = M>
         disable_when_squre_t<A, MatrixS<N, M>> I() const
         {
-            MatrixS<N, 1> w{};
-            MatrixS<N, N> V{};
+            MatrixS<N, 1> w;
+            MatrixS<N, N> V;
             auto U = svdcmp(*this, w, V);
-            MatrixS<N, N> W{};
+            if (U.s == StatusCode::SINGULAR)
+            {
+                return {};
+            }
+            MatrixS<N, N> W;
             for (size_t i = 0; i < N; i++)
             {
                 if (fabs(w[i]) > EPS_SP)
@@ -568,7 +572,7 @@ namespace ppx
                     W(i, i) = 1.0 / w[i];
                 }
             }
-            return V * W * U.T();
+            return V * W * U.x.T();
         }
 
         template <size_t A = M>
