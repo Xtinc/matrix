@@ -159,11 +159,11 @@ namespace ppx
         }
         SO3 Rot() const
         {
-            return slice<3, 3>(*this, 0, 0);
+            return (*this).sub<3, 3>(0, 0);
         }
         T3 Pos() const
         {
-            return slice<3, 1>(*this, 0, 3);
+            return (*this).sub<3, 1>(0, 3);
         }
         MatrixS<6, 6> Adt() const
         {

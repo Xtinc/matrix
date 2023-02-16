@@ -2,6 +2,7 @@
 #define VVERY_SIMPLE_ALGORITHM1_HEADER
 
 #include "matrixs.hpp"
+#include "matrixd.hpp"
 #include <complex>
 
 namespace ppx
@@ -42,30 +43,30 @@ namespace ppx
         MatrixS<N, 1> val;
     };
 
-    template <size_t N>
+    template <typename VecN1>
     struct EqnResult
     {
-        MatrixS<N, 1> x;
+        VecN1 x;
         StatusCode s = StatusCode::NORMAL;
     };
 
-    template <size_t N>
-    std::ostream &operator<<(std::ostream &os, const EqnResult<N> &self)
+    template <typename VecN1>
+    std::ostream &operator<<(std::ostream &os, const EqnResult<VecN1> &self)
     {
-        os << "EqnResult<" << N << ">:\n"
+        os << "EqnResult<" << self.x.rows() << ">:\n"
            << "Status:\t" << self.s << "\n"
            << "x     =\t" << self.x << std::endl;
         return os;
     }
 
-    template <size_t M, size_t N>
-    void zeros(MatrixS<M, N> &m)
+    template <typename MatMN>
+    void zeros(MatMN &m)
     {
         m.fill(0.0);
     }
 
-    template <size_t M, size_t N>
-    void ones(MatrixS<M, N> &m)
+    template <typename MatMN>
+    void ones(MatMN &m)
     {
         m.fill(1.0);
     }
@@ -114,38 +115,20 @@ namespace ppx
         return {1};
     }
 
-    template <size_t M>
-    double determinant(const MatrixS<M, M> &mat)
+    template <typename MatMN>
+    double determinant(const MatMN &mat)
     {
         return mat.det();
     }
 
-    template <size_t M>
-    MatrixS<M, M> inverse(const MatrixS<M, M> &mat)
+    template <typename MatMM>
+    auto inverse(const MatMM &mat)
     {
         return mat.I();
     }
 
-    template <size_t A, size_t B, size_t M, size_t N>
-    MatrixS<A, B> slice(const MatrixS<M, N> &m, size_t row_start, size_t col_start)
-    {
-        if (row_start + A > M || col_start + B > N)
-        {
-            return {};
-        }
-        MatrixS<A, B> res{};
-        for (size_t i = row_start, ix = 0u; i < row_start + A; ++i, ++ix)
-        {
-            for (size_t j = col_start, iy = 0u; j < col_start + B; ++j, ++iy)
-            {
-                res(ix, iy) = m(i, j);
-            }
-        }
-        return res;
-    }
-
-    template <size_t M, size_t N>
-    MatrixS<N, M> transpose(const MatrixS<M, N> &m)
+    template <typename MatMN>
+    auto transpose(const MatMN &m)
     {
         return m.T();
     }
@@ -202,7 +185,7 @@ namespace ppx
     {
         // static_assert(std::is_same<typename VecN1::value_type, int>::value);
         assert(A.rows() == A.cols());
-        assert(indx.rows() == A.cols() && indx.cols() == 1);
+        assert(indx.size() == A.cols());
         const int n = A.rows();
         even = true;
         for (int i = 0; i < n; i++)
@@ -257,7 +240,7 @@ namespace ppx
     {
         // static_assert(std::is_same<typename VecN1::value_type, int>::value);
         assert(A.rows() == A.cols());
-        assert(indx.rows() == A.cols() && indx.cols() == 1);
+        assert(indx.size() == A.cols());
         const int n = A.rows();
         std::vector<double> y(n, 0.0);
         y[0] = b[indx[0]];
@@ -283,30 +266,32 @@ namespace ppx
         }
     }
 
-    template <size_t M, size_t N>
-    MatrixS<M, N> qrdcmp(MatrixS<M, N> a, MatrixS<N, 1> &c, MatrixS<N, 1> &d, bool &sing)
+    template <typename MatMN, typename VecM1>
+    FacResult<MatMN> qrdcmp(MatMN a, VecM1 &c, VecM1 &d)
     {
-        constexpr int IN = N;
-        constexpr int IM = M;
-        sing = false;
+        const int m = a.rows();
+        const int n = a.cols();
+        assert(c.size() == m);
+        assert(d.size() == m);
+        StatusCode sing = StatusCode::NORMAL;
         double scale, sigma, sum, tau;
-        for (int k = 0; k < IN; k++)
+        for (int k = 0; k < n; k++)
         {
             scale = 0.0;
-            for (int i = k; i < IN; i++)
+            for (int i = k; i < n; i++)
             {
                 scale = std::max(scale, fabs(a(i, k)));
             }
             if (scale < EPS_SP)
             {
-                sing = true;
+                sing = StatusCode::SINGULAR;
                 c[k] = 0.0;
                 d[k] = 0.0;
             }
             else
             {
                 sum = 0.0;
-                for (int i = k; i < IM; i++)
+                for (int i = k; i < m; i++)
                 {
                     sum += a(i, k) * a(i, k);
                 }
@@ -315,15 +300,15 @@ namespace ppx
                 c[k] = sigma * a(k, k);
                 // d[k] = -scale * sigma;
                 d[k] = -sigma;
-                for (int j = k + 1; j < IN; j++)
+                for (int j = k + 1; j < n; j++)
                 {
                     sum = 0.0;
-                    for (int i = k; i < IM; i++)
+                    for (int i = k; i < m; i++)
                     {
                         sum += a(i, k) * a(i, j);
                     }
                     tau = sum / c[k];
-                    for (int i = k; i < IM; i++)
+                    for (int i = k; i < m; i++)
                     {
                         a(i, j) -= tau * a(i, k);
                     }
@@ -332,36 +317,38 @@ namespace ppx
             }
         }
         // d[N - 1] = a(N - 1, N - 1);
-        if (fabs(d[IN - 1]) < EPS_SP)
+        if (fabs(d[n - 1]) < EPS_SP)
         {
-            sing = true;
+            sing = StatusCode::SINGULAR;
         }
-        return a;
+        return {a, sing};
     }
 
-    template <size_t M, size_t N>
-    void qrsolv(const MatrixS<M, N> &a, const MatrixS<N, 1> &c, const MatrixS<N, 1> &d, double *b)
+    template <typename MatMN, typename VecN1>
+    void qrsolv(const MatMN &a, const VecN1 &c, const VecN1 &d, double *b)
     {
-        constexpr int IN = N;
-        constexpr int IM = M;
-        for (int j = 0; j < IN; j++)
+        const int m = a.rows();
+        const int n = a.cols();
+        assert(c.rows() == m && c.cols() == 1);
+        assert(d.rows() == m && d.cols() == 1);
+        for (int j = 0; j < n; j++)
         {
             double sum = 0.0;
-            for (int i = j; i < IM; i++)
+            for (int i = j; i < m; i++)
             {
                 sum += a(i, j) * b[i];
             }
             double tau = sum / c[j];
-            for (int i = j; i < IM; i++)
+            for (int i = j; i < m; i++)
             {
                 b[i] -= tau * a(i, j);
             }
         }
         // b[N - 1] /= d[N - 1];
-        for (int i = IN - 1; i >= 0; i--)
+        for (int i = n - 1; i >= 0; i--)
         {
             double sum = 0.0;
-            for (int j = i + 1; j < IN; j++)
+            for (int j = i + 1; j < n; j++)
             {
                 sum += a(i, j) * b[j];
             }
@@ -374,8 +361,8 @@ namespace ppx
     {
         const int m = u.rows();
         const int n = u.cols();
-        assert(w.rows() == n && w.cols() == 1);
-        assert(v.rows() == n && v.cols() == n);
+        assert(w.size() == u.cols());
+        assert(v.rows() == u.cols() && v.cols() == u.cols());
         int i, its, j, jj, k, nm;
         double c, f, h, s, x, y, z;
         std::vector<double> rv1(n, 0.0);
@@ -690,11 +677,13 @@ namespace ppx
         }
     }
 
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::LU, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
+    template <Factorization type, typename MatMN, typename VecM1>
+    std::enable_if_t<type == Factorization::LU, EqnResult<VecM1>>
+    linsolve(const MatMN &A, VecM1 b)
     {
-        std::array<int, M> indx{};
+        const int m = A.rows();
+        assert(b.rows() == m && b.cols() == 1);
+        std::vector<int> indx(m, 0);
         auto even = true;
         auto LU = ludcmp(A, indx, even);
         if (LU.s == StatusCode::CONVERGED)
@@ -704,26 +693,26 @@ namespace ppx
         return {b, LU.s};
     }
 
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::QR, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
+    template <Factorization type, typename MatMN, typename VecM1>
+    std::enable_if_t<type == Factorization::QR, EqnResult<VecM1>>
+    linsolve(const MatMN &A, VecM1 b)
     {
-        MatrixS<N, 1> c;
-        MatrixS<N, 1> d;
-        auto sing = false;
-        auto R = qrdcmp(A, c, d, sing);
-        if (!sing)
+        assert(b.rows() == A.rows() && b.cols() == 1);
+        VecM1 c, d;
+        auto R = qrdcmp(A, c, d);
+        if (R.s != StatusCode::SINGULAR)
         {
-            qrsolv(R, c, d, b.data());
+            qrsolv(R.x, c, d, b.data());
         }
-        StatusCode s = sing ? StatusCode::DIVERGED : StatusCode::NORMAL;
-        return {slice<N, 1>(b, 0, 0), s};
+        std::fill(b.data() + A.cols(), b.end(), 0.0);
+        return {b, R.s};
     }
 
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
+    template <Factorization type, typename VecM1, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::SVD, EqnResult<VecM1>>
+    linsolve(const MatrixS<M, N> &A, VecM1 b)
     {
+        assert(b.rows() == A.rows() && b.cols() == 1);
         MatrixS<N, 1> w;
         MatrixS<N, N> V;
         auto U = svdcmp(A, w, V);
@@ -731,7 +720,8 @@ namespace ppx
         {
             svbksb(U.x, w, V, b.data());
         }
-        return {slice<N, 1>(b, 0, 0), U.s};
+        std::fill(b.data() + A.cols(), b.end(), 0.0);
+        return {b, U.s};
     }
 
     template <size_t M, size_t N>

@@ -518,6 +518,21 @@ namespace ppx
             return {*this, row_start, col_start};
         }
 
+        template <size_t A, size_t B>
+        MatrixS<A, B> sub(size_t row_start, size_t col_start) const
+        {
+            assert(row_start + A <= M && col_start + B <= N);
+            MatrixS<A, B> result;
+            for (size_t i = 0; i < A; i++)
+            {
+                for (size_t j = 0; j < B; j++)
+                {
+                    result(i, j) = (*this)(row_start + i, col_start + j);
+                }
+            }
+            return result;
+        }
+
         void fill(double val)
         {
             std::fill(this->m_data.begin(), this->m_data.end(), val);
