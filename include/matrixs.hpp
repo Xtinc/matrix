@@ -212,17 +212,6 @@ namespace ppx
                 }
             }
 
-            void ctor_by_matrix(const MatrixS<A, B> &other)
-            {
-                for (size_t i = 0; i < A; i++)
-                {
-                    for (size_t j = 0; j < B; j++)
-                    {
-                        data(row_idx + i, col_idx + j) = other(i, j);
-                    }
-                }
-            }
-
             template <typename T>
             void ctor_by_list(const T &list)
             {
@@ -285,7 +274,7 @@ namespace ppx
 
             SubMatrix &operator=(const MatrixS<A, B> &other)
             {
-                base_type::ctor_by_matrix(other);
+                base_type::ctor_by_list(other);
                 return *this;
             }
 
@@ -376,7 +365,7 @@ namespace ppx
 
             SubMatrix &operator=(const MatrixS<A, B> &other)
             {
-                base_type::ctor_by_matrix(other);
+                base_type::ctor_by_list(other);
                 return *this;
             }
 
