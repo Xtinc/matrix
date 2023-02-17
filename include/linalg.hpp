@@ -133,8 +133,8 @@ namespace ppx
         return m.T();
     }
 
-    template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norm2(const MatrixS<M, N> &mat)
+    template <typename Vec>
+    double norm2(const Vec &mat)
     {
         double res = 0.0;
         for (auto ele : mat)
@@ -144,8 +144,8 @@ namespace ppx
         return sqrt(res);
     }
 
-    template <size_t M, size_t N>
-    enable_when_array_t<M, N, double> norminf(const MatrixS<M, N> &mat)
+    template <typename Vec>
+    double norminf(const Vec &mat)
     {
         double max = -std::numeric_limits<double>::max();
         for (auto i : mat)
@@ -159,23 +159,23 @@ namespace ppx
         return max;
     }
 
-    template <size_t M, size_t N>
-    double trace(const MatrixS<M, N> &mat)
+    template <typename MatMN>
+    double trace(const MatMN &mat)
     {
         return mat.trace();
     }
 
-    template <size_t N>
-    double inner_product(const MatrixS<N, 1> &a, const MatrixS<N, 1> &b)
+    template <typename Vec>
+    double inner_product(const Vec &a, const Vec &b)
     {
         return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
     }
 
-    template <size_t M, size_t N>
-    std::pair<size_t, size_t> maxloc(const MatrixS<M, N> &mat)
+    template <typename MatMN>
+    std::pair<size_t, size_t> maxloc(const MatMN &mat)
     {
         auto max_pos = std::max_element(mat.begin(), mat.end());
-        auto max_dis = std::div(std::distance(mat.begin(), max_pos), M);
+        auto max_dis = std::div(std::distance(mat.begin(), max_pos), mat.rows());
         return {max_dis.rem, max_dis.quot};
     }
 

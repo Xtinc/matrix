@@ -374,7 +374,7 @@ namespace ppx
                 {
                     MatrixS<N, 1> gh = df(R.x);
                     double beta =
-                        std::max(0.0, inner_product<N>(gh, gh - g) / inner_product(g, g));
+                        std::max(0.0, inner_product<MatrixS<N, 1>>(gh, gh - g) / inner_product(g, g));
                     dh = -1 * gh + beta * d;
                     auto lr = lnsrch(f, R.x, dh);
                     if (lr.s == StatusCode::DIVERGED)
@@ -483,7 +483,7 @@ namespace ppx
                         break;
                     }
                     x += lr.x * d;
-                    dx = norm2<N, 1>(x - R.x);
+                    dx = norm2<MatrixS<N, 1>>(x - R.x);
                     R.x = x;
                     R.y = lr.y;
                     // printf("iters = %d, residual = %g\n", its++, dx);
