@@ -163,7 +163,7 @@ namespace ppx
         {
             assert(m == n);
             auto even = true;
-            std::vector<int> indx(m, 0.0);
+            std::vector<int> indx(m, 0);
             auto LU = ludcmp(*this, indx, even);
             if (LU.s == StatusCode::SINGULAR)
             {

@@ -186,7 +186,7 @@ namespace ppx
         // static_assert(std::is_same<typename VecN1::value_type, int>::value);
         assert(A.rows() == A.cols());
         assert(indx.size() == A.cols());
-        const int n = A.rows();
+        const auto n = static_cast<int>(A.rows());
         even = true;
         for (int i = 0; i < n; i++)
         {
@@ -241,7 +241,7 @@ namespace ppx
         // static_assert(std::is_same<typename VecN1::value_type, int>::value);
         assert(A.rows() == A.cols());
         assert(indx.size() == A.cols());
-        const int n = A.rows();
+        const auto n = static_cast<int>(A.rows());
         std::vector<double> y(n, 0.0);
         y[0] = b[indx[0]];
         for (int row = 1; row < n; row++)
@@ -269,8 +269,8 @@ namespace ppx
     template <typename MatMN, typename VecM1>
     FacResult<MatMN> qrdcmp(MatMN a, VecM1 &c, VecM1 &d)
     {
-        const int m = a.rows();
-        const int n = a.cols();
+        const auto m = static_cast<int>(a.rows());
+        const auto n = static_cast<int>(a.cols());
         assert(c.size() == m);
         assert(d.size() == m);
         StatusCode sing = StatusCode::NORMAL;
@@ -327,8 +327,8 @@ namespace ppx
     template <typename MatMN, typename VecN1>
     void qrsolv(const MatMN &a, const VecN1 &c, const VecN1 &d, double *b)
     {
-        const int m = a.rows();
-        const int n = a.cols();
+        const auto m = static_cast<int>(a.rows());
+        const auto n = static_cast<int>(a.cols());
         assert(c.rows() == m && c.cols() == 1);
         assert(d.rows() == m && d.cols() == 1);
         for (int j = 0; j < n; j++)
@@ -359,8 +359,8 @@ namespace ppx
     template <typename MatMN, typename VecN1, typename MatNN>
     FacResult<MatMN> svdcmp(MatMN u, VecN1 &w, MatNN &v)
     {
-        const int m = u.rows();
-        const int n = u.cols();
+        const auto m = static_cast<int>(u.rows());
+        const auto n = static_cast<int>(u.cols());
         assert(w.size() == u.cols());
         assert(v.rows() == u.cols() && v.cols() == u.cols());
         int i, its, j, jj, k, nm;
@@ -646,8 +646,8 @@ namespace ppx
     template <typename MatMN, typename VecN1, typename MatNN>
     void svbksb(const MatMN &u, const VecN1 &w, const MatNN &v, double *b)
     {
-        const int m = u.rows();
-        const int n = u.cols();
+        const auto m = static_cast<int>(u.rows());
+        const auto n = static_cast<int>(u.cols());
         assert(w.rows() == n && w.cols() == 1);
         assert(v.rows() == n && v.cols() == n);
         std::vector<double> tmp(n, 0.0);
@@ -681,7 +681,7 @@ namespace ppx
     std::enable_if_t<type == Factorization::LU, EqnResult<VecM1>>
     linsolve(const MatMN &A, VecM1 b)
     {
-        const int m = A.rows();
+        const auto m = static_cast<int>(A.rows());
         assert(b.rows() == m && b.cols() == 1);
         std::vector<int> indx(m, 0);
         auto even = true;
@@ -704,7 +704,7 @@ namespace ppx
         {
             qrsolv(R.x, c, d, b.data());
         }
-        std::fill(b.data() + A.cols(), b.end(), 0.0);
+        std::fill(b.begin() + A.cols(), b.end(), 0.0);
         return {b, R.s};
     }
 
@@ -720,7 +720,7 @@ namespace ppx
         {
             svbksb(U.x, w, V, b.data());
         }
-        std::fill(b.data() + A.cols(), b.end(), 0.0);
+        std::fill(b.begin() + A.cols(), b.end(), 0.0);
         return {b, U.s};
     }
 
