@@ -525,6 +525,13 @@ namespace ppx
                               details::result_s<T2>>(details::expr_mul, t1, details::result_s<T2>(t2));
     }
 
+    template <typename T1, typename T2, details::enable_expr_mat_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, T1,
+                              details::result_t<T2>>(details::expr_mul, t1, details::result_t<T2>(t2));
+    }
+
     template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
     auto operator*(const T1 &t1, const T2 &t2)
     {
@@ -544,6 +551,13 @@ namespace ppx
     {
         return details::biops<details::expr_mul_t, details::result_t<T1>,
                               details::result_s<T2>>(details::expr_mul, details::result_t<T1>(t1), details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_expr_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, details::result_t<T1>,
+                              T2>(details::expr_mul, details::result_t<T1>(t1), t2);
     }
 
     // Ops /
