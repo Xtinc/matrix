@@ -1,5 +1,4 @@
 #include "robotics.hpp"
-#include "matrixd.hpp"
 #include "ppxlog.h"
 #include <random>
 #include <future>
@@ -57,8 +56,6 @@ void test_matrix()
     PRINT_LISTED_ELEMENTS(a, "Move Sementics, a = ");
     PRINT_SINGLE_ELEMENTS(A, "Move Sementics, A = ");
     MatrixS<2, 2> b = {1, 2, 4, 3};
-    MatrixD ab(2, 2, {1, 2, 4, 3});
-    PRINT_SINGLE_ELEMENTS(ab.I(), "inverse(ab) = ");
     PRINT_SINGLE_ELEMENTS(inverse(b), "inverse(b) = ");
     MatrixS<1, 1> c = {3};
     PRINT_SINGLE_ELEMENTS(c.I(), "inverse(c) = ");
@@ -90,11 +87,6 @@ void test_matrix()
     MatrixS<4, 3> X{3.5, 1.6, 3.7, 4.3,
                     2.7, -5.7, -0.8, -9.8,
                     -3.1, -6.0, 1.9, 6.9};
-    MatrixD Xd(4, 3, {3.5, 1.6, 3.7, 4.3, 2.7, -5.7, -0.8, -9.8, -3.1, -6.0, 1.9, 6.9});
-    PRINT_SINGLE_ELEMENTS(X.I(), "Pinv of X = ");
-    PRINT_SINGLE_ELEMENTS(X.I() * X, "X.I() * X = ");
-    PRINT_SINGLE_ELEMENTS(Xd.I(), "Pinv of Xd = ");
-    PRINT_SINGLE_ELEMENTS(Xd.I() * Xd, "Xd.I() * Xd = ");
     MatrixS<4, 1> Y{1, 1, 1, 1};
     PRINT_SINGLE_ELEMENTS(linsolve<Factorization::QR>(X, Y), "solved by QR = ");
     PRINT_SINGLE_ELEMENTS(linsolve<Factorization::SVD>(X, Y), "solved by SVD = ");

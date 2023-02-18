@@ -12,6 +12,10 @@
 
 namespace ppx
 {
+    // forward declare
+    template <size_t M, size_t N>
+    class MatrixS;
+
     enum class StatusCode : char
     {
         NORMAL,
@@ -20,10 +24,10 @@ namespace ppx
         SINGULAR
     };
 
-    template <typename MatMN>
+    template <size_t M, size_t N>
     struct FacResult
     {
-        MatMN x;
+        MatrixS<M, N> x;
         StatusCode s = StatusCode::NORMAL;
     };
 
@@ -48,21 +52,17 @@ namespace ppx
         return os;
     }
 
-    // forward declare
     template <size_t M, size_t N>
-    class MatrixS;
+    FacResult<M, N> ludcmp(MatrixS<M, N> A, MatrixS<N, 1> &indx, bool &even);
 
-    template <typename MatNN, typename VecN1>
-    FacResult<MatNN> ludcmp(MatNN A, VecN1 &indx, bool &even);
+    template <size_t M, size_t N>
+    FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v);
 
-    template <typename MatMN, typename VecN1, typename MatNN>
-    FacResult<MatMN> svdcmp(MatMN u, VecN1 &w, MatNN &v);
+    template <size_t M, size_t N>
+    void ludbksb(const MatrixS<N, N> &A, const MatrixS<N, 1> &indx, double *b);
 
-    template <typename MatNN, typename VecN1>
-    void ludbksb(const MatNN &A, const VecN1 &indx, double *b);
-
-    template <typename MatMN, typename VecN1, typename MatNN>
-    void svbksb(const MatMN &u, const VecN1 &w, const MatNN &v, double *b);
+    template <size_t M, size_t N>
+    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b);
 
     namespace details
     {
@@ -776,6 +776,11 @@ namespace ppx
             return result;
         }
 
+        static MatrixS zeros()
+        {
+            return {};
+        }
+
         constexpr size_t rows() const
         {
             return M;
@@ -786,7 +791,7 @@ namespace ppx
             return N;
         }
 
-        constexpr size_t size()
+        constexpr size_t size() const
         {
             return M * N;
         }
