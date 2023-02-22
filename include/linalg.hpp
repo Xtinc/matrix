@@ -687,7 +687,7 @@ namespace ppx
         {
             qrsolv(R.x, c, d, b.data());
         }
-        return {b.sub<N, 1>(0, 0), R.s};
+        return {b.template sub<N, 1>(0, 0), R.s};
     }
 
     template <Factorization type, size_t M, size_t N>
@@ -701,7 +701,7 @@ namespace ppx
         {
             svbksb(U.x, w, V, b.data());
         }
-        return {b.sub<N, 1>(0, 0), U.s};
+        return {b.template sub<N, 1>(0, 0), U.s};
     }
 
     template <size_t M, size_t N>
