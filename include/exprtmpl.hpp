@@ -211,15 +211,15 @@ namespace ppx
             friend base_type;
 
             template <typename U = elem_tag, std::enable_if_t<std::is_same<U, ElemTags::Scalar>::value> * = nullptr>
-            expr_elem(const T &val) : value(val)
+            explicit expr_elem(const T &val) : value(val)
             {
             }
             template <typename U = elem_tag, std::enable_if_t<std::is_same<U, ElemTags::Matrix>::value> * = nullptr>
-            expr_elem(const T &val) : value(val)
+            explicit expr_elem(const T &val) : value(val)
             {
             }
             template <typename U = elem_tag, std::enable_if_t<std::is_same<U, ElemTags::Mblock>::value> * = nullptr>
-            expr_elem(const T &val) : value(val.snap())
+            explicit expr_elem(const T &val) : value(val.snap())
             {
             }
 

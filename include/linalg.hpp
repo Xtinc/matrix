@@ -607,7 +607,7 @@ namespace ppx
                     }
                     z = sqrt(f * f + h * h);
                     w[j] = z;
-                    if (z)
+                    if (fabs(z) > EPS_SP)
                     {
                         z = 1.0 / z;
                         c = f * z;
