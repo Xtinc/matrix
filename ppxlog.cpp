@@ -38,18 +38,16 @@ namespace ppx
         return id;
     }
 
-    inline const char *to_string(LogLevel loglevel)
+    int getlog2(LogLevel lev)
     {
-        switch (loglevel)
+        unsigned n = lev.val();
+        int count = 0;
+        while (n)
         {
-        case LogLevel::INFO:
-            return "INFO";
-        case LogLevel::WARN:
-            return "WARN";
-        case LogLevel::CRIT:
-            return "CRIT";
+            n = n >> 1;
+            count++;
         }
-        return "XXXX";
+        return count;
     }
 
     template <typename Arg>
@@ -126,7 +124,7 @@ namespace ppx
 
             format_timestamp(os, timestamp);
 
-            os << '[' << to_string(loglevel) << ']'
+            os << '[' << getlog2(loglevel) << ']'
                << '[' << threadid << ']'
                << '[' << file.m_s << ':' << function.m_s << ':' << line << "] ";
 
@@ -134,7 +132,7 @@ namespace ppx
 
             os << "\n";
 
-            if (loglevel >= LogLevel::CRIT)
+            if (loglevel & CH01)
             {
                 os.flush();
             }
@@ -311,7 +309,7 @@ namespace ppx
     public:
         struct alignas(64) Item
         {
-            Item() : flag{ATOMIC_FLAG_INIT}, written(0), logline(LogLevel::INFO, nullptr, nullptr, 0)
+            Item() : flag{ATOMIC_FLAG_INIT}, written(0), logline(CH01, nullptr, nullptr, 0)
             {
             }
 
@@ -455,7 +453,7 @@ namespace ppx
                 std::this_thread::sleep_for(std::chrono::microseconds(50));
             }
 
-            details::LogLine logline(LogLevel::INFO, nullptr, nullptr, 0);
+            details::LogLine logline(CH01, nullptr, nullptr, 0);
 
             while (m_state.load() == State::READY)
             {
@@ -506,15 +504,15 @@ namespace ppx
         atomic_logger.store(logger.get());
     }
 
-    std::atomic<unsigned int> loglevel = {0};
+    std::atomic<uint8_t> loglevel = {0};
 
     void set_log_level(LogLevel level)
     {
-        loglevel.store(static_cast<unsigned int>(level));
+        loglevel.store(level.val());
     }
 
     bool is_logged(LogLevel level)
     {
-        return static_cast<unsigned int>(level) >= loglevel.load();
+        return (bool)(level & LogLevel(loglevel.load()));
     }
 }

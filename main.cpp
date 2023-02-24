@@ -386,19 +386,20 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 10);
-    LOG_INFO << "test_expr";
+    ppx::set_log_level(CH02 | CH03 | CH04);
+    LOG_CH(01) << "test_expr";
     test_expr();
-    LOG_INFO << "test_matrix";
+    LOG_CH(02) << "test_matrix";
     test_matrix();
-    LOG_INFO << "test_linear";
+    LOG_CH(03) << "test_linear";
     test_linear();
-    LOG_INFO << "test_statics";
+    LOG_CH(04) << "test_statics";
     test_statics();
-    LOG_INFO << "test_lieGroup";
+    LOG_CH(05) << "test_lieGroup";
     test_lieGroup();
-    LOG_INFO << "test_robotics";
+    LOG_CH(06) << "test_robotics";
     test_robotics();
-    LOG_INFO << "test_nonlinear";
+    LOG_CH(07) << "test_nonlinear";
     test_nonlinear();
-    LOG_INFO << "test end";
+    LOG_CH(01) << "test end";
 }

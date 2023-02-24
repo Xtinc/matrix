@@ -13,12 +13,114 @@
 
 namespace ppx
 {
-    enum class LogLevel : uint8_t
+    struct bit_t
     {
-        INFO,
-        WARN,
-        CRIT
+        explicit constexpr bit_t(int b) : m_bit_idx(b) {}
+        explicit constexpr operator int() const { return m_bit_idx; }
+
+    private:
+        int m_bit_idx;
     };
+
+    constexpr bit_t operator"" _bit(unsigned long long int b) { return bit_t{static_cast<int>(b)}; }
+
+    template <typename T, typename Tag, typename Cond = std::enable_if_t<std::is_integral<T>::value>>
+    struct bit_flag
+    {
+        constexpr bit_flag(bit_flag const &rhs) noexcept = default;
+        constexpr bit_flag(bit_flag &&rhs) noexcept = default;
+        constexpr bit_flag() noexcept : m_val(0) {}
+        explicit constexpr bit_flag(T const val) noexcept : m_val(val) {}
+        constexpr bit_flag(bit_t const bit) noexcept : m_val(static_cast<T>(T{1} << static_cast<int>(bit))) {}
+        explicit constexpr operator T() const noexcept { return m_val; }
+        explicit constexpr operator bool() const noexcept { return m_val != 0; }
+
+        static constexpr bit_flag all()
+        {
+            return bit_flag(~T{0});
+        }
+
+        T val() const
+        {
+            return m_val;
+        }
+
+        bool constexpr operator==(bit_flag const f) const noexcept
+        {
+            return m_val == f.m_val;
+        }
+
+        bool constexpr operator!=(bit_flag const f) const noexcept
+        {
+            return m_val != f.m_val;
+        }
+
+        bit_flag &operator|=(bit_flag const f) noexcept
+        {
+            m_val |= f.m_val;
+            return *this;
+        }
+
+        bit_flag &operator&=(bit_flag const f) noexcept
+        {
+            m_val &= f.m_val;
+            return *this;
+        }
+
+        bit_flag &operator^=(bit_flag const f) noexcept
+        {
+            m_val ^= f.m_val;
+            return *this;
+        }
+
+        constexpr friend bit_flag operator|(bit_flag const lhs, bit_flag const rhs) noexcept
+        {
+            return bit_flag(lhs.m_val | rhs.m_val);
+        }
+
+        constexpr friend bit_flag operator&(bit_flag const lhs, bit_flag const rhs) noexcept
+        {
+            return bit_flag(lhs.m_val & rhs.m_val);
+        }
+
+        constexpr friend bit_flag operator^(bit_flag const lhs, bit_flag const rhs) noexcept
+        {
+            return bit_flag(lhs.m_val ^ rhs.m_val);
+        }
+
+        constexpr bit_flag operator~() const noexcept
+        {
+            return bit_flag(~m_val);
+        }
+
+        bit_flag &operator=(bit_flag const &rhs) noexcept = default;
+        bit_flag &operator=(bit_flag &&rhs) noexcept = default;
+
+    private:
+        T m_val;
+    };
+
+    template <typename T, typename Tag>
+    std::ostream &operator<<(std::ostream &os, bit_flag<T, Tag> val)
+    {
+        return os << static_cast<T>(val);
+    }
+    template <typename Tag>
+    std::ostream &operator<<(std::ostream &os, bit_flag<std::uint8_t, Tag> val)
+    {
+        return os << static_cast<std::uint16_t>(static_cast<std::uint8_t>(val));
+    }
+
+    using LogLevel = bit_flag<std::uint8_t, struct LogLevel_tag>;
+
+    constexpr LogLevel CH01 = 0_bit;
+    constexpr LogLevel CH02 = 1_bit;
+    constexpr LogLevel CH03 = 2_bit;
+    constexpr LogLevel CH04 = 3_bit;
+    constexpr LogLevel CH05 = 4_bit;
+    constexpr LogLevel CH06 = 5_bit;
+    constexpr LogLevel CH07 = 6_bit;
+    constexpr LogLevel CH08 = 7_bit;
 
     namespace details
     {
@@ -89,7 +191,7 @@ namespace ppx
                 *this << '[';
                 for (size_t i = 0; i < N; ++i)
                 {
-                    *this << i << ' ';
+                    *this << arg[i] << ' ';
                 }
                 *this << ']';
                 return *this;
@@ -134,12 +236,10 @@ namespace ppx
 
             void encode(char *arg);
             void encode(const char *arg);
-            void encode(int *arg);
-            void encode(const int *arg);
             void encode(details::string_literal_t arg);
             void encode_c_string(const char *arg, size_t length);
             void resize_buffer_if_needed(size_t additional_bytes);
-            void stringify(std::ostream &os, char *start, char const *const end);
+            void stringify(std::ostream &os, char *start, char const *end);
 
         private:
             size_t m_bytes_used;
@@ -162,8 +262,6 @@ namespace ppx
 }
 
 #define PPX_LOG(LEVEL) ppx::details::PsuedoLog() == ppx::details::LogLine(LEVEL, __FILE__, __FUNCTION__, __LINE__)
-#define LOG_INFO ppx::is_logged(ppx::LogLevel::INFO) && PPX_LOG(ppx::LogLevel::INFO)
-#define LOG_WARN ppx::is_logged(ppx::LogLevel::WARN) && PPX_LOG(ppx::LogLevel::WARN)
-#define LOG_CRIT ppx::is_logged(ppx::LogLevel::CRIT) && PPX_LOG(ppx::LogLevel::CRIT)
+#define LOG_CH(NUM) ppx::is_logged(ppx::CH##NUM) && PPX_LOG(ppx::CH##NUM)
 
 #endif
