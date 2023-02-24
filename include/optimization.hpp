@@ -12,7 +12,7 @@ namespace ppx
         BrentSearch,
         Powell,
         GradientDescent,
-        ConjuateGradient,
+        ConjugateGradient,
         BGFS
     };
 
@@ -565,7 +565,7 @@ namespace ppx
     }
 
     template <Optimization etype, size_t N, typename T, typename T2>
-    std::enable_if_t<etype == Optimization::ConjuateGradient, OptResult<N>>
+    std::enable_if_t<etype == Optimization::ConjugateGradient, OptResult<N>>
     fminunc(const T &func, const T2 &dfunc, const MatrixS<N, 1> &x0)
     {
         details::ConjuateGradient<N> cg;

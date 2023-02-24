@@ -242,7 +242,7 @@ void test_nonlinear()
 
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f6, MatrixS<2, 1>{4, -8}), "f6 by Powell: ");
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::GradientDescent>(f6, d6, MatrixS<2, 1>{4, -8}), "f6 by GradientDescent: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjuateGradient>(f6, d6, MatrixS<2, 1>{4, -8}), "f6 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjugateGradient>(f6, d6, MatrixS<2, 1>{4, -8}), "f6 by ConjuateGradient: ");
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::BGFS>(f6, d6, MatrixS<2, 1>{4, -8}), "f6 by BGFS: ");
 
     auto f7 = [](const MatrixS<2, 1> &x)
@@ -260,7 +260,7 @@ void test_nonlinear()
 
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::Powell>(f7, MatrixS<2, 1>{9, 8}), "f7 by Powell: ");
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::GradientDescent>(f7, d7, MatrixS<2, 1>{9, 8}), "f7 by GradientDescent: ");
-    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjuateGradient>(f7, d7, MatrixS<2, 1>{9, 8}), "f7 by ConjuateGradient: ");
+    PRINT_SINGLE_ELEMENTS(fminunc<Optimization::ConjugateGradient>(f7, d7, MatrixS<2, 1>{9, 8}), "f7 by ConjuateGradient: ");
     PRINT_SINGLE_ELEMENTS(fminunc<Optimization::BGFS>(f7, d7, MatrixS<2, 1>{9, 8}), "f7 by BGFS: ");
 }
 
