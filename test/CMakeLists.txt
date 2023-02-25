@@ -17,16 +17,20 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
     include(GoogleTest)
     add_executable(matrix_test matrix_test.cpp)
     target_link_libraries(matrix_test PRIVATE ppx gtest_main)
-    # add_executable(bag_test bag_test.cpp)
-    # target_link_libraries(bag_test PRIVATE BAGREC gtest_main)
-    # add_executable(cpr_test cpr_test.cpp)
-    # target_link_libraries(cpr_test PRIVATE CBOR gtest_main)
+    add_executable(lineqn_test solver_test.cpp)
+    target_link_libraries(lineqn_test PRIVATE ppx gtest_main)
+    add_executable(opt_test opt_test.cpp)
+    target_link_libraries(opt_test PRIVATE ppx gtest_main)
+    add_executable(lie_test lie_test.cpp)
+    target_link_libraries(lie_test PRIVATE ppx gtest_main)
     gtest_discover_tests(matrix_test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
-    # gtest_discover_tests( bag_test
-    # WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
-    # gtest_discover_tests(cpr_test
-    # WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(lineqn_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(opt_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(lie_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     if(ENABLE_LCOV)
         message(STATUS "Enable Lcov in ${SUBPRJ}")
         message(STATUS "-- lcov Configure")
@@ -42,7 +46,7 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
             EXECUTABLE ctest test
             BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/build"
             EXCLUDE "${PROJECT_SOURCE_DIR}/build/_deps/*" "/usr/*"
-            DEPENDENCIES matrix_test)
+            DEPENDENCIES matrix_test lineqn_test opt_test lie_test)
         endif()
     endif()
 endif()
