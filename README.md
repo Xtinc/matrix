@@ -1,5 +1,9 @@
 # PPX quick start
 
+[![codecov](https://codecov.io/github/Xtinc/matrix/branch/master/graph/badge.svg?token=VVGCGPHZ2W)](https://codecov.io/github/Xtinc/matrix)
+[![CodeFactor](https://www.codefactor.io/repository/github/xtinc/matrix/badge)](https://www.codefactor.io/repository/github/xtinc/matrix)
+[![CI](https://github.com/Xtinc/matrix/actions/workflows/main.yml/badge.svg)](https://github.com/Xtinc/matrix/actions/workflows/matrix.yml)
+
 A quick start for ppx users.
 
 ## Table of Contents
