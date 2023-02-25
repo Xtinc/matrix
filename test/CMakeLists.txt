@@ -1,4 +1,4 @@
-set(SUBPRJ "ppx_test")
+set(SUBPRJ "test")
 message(STATUS "---------------------------")
 message(STATUS "Current : ${SUBPRJ}")
 if(ENABLE_UNIT_TESTS)
@@ -8,7 +8,7 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG        release-1.11.0
+        GIT_TAG        release-1.12.0
     )
     if(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -16,7 +16,7 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
     FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
     add_executable(matrix_test matrix_test.cpp)
-    target_link_libraries(matrix_test PRIVATE gtest_main)
+    target_link_libraries(matrix_test PRIVATE ppx gtest_main)
     # add_executable(bag_test bag_test.cpp)
     # target_link_libraries(bag_test PRIVATE BAGREC gtest_main)
     # add_executable(cpr_test cpr_test.cpp)
@@ -38,10 +38,11 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
             include(CodeCoverage.cmake)
             APPEND_COVERAGE_COMPILER_FLAGS()
             setup_target_for_coverage_lcov(
-            NAME coverage 
-            EXECUTABLE ctest test 
-            EXCLUDE "/usr/*" "build/_deps/*"
-            DEPENDENCIES ${SUBPRJ} bag_test cpr_test)
+            NAME coverage
+            EXECUTABLE ctest test
+            BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/build"
+            EXCLUDE "${PROJECT_SOURCE_DIR}/build/_deps/*" "/usr/*"
+            DEPENDENCIES matrix_test)
         endif()
     endif()
 endif()

@@ -19,6 +19,8 @@ TEST_F(MatrixS_TestCase, ctor)
     MatrixS<2, 2> D(std::vector<int>{1, 2, 3, 4});
     EXPECT_EQ(B, C);
     EXPECT_EQ(C, D);
+    EXPECT_EQ(sizeof(MatrixS<2, 2>), (sizeof(double)) * 4);
+    EXPECT_EQ(sizeof(MatrixS<20, 20>), sizeof(std::vector<double>));
 }
 
 int main(int argc, char **argv)
