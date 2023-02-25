@@ -33,20 +33,18 @@ namespace ppx
     {
     public:
         using samples = std::vector<MatrixS<N, 1>>;
-        MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()) {}
+        MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()), m_gen(std::random_device{}()) {}
         MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}
         MatrixS<N, 1> operator()() const
         {
             MatrixS<N, 1> x;
-            std::random_device rd{};
-            std::mt19937 gen{rd()};
             std::normal_distribution<> d{0, 1};
             auto eigsys = eig<EigenSystem::SymValAndVec>(m_cov);
             MatrixS<N, N> diag;
             for (size_t i = 0; i < N; i++)
             {
-                x[i] = d(gen);
+                x[i] = d(m_gen);
                 diag(i, i) = sqrt(eigsys.val[i]);
             }
             return eigsys.vec * diag * x + m_mean;
@@ -94,6 +92,7 @@ namespace ppx
     private:
         MatrixS<N, 1> m_mean;
         MatrixS<N, N> m_cov;
+        mutable std::mt19937 m_gen;
     };
 
     template <size_t N>
@@ -112,6 +111,8 @@ namespace ppx
         using dist = MultiNormalDistribution<N>;
         using samples = std::vector<MatrixS<N, 1>>;
 
+        MixedNormalDistribution() : m_prior(), m_gen(std::random_device{}()) {}
+
         double pdf(const MatrixS<N, 1> &x)
         {
             double sum = 0.0;
@@ -124,16 +125,8 @@ namespace ppx
 
         MatrixS<N, 1> operator()() const
         {
-            // auto total_p = std::accumulate(m_prior.begin(), m_prior.end(), 0.0);
-            // how?
-            // if (!details::is_same(total_p, 1.0))
-            // {
-            // return {};
-            // }
-            std::random_device rd{};
-            std::mt19937 gen(rd());
             std::uniform_real_distribution<> dis(0.0, 1.0);
-            double sample = dis(gen);
+            double sample = dis(m_gen);
             double sum = m_prior.front();
             size_t idx = 0;
             while (sample > sum && idx < K)
@@ -207,6 +200,7 @@ namespace ppx
     private:
         std::array<dist, K> m_guassian;
         std::array<double, K> m_prior;
+        mutable std::mt19937 m_gen;
         size_t ITMAX = 200;
     };
 
@@ -221,6 +215,70 @@ namespace ppx
         }
         return os;
     }
+
+    template <size_t N, size_t K>
+    class Kmeans
+    {
+    public:
+        using samples = std::vector<MatrixS<N, 1>>;
+        explicit Kmeans(const samples &data)
+            : m_data(data), m_assign(m_data.size(), 0) {}
+
+    private:
+        const samples &m_data;
+        std::vector<int> m_assign;
+        std::array<int, K> m_count;
+        std::array<MatrixS<N, 1>, K> m_mean;
+
+    private:
+        int estep()
+        {
+            int nchg = 0;
+            int kmin = 0;
+            m_count.fill(0);
+            for (auto i = 0; i < m_data.size(); i++)
+            {
+                auto dmin = std::numeric_limits<double>::max();
+                for (auto j = 0; j < K; j++)
+                {
+                    auto d = norm2(m_data[i] - m_mean[j]);
+                    if (d < dmin)
+                    {
+                        dmin = d;
+                        kmin = j;
+                    }
+                }
+                if (kmin != m_assign[i])
+                {
+                    nchg++;
+                }
+                m_assign[i] = kmin;
+                m_count[kmin]++;
+            }
+            return nchg;
+        }
+
+        void mstep()
+        {
+            for (const auto &elem : m_mean)
+            {
+                elem.fill(0);
+            }
+
+            for (auto i = 0; i < m_data.size(); i++)
+            {
+                m_mean[m_assign[i]] += m_data[i];
+            }
+
+            for (auto i = 0; i < K; i++)
+            {
+                if (m_count[i] > 0)
+                {
+                    m_mean[i] /= m_count[i];
+                }
+            }
+        }
+    };
 }
 
 #endif
