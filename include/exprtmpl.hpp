@@ -515,7 +515,7 @@ namespace ppx
     template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
     auto operator*(const T1 &t1, const T2 &t2)
     {
-        return details::biops<details::expr_mul_t, T1, T2>(details::expr_mul, t1, t2);
+        return t1.eval() * t2.eval();
     }
 
     template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
