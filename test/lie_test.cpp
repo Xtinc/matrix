@@ -6,7 +6,6 @@ using namespace ppx;
 struct joint
 {
     std::string name{"Anon"};
-    std::pair<double, double> range{-MAX_SP, MAX_SP};
     se3 screw;
     SE3 pose;
     joint() = default;
