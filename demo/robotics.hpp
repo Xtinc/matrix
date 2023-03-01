@@ -106,8 +106,8 @@ public:
         {
             Tsb = forwardSpace(init);
             Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-            auto err_w = norm2(Vs.w());
-            auto err_v = norm2(Vs.v());
+            auto err_w = norm2(Vs._1());
+            auto err_v = norm2(Vs._2());
             printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
             converage = err_w < EPS_SP && err_v < EPS_SP;
             init += linsolve<Factorization::SVD>(jacobiSpace(init), Vs).x;

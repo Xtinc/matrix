@@ -141,7 +141,7 @@ namespace ppx
         struct elem_traits
         {
             using elem_tag = Tag;
-            using elem_type = T;
+            using elem_type = typename T::cast_type;
             using elem_ref = T const &;
         };
 

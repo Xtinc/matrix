@@ -5,21 +5,28 @@
 
 namespace ppx
 {
-    class SO3;
+    using so3 = MatrixS<3, 1>;
+    using se3 = MatrixS<6, 1>;
 
-    class so3 : public MatrixS<3, 1>
+    inline MatrixS<3, 3> hat(const so3 &vec)
     {
-        using Rep = MatrixS<3, 1>;
+        return {0.0, vec[2], -vec[1], -vec[2], 0.0, vec[0], vec[1], -vec[0], 0.0};
+    }
 
-    public:
-        using MatrixS::MatrixS;
-        so3() = default;
-        so3(Rep &&other) : MatrixS(std::forward<Rep>(other))
-        {
-        }
+    inline so3 vee(const MatrixS<3, 3> &mat)
+    {
+        return {mat[5], mat[6], mat[1]};
+    }
 
-        SO3 exp() const;
-    };
+    inline MatrixS<4, 4> hat(const se3 &vec)
+    {
+        return {0.0, vec[2], -vec[1], 0.0, -vec[2], 0.0, vec[0], 0.0, vec[1], -vec[0], 0.0, 0.0, vec[3], vec[4], vec[5], 0.0};
+    }
+
+    inline se3 vee(const MatrixS<4, 4> &mat)
+    {
+        return {mat[6], mat[8], mat[1], mat[12], mat[13], mat[14]};
+    }
 
     class SO3 : public MatrixS<3, 3>
     {
@@ -42,20 +49,47 @@ namespace ppx
         {
             return this->T();
         }
-        so3 log() const;
+        so3 log() const
+        {
+            const auto &R = *this;
+            auto acosinput = (this->trace() - 1) / 2.0;
+            if (acosinput >= 1.0)
+            {
+                return {};
+            }
+            else if (acosinput <= -1.0)
+            {
+                MatrixS<3, 1> omg{};
+                if (!details::near_zero(1 + R(2, 2)))
+                {
+                    // omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * MatrixS<3, 1>{R(0, 2), R(1, 2), R(2, 2)};
+                    omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * R.col(2);
+                }
+                else if (!details::near_zero(1 + R(1, 1)))
+                {
+                    omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * R.col(1);
+                    // omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * MatrixS<3, 1>{R(0, 1), R(1, 1), +R(2, 1)};
+                }
+                else
+                {
+                    omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * R.col(0);
+                    // omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * MatrixS<3, 1>{R(0, 0), R(1, 0), +R(2, 0)};
+                }
+                return PI * omg;
+            }
+            else
+            {
+                MatrixS<3, 3> ret{};
+                double theta = acos(acosinput);
+                ret = (R - R.T()) * theta / (2.0 * sin(theta));
+                return vee(ret);
+            }
+        }
     };
 
-    inline MatrixS<3, 3> hat(const MatrixS<3, 1> &vec)
-    {
-        return {0.0, vec[2], -vec[1], -vec[2], 0.0, vec[0], vec[1], -vec[0], 0.0};
-    }
-
-    inline so3 vee(const MatrixS<3, 3> &mat)
-    {
-        return {mat[5], mat[6], mat[1]};
-    }
-
-    inline SO3 so3::exp() const
+    template <>
+    template <>
+    inline SO3 so3::exp<3, 1>() const
     {
         const auto &s = *this;
         double theta = norm2(s);
@@ -72,71 +106,12 @@ namespace ppx
         }
     }
 
-    inline so3 SO3::log() const
+    template <>
+    template <>
+    inline MatrixS<3, 3> so3::adt<3, 1>() const
     {
-        MatrixS<3, 3> ret{};
-        const auto &R = *this;
-        auto acosinput = (this->trace() - 1) / 2.0;
-        if (acosinput >= 1.0)
-        {
-            return {};
-        }
-        else if (acosinput <= -1.0)
-        {
-            MatrixS<3, 1> omg{};
-            if (!details::near_zero(1 + R(2, 2)))
-            {
-                omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * MatrixS<3, 1>{R(0, 2), R(1, 2), R(2, 2)};
-            }
-            else if (!details::near_zero(1 + R(1, 1)))
-            {
-                omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * MatrixS<3, 1>{R(0, 1), R(1, 1), +R(2, 1)};
-            }
-            else
-            {
-                omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * MatrixS<3, 1>{R(0, 0), R(1, 0), +R(2, 0)};
-            }
-            return PI * hat(omg);
-        }
-        else
-        {
-            double theta = acos(acosinput);
-            ret = (R - R.T()) * theta / (2.0 * sin(theta));
-            return vee(ret);
-        }
+        return hat(*this);
     }
-
-    class SE3;
-
-    class se3 : public MatrixS<6, 1>
-    {
-        using T3 = MatrixS<3, 1>;
-        using Rep = MatrixS<6, 1>;
-
-    public:
-        using MatrixS::MatrixS;
-        se3(Rep &&other) : MatrixS(std::forward<Rep>(other)) {}
-        se3(const T3 &w, const T3 &v)
-        {
-            m_data[0] = w[0];
-            m_data[1] = w[1];
-            m_data[2] = w[2];
-            m_data[3] = v[0];
-            m_data[4] = v[1];
-            m_data[5] = v[2];
-        }
-        se3() = default;
-
-        T3 w() const
-        {
-            return {m_data[0], m_data[1], m_data[2]};
-        }
-        T3 v() const
-        {
-            return {m_data[3], m_data[4], m_data[5]};
-        }
-        SE3 exp() const;
-    };
 
     class SE3 : public MatrixS<4, 4>
     {
@@ -148,8 +123,8 @@ namespace ppx
         SE3(Rep &&other) : MatrixS(std::forward<Rep>(other)) {}
         SE3(const SO3 &Rot, const T3 &Pos) : MatrixS(Rep::eye())
         {
-            (*this).sub<3, 3>(0, 0) = Rot;
-            (*this).sub<3, 1>(0, 3) = Pos;
+            (*this).sub<3, 3, false>(0, 0) = Rot;
+            (*this).sub<3, 1, false>(0, 3) = Pos;
         }
         SE3() : MatrixS(Rep::eye()) {}
 
@@ -170,34 +145,43 @@ namespace ppx
             MatrixS<6, 6> result{};
             const auto &R = Rot();
             const auto &p = Pos();
-            result.sub<3, 3>(0, 0) = R;
-            result.sub<3, 3>(3, 0) = hat(p) * R;
-            result.sub<3, 3>(3, 3) = R;
+            result.sub<3, 3, false>(0, 0) = R;
+            result.sub<3, 3, false>(3, 0) = hat(p) * R;
+            result.sub<3, 3, false>(3, 3) = R;
             return result;
         }
         SE3 I() const
         {
             return {Rot().T(), -1 * (Rot().T() * Pos())};
         }
-        se3 log() const;
+        se3 log() const
+        {
+            const auto &R = Rot();
+            const auto &p = Pos();
+            if (R == SO3{})
+            {
+                return se3(T3{}, p);
+            }
+            else
+            {
+                auto theta = acos((R.trace() - 1) / 2.0);
+                auto omg = R.log();
+                auto omgmat = hat(omg);
+                auto coff1 = (1.0 / theta - 1.0 / (tan(theta / 2.0) * 2.0)) / theta;
+                MatrixS<3, 3> logExpand = SO3::eye() - omgmat / 2.0 + coff1 * (omgmat * omgmat);
+                return se3(omg, logExpand * p);
+            }
+        }
     };
 
-    inline MatrixS<4, 4> hat(const MatrixS<6, 1> &vec)
+    template <>
+    template <>
+    inline SE3 se3::exp<6, 1>() const
     {
-        return {0.0, vec[2], -vec[1], 0.0, -vec[2], 0.0, vec[0], 0.0, vec[1], -vec[0], 0.0, 0.0, vec[3], vec[4], vec[5], 0.0};
-    }
-
-    inline se3 vee(const MatrixS<4, 4> &mat)
-    {
-        return {mat[6], mat[8], mat[1], mat[12], mat[13], mat[14]};
-    }
-
-    inline SE3 se3::exp() const
-    {
-        auto phi = norm2(w());
+        auto phi = norm2(_1());
         if (details::near_zero(phi))
         {
-            return {SO3(), v()};
+            return {SO3(), _2()};
         }
         else
         {
@@ -208,23 +192,16 @@ namespace ppx
         }
     }
 
-    inline se3 SE3::log() const
+    template <>
+    template <>
+    inline MatrixS<6, 6> se3::adt<6, 1>() const
     {
-        const auto &R = Rot();
-        const auto &p = Pos();
-        if (R == SO3{})
-        {
-            return {T3{}, p};
-        }
-        else
-        {
-            auto theta = acos((R.trace() - 1) / 2.0);
-            auto omg = R.log();
-            auto omgmat = hat(omg);
-            auto coff1 = (1.0 / theta - 1.0 / (tan(theta / 2.0) * 2.0)) / theta;
-            MatrixS<3, 3> logExpand = SO3::eye() - omgmat / 2.0 + coff1 * (omgmat * omgmat);
-            return {omg, logExpand * p};
-        }
+        MatrixS<6, 6> result;
+        result.sub<3, 3, false>(0, 0) = hat(_1());
+        result.sub<3, 3, false>(3, 0) = hat(_2());
+        result.sub<3, 3, false>(3, 3) = hat(_1());
+        return result;
     }
+
 }
 #endif

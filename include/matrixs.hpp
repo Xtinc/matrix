@@ -16,6 +16,9 @@ namespace ppx
     template <size_t M, size_t N>
     class MatrixS;
 
+    class SO3;
+    class SE3;
+
     enum class StatusCode : char
     {
         NORMAL,
@@ -52,13 +55,13 @@ namespace ppx
         return os;
     }
 
-    template <size_t M, size_t N>
-    FacResult<M, N> ludcmp(MatrixS<M, N> A, MatrixS<N, 1> &indx, bool &even);
+    template <size_t N>
+    FacResult<N, N> ludcmp(MatrixS<N, N> A, MatrixS<N, 1> &indx, bool &even);
 
     template <size_t M, size_t N>
     FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v);
 
-    template <size_t M, size_t N>
+    template <size_t N>
     void ludbksb(const MatrixS<N, N> &A, const MatrixS<N, 1> &indx, double *b);
 
     template <size_t M, size_t N>
@@ -473,6 +476,12 @@ namespace ppx
         {
         }
 
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        explicit MatrixS(const MatrixS<3, 1> &_1, const MatrixS<3, 1> &_2)
+            : details::MatrixBase<M, N>({_1[0], _1[1], _1[2], _2[0], _2[1], _2[2]})
+        {
+        }
+
         // Member functions
         double *data()
         {
@@ -633,6 +642,30 @@ namespace ppx
                 result(i, i) = (*this)[i];
             }
             return result;
+        }
+        // Lie Group
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, SO3> exp() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> adt() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 6 && B == 1, SE3> exp() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 6 && B == 1, MatrixS<6, 6>> adt() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 6 && B == 1, MatrixS<3, 1>> _1() const
+        {
+            return {(*this)[0], (*this)[1], (*this)[2]};
+        }
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 6 && B == 1, MatrixS<3, 1>> _2() const
+        {
+            return {(*this)[3], (*this)[4], (*this)[5]};
         }
 
         // Overloaded Operators
