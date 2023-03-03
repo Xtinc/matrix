@@ -36,8 +36,15 @@ namespace ppx
         using MatrixS::MatrixS;
         SO3(Rep &&other) : MatrixS(std::forward<Rep>(other)) {}
         SO3() : MatrixS(Rep::eye()){};
+        SO3(const MatrixS<3, 1> &xAxis, const MatrixS<3, 1> &yAxis, const MatrixS<3, 1> &zAxis)
+            : MatrixS<3, 3>{xAxis[0], xAxis[1], xAxis[2], yAxis[0], yAxis[1], yAxis[2], zAxis[0], zAxis[1], zAxis[2]} {}
 
         SO3 operator*(const SO3 &other)
+        {
+            return MatrixS::operator*(other);
+        }
+        template <size_t L>
+        MatrixS<3, L> operator*(const MatrixS<3, L> &other)
         {
             return MatrixS::operator*(other);
         }
@@ -129,6 +136,11 @@ namespace ppx
         SE3() : MatrixS(Rep::eye()) {}
 
         SE3 operator*(const SE3 &other)
+        {
+            return MatrixS::operator*(other);
+        }
+        template <size_t L>
+        MatrixS<4, L> operator*(const MatrixS<4, L> &other)
         {
             return MatrixS::operator*(other);
         }
