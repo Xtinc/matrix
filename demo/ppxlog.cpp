@@ -381,11 +381,21 @@ namespace ppx
             roll_file();
         }
 
-        void write(details::LogLine &logline)
+        void write(details::LogLine &logline, std::chrono::time_point<std::chrono::system_clock> &start)
         {
             auto pos = m_os->tellp();
             logline.stringify(*m_os);
             m_bytes_written += m_os->tellp() - pos;
+            auto bytes = m_bytes_written - r_bytes_written;
+            if (bytes > 1000 * 1000)
+            {
+                auto now = std::chrono::system_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                *m_os << "logs 1MegaBytes in " << duration << "ms, " << bytes / duration << "kb/s.\n";
+                r_bytes_written = m_bytes_written;
+                start = now;
+                m_bytes_written += 36;
+            }
             if (m_bytes_written > m_log_file_roll_size_bytes)
             {
                 roll_file();
@@ -407,6 +417,7 @@ namespace ppx
             }
 
             m_bytes_written = 0;
+            r_bytes_written = 0;
             m_os.reset(new std::ofstream());
             std::string log_file_name = m_name;
             log_file_name.append("_");
@@ -418,6 +429,7 @@ namespace ppx
     private:
         uint32_t m_file_number = 0;
         std::streamoff m_bytes_written = 0;
+        std::streamoff r_bytes_written = 0;
         uint32_t const m_log_file_roll_size_bytes;
         std::string const m_name;
         std::unique_ptr<std::ofstream> m_os;
@@ -454,23 +466,24 @@ namespace ppx
             }
 
             details::LogLine logline(CH01, nullptr, nullptr, 0);
+            auto now = std::chrono::system_clock::now();
 
             while (m_state.load() == State::READY)
             {
                 if (m_buffer_base->try_pop(logline))
                 {
-                    m_file_writer.write(logline);
+                    m_file_writer.write(logline, now);
                 }
                 else
                 {
-                    std::this_thread::sleep_for(std::chrono::microseconds(50));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
             }
 
             // Pop and log all remaining entries
             while (m_buffer_base->try_pop(logline))
             {
-                m_file_writer.write(logline);
+                m_file_writer.write(logline, now);
             }
         }
 
