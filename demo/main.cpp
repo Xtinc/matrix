@@ -402,6 +402,4 @@ int main(int, char **)
     LOG_CH(07) << "test_nonlinear";
     test_nonlinear();
     LOG_CH(01) << "test end";
-    tt.join();
-    tt2.join();
 }
