@@ -387,21 +387,6 @@ int main(int, char **)
 {
     ppx::initialize_log("./", "test", 100);
     ppx::set_log_level(~CH08);
-    std::thread tt([]()
-                   {
-                    for (size_t i = 0; i < 10000; i++)
-                    {
-                        LOG_CH(03) << std::string(1000, 'b');
-                        std::this_thread::sleep_for(std::chrono::milliseconds((int)ceil(50*sin(i))));
-                    } });
-    std::thread tt2([]()
-                    {
-                    for (size_t i = 0; i < 10000; i++)
-                    {
-                        LOG_CH(03) << std::string(1000, 'a');
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    } });
-
     LOG_CH(01) << "test_expr";
     test_expr();
     LOG_CH(02) << "test_matrix";
