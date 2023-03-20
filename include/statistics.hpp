@@ -33,9 +33,12 @@ namespace ppx
     {
     public:
         using samples = std::vector<MatrixS<N, 1>>;
+
         MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()), m_gen(std::random_device{}()) {}
+
         MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}
+
         MatrixS<N, 1> operator()() const
         {
             MatrixS<N, 1> x;
@@ -58,18 +61,22 @@ namespace ppx
             double norm = pow(sqrt(2 * PI), -n) * pow(m_cov.det(), -0.5);
             return norm * exp(-0.5 * quadform);
         }
+
         const MatrixS<N, 1> &mean() const
         {
             return m_mean;
         }
+
         MatrixS<N, 1> &mean()
         {
             return m_mean;
         }
+
         const MatrixS<N, N> &covariance() const
         {
             return m_cov;
         }
+
         MatrixS<N, N> &covariance()
         {
             return m_cov;
@@ -140,18 +147,22 @@ namespace ppx
         {
             return m_guassian.at(idx);
         }
+
         dist &distribution(size_t idx)
         {
             return m_guassian.at(idx);
         }
+
         const double &prior(size_t idx) const
         {
             return m_prior.at(idx);
         }
+
         double &prior(size_t idx)
         {
             return m_prior.at(idx);
         }
+
         void setcomp(size_t idx, const dist &d, double p)
         {
             m_guassian[idx] = d;
@@ -171,7 +182,8 @@ namespace ppx
                 std::vector<std::vector<double>> a(c, std::vector<double>(n));
                 for (size_t k = 0; k < c; k++)
                 {
-                    std::transform(data.begin(), data.end(), a[k].begin(), [&](const MatrixS<N, 1> &x)
+                    std::transform(data.begin(), data.end(), a[k].begin(),
+                                   [&](const MatrixS<N, 1> &x)
                                    { return m_prior[k] * m_guassian[k].pdf(x) / pdf(x); });
                 }
                 for (size_t k = 0; k < c; k++)
@@ -189,7 +201,8 @@ namespace ppx
                     m_guassian[k].mean() = sum_m;
                     m_guassian[k].covariance() = sum_s / sum_g;
                 }
-                double tpp = std::accumulate(data.begin(), data.end(), 0.0, [&](double y0, const MatrixS<N, 1> &x)
+                double tpp = std::accumulate(data.begin(), data.end(), 0.0,
+                                             [&](double y0, const MatrixS<N, 1> &x)
                                              { return y0 + log(pdf(x)); });
                 residual = fabs(last_p - tpp);
                 last_p = tpp;
@@ -221,6 +234,7 @@ namespace ppx
     {
     public:
         using samples = std::vector<MatrixS<N, 1>>;
+
         explicit Kmeans(const samples &data)
             : m_data(data), m_assign(m_data.size(), 0) {}
 
@@ -290,227 +304,121 @@ namespace ppx
     class FIR_Filter
     {
     public:
-        enum WindowType
+        enum WinFunc
         {
             Bartlett,
             Blackman,
             Hamming,
             Hanning,
             None
-        } WinType;
+        };
 
-        enum FilterType
+        enum Type
         {
+            MovAvg,
             LowPass,
             HighPass,
             BandPass,
             BandStop
-        } FltType;
+        };
 
-        FIR_Filter(int ktaps = 0, double f1 = 0, double f2 = 0, FilterType type = FilterType::LowPass,
-                   WindowType window = WindowType::None)
+        explicit FIR_Filter(int k_taps, double k_f1 = 0.0, double k_f2 = 0.0, Type k_type = Type::MovAvg,
+                            WinFunc k_win = WinFunc::None)
+            : idx(0), taps(k_taps), win(k_win), type(k_type), h(k_taps, 0.0), samples(k_taps, 0.0)
         {
-            idx = 0;
-            taps = ktaps;
-
-            std::vector<double> h_tmp(taps, 0.0); // Buffer FIR coefficients
-            std::vector<double> w_tmp(taps, 1.0); // Buffer window coefficients
-
             // Calculate the coefficient corresponding to the filter type
-            switch (type)
+            for (int n = 0; n < taps; n++)
             {
-            case FilterType::BandStop:
-                h_tmp = bandStop_coefficient(taps, f1, f2);
-                break;
-            case FilterType::BandPass:
-                h_tmp = bandPass_coefficient(taps, f1, f2);
-                break;
-            case FilterType::HighPass:
-                h_tmp = highPass_coefficient(taps, f1);
-                break;
-            case FilterType::LowPass:
-                h_tmp = lowPass_coefficient(taps, f1);
-            default:
-                break;
-            }
-
-            switch (WinType)
-            {
-            case WindowType::Hamming:
-                w_tmp = window_hammig(taps);
-                break;
-            case WindowType::Hanning:
-                w_tmp = window_hanning(taps);
-                break;
-            case WindowType::Bartlett:
-                w_tmp = window_triangle(taps);
-                break;
-            case WindowType::Blackman:
-                w_tmp = window_blackman(taps);
-                break;
-            default:
-                break;
-            }
-
-            if (WinType == WindowType::None)
-            {
-                h = h_tmp;
-            }
-            else
-            {
-                for (int n = 0; n < taps; n++)
-                {
-                    h[n] = h_tmp[n] * w_tmp[n];
-                }
+                h[n] = h_cal_coff(type, n, k_f1, k_f2) * w_cal_coff(win, n);
             }
         }
 
-        std::vector<double> getCoefficients()
+        std::vector<double> Coff()
         {
-            return this->h;
+            return h;
         }
 
-        double filter(double new_sample)
+        double operator()(double new_sample)
         {
-            double result = 0;
-
-            // Save the new sample
-            this->samples[this->idx] = new_sample;
-
+            double result = 0.0;
+            samples[idx] = new_sample;
             // Calculate the output
-            for (int n = 0; n < this->taps; n++)
-                result += this->samples[(this->idx + n) % this->taps] * this->h[n];
-
+            for (int n = 0; n < taps; n++)
+            {
+                result += samples[(idx + n) % taps] * h[n];
+            }
             // Increase the round robin index
-            this->idx = (this->idx + 1) % this->taps;
-
+            idx = (idx + 1) % taps;
             return result;
         }
 
     private:
-        std::vector<double> lowPass_coefficient(int taps, double f)
+        double h_cal_coff(Type t, int i, double f1, double f2) const
         {
-            std::vector<int> n(taps, 0);
-            std::vector<double> h(taps, 0);
-
-            for (int i = 0; i < taps; i++)
+            double ni = i - int(taps / 2);
+            double result = 0.0;
+            switch (t)
             {
-                n[i] = i - int(taps / 2);
+            case Type::LowPass:
+                result = 2.0 * f1 * sinc(2.0 * f1 * ni);
+                break;
+            case Type::HighPass:
+                result = sinc(ni) - 2.0 * f2 * sinc(2.0 * f2 * ni);
+                break;
+            case Type::BandPass:
+                result = 2.0 * f1 * sinc(2.0 * f1 * ni) - 2.0 * f2 * sinc(2.0 * f2 * ni);
+                break;
+            case Type::BandStop:
+                result = 2.0 * f1 * sinc(2.0 * f1 * ni) - 2.0 * f2 * sinc(2.0 * f2 * ni) + sinc(ni);
+                break;
+            case Type::MovAvg:
+                result = 1.0 / taps;
+            default:
+                break;
             }
-
-            for (int i = 0; i < taps; i++)
-            {
-                h[i] = 2.0 * f * sinc(2.0 * f * n[i]);
-            }
-
-            return h;
-        }
-        std::vector<double> highPass_coefficient(int taps, double f)
-        {
-            std::vector<int> n(taps, 0);
-            std::vector<double> h(taps, 0);
-
-            for (int i = 0; i < taps; i++)
-            {
-                n[i] = i - int(taps / 2);
-            }
-
-            for (int i = 0; i < taps; i++)
-            {
-                h[i] = sinc(n[i]) - 2.0 * f * sinc(2.0 * f * n[i]);
-            }
-
-            return h;
-        }
-        std::vector<double> bandPass_coefficient(int taps, double f1, double f2)
-        {
-            std::vector<int> n(taps, 0);
-            std::vector<double> h(taps, 0);
-
-            for (int i = 0; i < taps; i++)
-            {
-                n[i] = i - int(taps / 2);
-            }
-
-            for (int i = 0; i < taps; i++)
-            {
-                h[i] = 2.0 * f1 * sinc(2.0 * f1 * n[i]) - 2.0 * f2 * sinc(2.0 * f2 * n[i]);
-            }
-
-            return h;
-        }
-        std::vector<double> bandStop_coefficient(int taps, double f1, double f2)
-        {
-            std::vector<int> n(taps, 0);
-            std::vector<double> h(taps, 0);
-
-            for (int i = 0; i < taps; i++)
-            {
-                n[i] = i - int(taps / 2);
-            }
-
-            for (int i = 0; i < taps; i++)
-            {
-                h[i] = 2.0 * f1 * sinc(2.0 * f1 * n[i]) - 2.0 * f2 * sinc(2.0 * f2 * n[i]) + sinc(n[i]);
-            }
-
-            return h;
+            return result;
         }
 
-        std::vector<double> window_hammig(int taps)
+        double w_cal_coff(WinFunc t, int i) const
         {
-            std::vector<int> n(taps, 0);
-            std::vector<double> w(taps, 0);
+            // for blackman
+            constexpr double alpha0 = 0.42;
+            constexpr double alpha1 = 0.5;
+            constexpr double alpha2 = 0.08;
 
-            double alpha = 0.54;
-            double beta = 0.46;
+            // for hanning
+            constexpr double alpha = 0.54;
+            constexpr double beta = 0.46;
 
-            for (int i = 0; i < taps; i++)
+            double result = 1.0;
+            switch (t)
             {
-                w[i] = alpha - beta * cos(2.0 * PI * i / (taps - 1));
+            case Bartlett:
+                result = 1 - fabs((i - ((taps - 1) / 2.0)) / (taps / 2.0));
+                break;
+            case Blackman:
+                result = alpha0 - alpha1 * cos(2.0 * PI * i / (taps - 1)) -
+                         alpha2 * cos(4.0 * PI * i / (taps - 1));
+                break;
+            case Hamming:
+                result = alpha - beta * cos(2.0 * PI * i / (taps - 1));
+                break;
+            case Hanning:
+                result = sin((PI * i) / (taps - 1)) * sin((PI * i) / (taps - 1));
+                break;
+            case None:
+                break;
             }
+            return result;
+        }
 
-            return w;
-        }
-        std::vector<double> window_triangle(int taps)
-        {
-            std::vector<double> w(taps, 0);
-
-            double l = taps;
-            for (int i = 0; i < taps; i++)
-            {
-                w[i] = 1 - abs((i - (((double)(taps - 1)) / 2.0)) / (((double)l) / 2.0));
-            }
-            return w;
-        }
-        std::vector<double> window_hanning(int taps)
-        {
-            std::vector<double> w(taps, 0);
-            for (int i = 0; i < taps; i++)
-            {
-                w[i] = sin((PI * i) / (taps - 1)) *
-                       sin((PI * i) / (taps - 1));
-            }
-            return w;
-        }
-        std::vector<double> window_blackman(int taps)
-        {
-            std::vector<double> w(taps, 0);
-            double alpha0 = 0.42;
-            double alpha1 = 0.5;
-            double alpha2 = 0.08;
-            for (int i = 0; i < taps; i++)
-            {
-                w[i] = alpha0 - alpha1 * cos(2.0 * PI * i / (taps - 1)) - alpha2 * cos(4.0 * PI * i / (taps - 1));
-            }
-            return w;
-        }
+        int idx;        // Round robin index
+        const int taps; // Number of taps of the filter
+        const WinFunc win;
+        const Type type;
 
         std::vector<double> h;       // FIR coefficients
         std::vector<double> samples; // FIR delay
-
-        int idx;  // Round robin index
-        int taps; // Number of taps of the filter
     };
 }
 
