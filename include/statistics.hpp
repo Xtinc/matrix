@@ -297,43 +297,77 @@ namespace ppx
     // signals
     inline double sinc(double x)
     {
-        return fabs(x) < EPS_DP ? 1.0 : sin(PI * x) / (PI * x);
+        return fabs(x) < EPS_DP ? 1.0 : sin(x) / x;
     }
 
+    template <size_t M, size_t N>
+    MatrixS<N + M - 1, 1>
+    convovle(const MatrixS<M, 1> &f, const MatrixS<N, 1> &g)
+    {
+        MatrixS<M + N - 1, 1> out;
+        for (auto i = 0; i < n; ++i)
+        {
+            int jmn = (i >= N - 1) ? i - (N - 1) : 0;
+            int jmx = (i < M - 1) ? i : M - 1;
+            for (auto j = jmn; j <= jmx; ++j)
+            {
+                out[i] += (f[j] * g[i - j]);
+            }
+        }
+        return out;
+    }
+
+    enum class WinFunc : char
+    {
+        Bartlett,
+        Blackman,
+        Hamming,
+        Hanning,
+        Boxcar
+    };
+
+    enum class FIRType : char
+    {
+        MovAvg,
+        LowPass,
+        HighPass,
+        BandPass,
+        BandStop
+    };
+
     // FIR filter
-    class FIR_Filter
+    template <size_t N, FIRType T = FIRType::MovAvg>
+    class FIRFilter
     {
     public:
-        enum WinFunc
+        FIRFilter(double f1, double f2, WinFunc k_win = WinFunc::Boxcar, FIRType k_type = FIRType::MovAvg)
+            : type(k_type), window(k_win), idx(0)
         {
-            Bartlett,
-            Blackman,
-            Hamming,
-            Hanning,
-            None
-        };
-
-        enum Type
-        {
-            MovAvg,
-            LowPass,
-            HighPass,
-            BandPass,
-            BandStop
-        };
-
-        explicit FIR_Filter(int k_taps, double k_f1 = 0.0, double k_f2 = 0.0, Type k_type = Type::MovAvg,
-                            WinFunc k_win = WinFunc::None)
-            : idx(0), taps(k_taps), win(k_win), type(k_type), h(k_taps, 0.0), samples(k_taps, 0.0)
-        {
+            f1 /= 2.0;
+            f2 /= 2.0;
             // Calculate the coefficient corresponding to the filter type
-            for (int n = 0; n < taps; n++)
+            switch (type)
             {
-                h[n] = h_cal_coff(type, n, k_f1, k_f2) * w_cal_coff(win, n);
+            case FIRType::LowPass:
+                h = cal_lp_coff(f1);
+                break;
+            case FIRType::HighPass:
+                h = cal_hp_coff(f2);
+                break;
+            case FIRType::BandPass:
+                h = cal_lp_coff(f2) - cal_lp_coff(f1);
+                break;
+            case FIRType::BandStop:
+                // result = 1.0 - (2.0 * f2 * sinc(omega2 * ni) - 2.0 * f1 * sinc(omega1 * ni));
+                break;
+            case FIRType::MovAvg:
+                h.fill(1.0 / N);
+            default:
+                break;
             }
         }
 
-        std::vector<double> Coff()
+        MatrixS<N, 1> coff()
         {
             return h;
         }
@@ -343,83 +377,74 @@ namespace ppx
             double result = 0.0;
             samples[idx] = new_sample;
             // Calculate the output
-            for (int n = 0; n < taps; n++)
+            for (int n = 0; n < N; n++)
             {
-                result += samples[(idx + n) % taps] * h[n];
+                result += samples[(idx + n) % N] * h[n];
             }
             // Increase the round robin index
-            idx = (idx + 1) % taps;
+            idx = (idx + 1) % N;
             return result;
         }
 
     private:
-        double h_cal_coff(Type t, int i, double f1, double f2) const
+        MatrixS<N, 1> cal_lp_coff(double fc) const
         {
-            double ni = i - int(taps / 2);
-            double result = 0.0;
-            switch (t)
+            MatrixS<N, 1> result;
+            double omega = 2 * PI * fc;
+            for (int i = 0; i < N; i++)
             {
-            case Type::LowPass:
-                result = 2.0 * f1 * sinc(2.0 * f1 * ni);
-                break;
-            case Type::HighPass:
-                result = sinc(ni) - 2.0 * f2 * sinc(2.0 * f2 * ni);
-                break;
-            case Type::BandPass:
-                result = 2.0 * f1 * sinc(2.0 * f1 * ni) - 2.0 * f2 * sinc(2.0 * f2 * ni);
-                break;
-            case Type::BandStop:
-                result = 2.0 * f1 * sinc(2.0 * f1 * ni) - 2.0 * f2 * sinc(2.0 * f2 * ni) + sinc(ni);
-                break;
-            case Type::MovAvg:
-                result = 1.0 / taps;
-            default:
-                break;
+                double ni = i - int(N / 2);
+                result[i] = 2.0 * fc * sinc(omega * ni) * w_cal_coff(i);
             }
+            result /= std::accumulate(result.begin(), result.end(), 0.0);
             return result;
         }
 
-        double w_cal_coff(WinFunc t, int i) const
+        MatrixS<N, 1> cal_hp_coff(double fc) const
         {
-            // for blackman
-            constexpr double alpha0 = 0.42;
-            constexpr double alpha1 = 0.5;
-            constexpr double alpha2 = 0.08;
+            MatrixS<N, 1> result;
+            double omega = 2 * PI * fc;
+            for (int i = 0; i < N; i++)
+            {
+                double ni = i - int(N / 2);
+                result[i] = 2.0 * fc * sinc(omega * ni) * w_cal_coff(i);
+            }
+            result /= -std::accumulate(result.begin(), result.end(), 0.0);
+            result[(N - 1) / 2] += 1;
+            return result;
+        }
 
-            // for hanning
-            constexpr double alpha = 0.54;
-            constexpr double beta = 0.46;
-
+        double w_cal_coff(int i) const
+        {
             double result = 1.0;
-            switch (t)
+            double period = N - 1;
+            switch (window)
             {
-            case Bartlett:
-                result = 1 - fabs((i - ((taps - 1) / 2.0)) / (taps / 2.0));
+            case WinFunc::Bartlett:
+                result = 1 - 2.0 * fabs(i - period / 2.0) / period;
                 break;
-            case Blackman:
-                result = alpha0 - alpha1 * cos(2.0 * PI * i / (taps - 1)) -
-                         alpha2 * cos(4.0 * PI * i / (taps - 1));
+            case WinFunc::Blackman:
+                result = 0.42 - 0.5 * cos(2.0 * PI * i / period) +
+                         0.08 * cos(4.0 * PI * i / period);
                 break;
-            case Hamming:
-                result = alpha - beta * cos(2.0 * PI * i / (taps - 1));
+            case WinFunc::Hamming:
+                result = 0.54 - 0.46 * cos(2.0 * PI * i / period);
                 break;
-            case Hanning:
-                result = sin((PI * i) / (taps - 1)) * sin((PI * i) / (taps - 1));
+            case WinFunc::Hanning:
+                result = 0.5 * (1.0 - cos(2.0 * PI * i / period));
                 break;
-            case None:
+            case WinFunc::Boxcar:
                 break;
             }
             return result;
         }
 
-        int idx;        // Round robin index
-        const int taps; // Number of taps of the filter
-        const WinFunc win;
-        const Type type;
-
-        std::vector<double> h;       // FIR coefficients
-        std::vector<double> samples; // FIR delay
+    private:
+        const FIRType type;
+        const WinFunc window;
+        size_t idx;
+        MatrixS<N, 1> h;
+        MatrixS<N, 1> samples;
     };
 }
-
 #endif

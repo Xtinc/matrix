@@ -21,14 +21,6 @@ public:
 
 TEST_F(STA_TestCase, MovAvgFlt)
 {
-    for (auto &&elem : datas)
-    {
-        std::cout << elem << std::endl;
-    }
-    std::cout << "___________________" << std::endl;
-    FIR_Filter flt(18);
-    for (auto &&elem : datas)
-    {
-        std::cout << flt(elem) << std::endl;
-    }
+    FIRFilter<51> flt(0.21, 0.4, WinFunc::Hamming, FIRType::BandPass);
+    std::cout << flt.coff() << std::endl;
 }
