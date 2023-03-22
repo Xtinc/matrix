@@ -23,7 +23,7 @@ if (ENABLE_UNIT_TESTS)
     target_link_libraries(opt_test PRIVATE ppx gtest_main)
     add_executable(lie_test lie_test.cpp)
     target_link_libraries(lie_test PRIVATE ppx gtest_main)
-    add_executable(statistic_test statistic.cpp)
+    add_executable(statistic_test statistic_test.cpp)
     target_link_libraries(statistic_test PRIVATE ppx gtest_main)
     gtest_discover_tests(matrix_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)

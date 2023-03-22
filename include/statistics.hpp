@@ -300,12 +300,41 @@ namespace ppx
         return fabs(x) < EPS_DP ? 1.0 : sin(x) / x;
     }
 
+    inline double BartlettWindow(int N, int i)
+    {
+        double result = 1.0;
+        double period = N - 1;
+        return 1 - 2.0 * fabs(i - period / 2.0) / period;
+    }
+
+    inline double BlackmanWindow(int N, int i)
+    {
+        double result = 1.0;
+        double period = N - 1;
+        return 0.42 - 0.5 * cos(2.0 * PI * i / period) +
+               0.08 * cos(4.0 * PI * i / period);
+    }
+
+    inline double HammingWindow(int N, int i)
+    {
+        double result = 1.0;
+        double period = N - 1;
+        return 0.54 - 0.46 * cos(2.0 * PI * i / period);
+    }
+
+    inline double HanningWindow(int N, int i)
+    {
+        double result = 1.0;
+        double period = N - 1;
+        return 0.5 * (1.0 - cos(2.0 * PI * i / period));
+    }
+
     template <size_t M, size_t N>
     MatrixS<N + M - 1, 1>
     convovle(const MatrixS<M, 1> &f, const MatrixS<N, 1> &g)
     {
         MatrixS<M + N - 1, 1> out;
-        for (auto i = 0; i < n; ++i)
+        for (auto i = 0; i < M + N - 1; ++i)
         {
             int jmn = (i >= N - 1) ? i - (N - 1) : 0;
             int jmx = (i < M - 1) ? i : M - 1;
@@ -317,16 +346,7 @@ namespace ppx
         return out;
     }
 
-    enum class WinFunc : char
-    {
-        Bartlett,
-        Blackman,
-        Hamming,
-        Hanning,
-        Boxcar
-    };
-
-    enum class FIRType : char
+    enum class FIR : char
     {
         MovAvg,
         LowPass,
@@ -336,43 +356,46 @@ namespace ppx
     };
 
     // FIR filter
-    template <size_t N, FIRType T = FIRType::MovAvg>
+    template <size_t N>
     class FIRFilter
     {
     public:
-        FIRFilter(double f1, double f2, WinFunc k_win = WinFunc::Boxcar, FIRType k_type = FIRType::MovAvg)
-            : type(k_type), window(k_win), idx(0)
+        FIRFilter(
+            double f1, double f2, FIR k_type = FIR::MovAvg, const std::function<double(int, int)> &f = [](int, int)
+                                                            { return 1.0; })
+            : type(k_type), winfunc(f), idx(0)
         {
             f1 /= 2.0;
             f2 /= 2.0;
             // Calculate the coefficient corresponding to the filter type
             switch (type)
             {
-            case FIRType::LowPass:
+            case FIR::LowPass:
                 h = cal_lp_coff(f1);
                 break;
-            case FIRType::HighPass:
+            case FIR::HighPass:
                 h = cal_hp_coff(f2);
                 break;
-            case FIRType::BandPass:
-                h = cal_lp_coff(f2) - cal_lp_coff(f1);
+            case FIR::BandPass:
+                h = convovle(cal_hp_coff(f1), cal_lp_coff(f2)).sub<N, 1>((N - 1) / 2, 0);
                 break;
-            case FIRType::BandStop:
-                // result = 1.0 - (2.0 * f2 * sinc(omega2 * ni) - 2.0 * f1 * sinc(omega1 * ni));
+            case FIR::BandStop:
+                h = cal_lp_coff(f1) + cal_hp_coff(f2);
                 break;
-            case FIRType::MovAvg:
+            case FIR::MovAvg:
                 h.fill(1.0 / N);
+                break;
             default:
                 break;
             }
         }
 
-        MatrixS<N, 1> coff()
+        MatrixS<N, 1> coff() const
         {
             return h;
         }
 
-        double operator()(double new_sample)
+        double operator()(double new_sample) const
         {
             double result = 0.0;
             samples[idx] = new_sample;
@@ -386,6 +409,11 @@ namespace ppx
             return result;
         }
 
+        void reset()
+        {
+            samples.fill(0.0);
+        }
+
     private:
         MatrixS<N, 1> cal_lp_coff(double fc) const
         {
@@ -394,7 +422,7 @@ namespace ppx
             for (int i = 0; i < N; i++)
             {
                 double ni = i - int(N / 2);
-                result[i] = 2.0 * fc * sinc(omega * ni) * w_cal_coff(i);
+                result[i] = 2.0 * fc * sinc(omega * ni) * winfunc(N, i);
             }
             result /= std::accumulate(result.begin(), result.end(), 0.0);
             return result;
@@ -407,44 +435,19 @@ namespace ppx
             for (int i = 0; i < N; i++)
             {
                 double ni = i - int(N / 2);
-                result[i] = 2.0 * fc * sinc(omega * ni) * w_cal_coff(i);
+                result[i] = 2.0 * fc * sinc(omega * ni) * winfunc(N, i);
             }
             result /= -std::accumulate(result.begin(), result.end(), 0.0);
             result[(N - 1) / 2] += 1;
             return result;
         }
 
-        double w_cal_coff(int i) const
-        {
-            double result = 1.0;
-            double period = N - 1;
-            switch (window)
-            {
-            case WinFunc::Bartlett:
-                result = 1 - 2.0 * fabs(i - period / 2.0) / period;
-                break;
-            case WinFunc::Blackman:
-                result = 0.42 - 0.5 * cos(2.0 * PI * i / period) +
-                         0.08 * cos(4.0 * PI * i / period);
-                break;
-            case WinFunc::Hamming:
-                result = 0.54 - 0.46 * cos(2.0 * PI * i / period);
-                break;
-            case WinFunc::Hanning:
-                result = 0.5 * (1.0 - cos(2.0 * PI * i / period));
-                break;
-            case WinFunc::Boxcar:
-                break;
-            }
-            return result;
-        }
-
     private:
-        const FIRType type;
-        const WinFunc window;
+        const FIR type;
+        const std::function<double(int, int)> winfunc;
         size_t idx;
         MatrixS<N, 1> h;
-        MatrixS<N, 1> samples;
+        mutable MatrixS<N, 1> samples;
     };
 }
 #endif
