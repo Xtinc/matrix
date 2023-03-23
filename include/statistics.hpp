@@ -3,6 +3,7 @@
 
 #include "optimization.hpp"
 #include <random>
+#include <functional>
 
 namespace ppx
 {
@@ -302,14 +303,12 @@ namespace ppx
 
     inline double BartlettWindow(int N, int i)
     {
-        double result = 1.0;
         double period = N - 1;
         return 1 - 2.0 * fabs(i - period / 2.0) / period;
     }
 
     inline double BlackmanWindow(int N, int i)
     {
-        double result = 1.0;
         double period = N - 1;
         return 0.42 - 0.5 * cos(2.0 * PI * i / period) +
                0.08 * cos(4.0 * PI * i / period);
@@ -317,14 +316,12 @@ namespace ppx
 
     inline double HammingWindow(int N, int i)
     {
-        double result = 1.0;
         double period = N - 1;
         return 0.54 - 0.46 * cos(2.0 * PI * i / period);
     }
 
     inline double HanningWindow(int N, int i)
     {
-        double result = 1.0;
         double period = N - 1;
         return 0.5 * (1.0 - cos(2.0 * PI * i / period));
     }
@@ -377,7 +374,7 @@ namespace ppx
                 h = cal_hp_coff(f2);
                 break;
             case FIR::BandPass:
-                h = convovle(cal_hp_coff(f1), cal_lp_coff(f2)).sub<N, 1>((N - 1) / 2, 0);
+                h = convovle(cal_hp_coff(f1), cal_lp_coff(f2)).template sub<N, 1>((N - 1) / 2, 0);
                 break;
             case FIR::BandStop:
                 h = cal_lp_coff(f1) + cal_hp_coff(f2);
