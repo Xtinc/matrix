@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "statistics.hpp"
+#include "signals.hpp"
 
 using namespace ppx;
 
@@ -21,6 +21,18 @@ public:
 
 TEST_F(STA_TestCase, MovAvgFlt)
 {
-    FIRFilter<51> flt(0.42, 0.8, FIR::BandStop, HammingWindow);
-    std::cout << flt.coff() << std::endl;
+    FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, WindowType::Hamming);
+    // SGFilter<2, 12, 2> flt;
+    for (auto &&elem : datas)
+    {
+        std::cout << elem << std::endl;
+    }
+    std::cout << "_____________________________" << std::endl;
+
+    for (auto &&elem : datas)
+    {
+        std::cout << flt(elem) << std::endl;
+    }
+
+    // std::cout << flt.coff() << std::endl;
 }
