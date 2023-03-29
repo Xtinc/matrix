@@ -1,4 +1,4 @@
-#include "eigen3/Eigen/Dense"
+#include "Dense"
 #include <benchmark/benchmark.h>
 #include "liegroup.hpp"
 #include <random>
@@ -81,16 +81,6 @@ GENERATE_MUL_N(128);
 GENERATE_MUL_N(256);
 GENERATE_MUL_N(512);
 GENERATE_MUL_N(1024);
-
-GENERATE_SVD_N(4);
-GENERATE_SVD_N(8);
-GENERATE_SVD_N(16);
-GENERATE_SVD_N(32);
-GENERATE_SVD_N(64);
-GENERATE_SVD_N(128);
-GENERATE_SVD_N(256);
-GENERATE_SVD_N(512);
-GENERATE_SVD_N(1024);
 
 static void BM_MatrixInv(benchmark::State &state)
 {
@@ -189,24 +179,24 @@ static void BM_MatrixExp(benchmark::State &state)
     }
 }
 
-static void BM_MatrixQR(benchmark::State &state)
-{
-    MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
-                   997.0, -122.0, 35.4, 889.0, 111.1,
-                   -442.0, -0.987, 355.0, -346.0, 3419.0,
-                   235.0, 98.87, -827.0, 876.0, 34.0,
-                   222.0, -87.8, 546.0, -101.0, 122.1,
-                   -86.0, 999.0, 65.2, 902.0, 54.2};
-    MatrixS<6, 5> result;
-    MatrixS<5, 1> c;
-    MatrixS<5, 1> d;
-    bool sing;
-    auto uT = u.T();
-    for (auto _ : state)
-    {
-        result = qrdcmp(uT, c, d, sing);
-    }
-}
+// static void BM_MatrixQR(benchmark::State &state)
+// {
+//     MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+//                    997.0, -122.0, 35.4, 889.0, 111.1,
+//                    -442.0, -0.987, 355.0, -346.0, 3419.0,
+//                    235.0, 98.87, -827.0, 876.0, 34.0,
+//                    222.0, -87.8, 546.0, -101.0, 122.1,
+//                    -86.0, 999.0, 65.2, 902.0, 54.2};
+//     MatrixS<6, 5> result;
+//     MatrixS<5, 1> c;
+//     MatrixS<5, 1> d;
+//     bool sing;
+//     auto uT = u.T();
+//     for (auto _ : state)
+//     {
+//         result = qrdcmp(uT, c, d, sing);
+//     }
+// }
 
 static void BM_MatrixEigenQR(benchmark::State &state)
 {
@@ -225,24 +215,24 @@ static void BM_MatrixEigenQR(benchmark::State &state)
     }
 }
 
-static void BM_MatrixSVD(benchmark::State &state)
-{
-    MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
-                   997.0, -122.0, 35.4, 889.0, 111.1,
-                   -442.0, -0.987, 355.0, -346.0, 3419.0,
-                   235.0, 98.87, -827.0, 876.0, 34.0,
-                   222.0, -87.8, 546.0, -101.0, 122.1,
-                   -86.0, 999.0, 65.2, 902.0, 54.2};
-    MatrixS<5, 6> result;
-    MatrixS<6, 1> e;
-    MatrixS<6, 6> v;
-    bool sing = false;
-    for (auto _ : state)
-    {
-        result = svdcmp(u, e, v, sing);
-        auto sss = result * v;
-    }
-}
+// static void BM_MatrixSVD(benchmark::State &state)
+// {
+//     MatrixS<5, 6> u{1233.0, 415.0, 87.7, 11.6, 243.0,
+//                    997.0, -122.0, 35.4, 889.0, 111.1,
+//                    -442.0, -0.987, 355.0, -346.0, 3419.0,
+//                    235.0, 98.87, -827.0, 876.0, 34.0,
+//                    222.0, -87.8, 546.0, -101.0, 122.1,
+//                    -86.0, 999.0, 65.2, 902.0, 54.2};
+//     MatrixS<5, 6> result;
+//     MatrixS<6, 1> e;
+//     MatrixS<6, 6> v;
+//     bool sing = false;
+//     for (auto _ : state)
+//     {
+//         result = svdcmp(u, e, v, sing);
+//         auto sss = result * v;
+//     }
+// }
 
 static void BM_MatrixEigenSVD(benchmark::State &state)
 {
@@ -271,26 +261,26 @@ static void BM_MatrixEigenSVD(benchmark::State &state)
 
 // Register the function as a benchmark
 // BENCHMARK(BM_MatrixMul);
-// BENCHMARK(BM_MatrixMulEigen)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024);
-// BENCHMARK(BM_MatrixMul_4);
-// BENCHMARK(BM_MatrixMul_8);
-// BENCHMARK(BM_MatrixMul_16);
-// BENCHMARK(BM_MatrixMul_32);
-// BENCHMARK(BM_MatrixMul_64);
-// BENCHMARK(BM_MatrixMul_128);
-// BENCHMARK(BM_MatrixMul_256);
-// BENCHMARK(BM_MatrixMul_512);
-// BENCHMARK(BM_MatrixMul_1024);
+BENCHMARK(BM_MatrixMulEigen)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512)->Arg(1024);
+BENCHMARK(BM_MatrixMul_4);
+BENCHMARK(BM_MatrixMul_8);
+BENCHMARK(BM_MatrixMul_16);
+BENCHMARK(BM_MatrixMul_32);
+BENCHMARK(BM_MatrixMul_64);
+BENCHMARK(BM_MatrixMul_128);
+BENCHMARK(BM_MatrixMul_256);
+BENCHMARK(BM_MatrixMul_512);
+BENCHMARK(BM_MatrixMul_1024);
 
-BENCHMARK(BM_MatrixEigenSVD)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
-BENCHMARK(BM_MatrixSVD_4);
-BENCHMARK(BM_MatrixSVD_8);
-BENCHMARK(BM_MatrixSVD_16);
-BENCHMARK(BM_MatrixSVD_32);
-BENCHMARK(BM_MatrixSVD_64);
-BENCHMARK(BM_MatrixSVD_128);
-BENCHMARK(BM_MatrixSVD_256);
-BENCHMARK(BM_MatrixSVD_512);
+// BENCHMARK(BM_MatrixEigenSVD)->Arg(4)->Arg(8)->Arg(16)->Arg(32)->Arg(64)->Arg(128)->Arg(256)->Arg(512);
+// BENCHMARK(BM_MatrixSVD_4);
+// BENCHMARK(BM_MatrixSVD_8);
+// BENCHMARK(BM_MatrixSVD_16);
+// BENCHMARK(BM_MatrixSVD_32);
+// BENCHMARK(BM_MatrixSVD_64);
+// BENCHMARK(BM_MatrixSVD_128);
+// BENCHMARK(BM_MatrixSVD_256);
+// BENCHMARK(BM_MatrixSVD_512);
 // BENCHMARK(BM_MatrixSVD_1024);
 
 // BENCHMARK(BM_MatrixInv);

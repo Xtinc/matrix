@@ -99,7 +99,7 @@ namespace ppx
             MatrixBase() : m_data{} {}
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            explicit MatrixBase(const std::array<T, L> &list) : m_data{}
+            MatrixBase(const std::array<T, L> &list) : m_data{}
             {
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -113,7 +113,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            explicit MatrixBase(const std::vector<T> &list) : m_data{}
+            MatrixBase(const std::vector<T> &list) : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -133,7 +133,7 @@ namespace ppx
             MatrixBase() : m_data(M * N, 0.0) {}
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            explicit MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
+            MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
             {
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -146,7 +146,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            explicit MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
+            MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -462,7 +462,7 @@ namespace ppx
         MatrixS() = default;
 
         template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-        explicit MatrixS(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
@@ -472,12 +472,12 @@ namespace ppx
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        explicit MatrixS(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
         template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
-        explicit MatrixS(const MatrixS<3, 1> &_1, const MatrixS<3, 1> &_2)
+        MatrixS(const MatrixS<3, 1> &_1, const MatrixS<3, 1> &_2)
             : details::MatrixBase<M, N>({_1[0], _1[1], _1[2], _2[0], _2[1], _2[2]})
         {
         }

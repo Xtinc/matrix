@@ -38,6 +38,6 @@ endif()
 # FetchContent_MakeAvailable(benchmark)
 
 # find_package(benchmark REQUIRED)
-# add_executable(ppx_bench benchmark.cpp)
-# target_include_directories(ppx_bench PRIVATE include)
+# add_executable(ppx_bench misc/benchmark.cpp)
+# target_include_directories(ppx_bench PRIVATE include Eigen)
 # target_link_libraries(ppx_bench benchmark::benchmark)
