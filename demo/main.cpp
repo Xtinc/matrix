@@ -1,7 +1,9 @@
 #include "robotics.hpp"
 #include "ppxlog.h"
+#include "signals.hpp"
 #include <random>
 #include <future>
+#include <fstream>
 
 using namespace ppx;
 using namespace ppx::details;
@@ -383,6 +385,34 @@ void test_robotics()
     }
 }
 
+void read_real_data()
+{
+    std::ifstream ifs("data.txt");
+    std::vector<double> datas;
+    std::string line;
+    while (std::getline(ifs, line, '\n'))
+    {
+        double a = 0.0;
+        double b = 0.0;
+        std::stringstream ss(line);
+        for (int i = 0; i < 13; i++)
+        {
+            ss >> a;
+        }
+        for (int i = 0; i < 5; i++)
+        {
+            ss >> b;
+        }
+        datas.emplace_back(a + b);
+    }
+    SGFilter<4, 8, 4> sg;
+    FIRFilter<21> filter(0.1, 0.0);
+    for (size_t i = 0; i < datas.size(); i++)
+    {
+        std::cout << sg(datas.at(i)) << std::endl;
+    }
+}
+
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 100);
@@ -402,4 +432,5 @@ int main(int, char **)
     LOG_CH(07) << "test_nonlinear";
     test_nonlinear();
     LOG_CH(01) << "test end";
+    // read_real_data();
 }
