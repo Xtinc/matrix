@@ -413,6 +413,8 @@ void read_real_data()
     }
 }
 
+using namespace ppx;
+
 int main(int, char **)
 {
     ppx::initialize_log("./", "test", 100);
@@ -433,4 +435,6 @@ int main(int, char **)
     test_nonlinear();
     LOG_CH(01) << "test end";
     // read_real_data();
+
+    return EXIT_SUCCESS;
 }

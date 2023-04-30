@@ -92,6 +92,27 @@ namespace ppx
                 return vee(ret);
             }
         }
+
+        static SO3 RotX(double theta)
+        {
+            return {1.0, 0.0, 0.0,
+                    0.0, cos(theta), -sin(theta),
+                    0.0, sin(theta), cos(theta)};
+        }
+
+        static SO3 RotY(double theta)
+        {
+            return {cos(theta), 0.0, sin(theta),
+                    0.0, 1.0, 0.0,
+                    -sin(theta), 0.0, cos(theta)};
+        }
+
+        static SO3 RotZ(double theta)
+        {
+            return {cos(theta), -sin(theta), 0.0,
+                    sin(theta), cos(theta), 0.0,
+                    0.0, 0.0, 1.0};
+        }
     };
 
     template <>

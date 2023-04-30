@@ -384,7 +384,12 @@ namespace ppx
         using enable_mat_expr_t = std::enable_if_t<is_matrix_v<T1>() && is_expr_v<T2>()>;
         template <typename T1, typename T2>
         using enable_mat_num_t = std::enable_if_t<is_matrix_v<T1>() && std::is_arithmetic<T2>::value>;
-
+        template <typename T1, typename T2>
+        using enable_mat_block_t = std::enable_if_t<std::is_same<typename T2::elem_tag, ElemTags::Mblock>::value && std::is_same<typename T2::elem_tag, ElemTags::Matrix>::value>;
+        template <typename T1, typename T2>
+        using enable_block_mat_t = std::enable_if_t<std::is_same<typename T1::elem_tag, ElemTags::Matrix>::value && std::is_same<typename T2::elem_tag, ElemTags::Mblock>::value>;
+        template <typename T1, typename T2>
+        using enable_block_block_t = std::enable_if_t<std::is_same<typename T1::elem_tag, ElemTags::Mblock>::value && std::is_same<typename T2::elem_tag, ElemTags::Mblock>::value>;
     } // namespace details
 
     // Ops abs
@@ -558,6 +563,24 @@ namespace ppx
     auto operator*(const T1 &t1, const T2 &t2)
     {
         return t1 * t2.eval();
+    }
+
+    template <typename T1, typename T2, details::enable_mat_block_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return t1 * t2.snap();
+    }
+
+    template <typename T1, typename T2, details::enable_block_mat_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return t1.snap() * t2;
+    }
+
+    template <typename T1, typename T2, details::enable_block_block_t<T1, T2> * = nullptr>
+    auto operator*(const T1 &t1, const T2 &t2)
+    {
+        return t1.snap() * t2.snap();
     }
 
     // Ops /
