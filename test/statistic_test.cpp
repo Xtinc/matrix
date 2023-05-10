@@ -22,6 +22,7 @@ public:
 TEST_F(STA_TestCase, MovAvgFlt)
 {
     FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, WindowType::Hamming);
+    ButterWorthFilter<3> but(0.1, 0.0, FreqProperty::LowPass);
     // SGFilter<2, 12, 2> flt;
     for (auto &&elem : datas)
     {
@@ -31,7 +32,7 @@ TEST_F(STA_TestCase, MovAvgFlt)
 
     for (auto &&elem : datas)
     {
-        std::cout << flt(elem) << std::endl;
+        std::cout << but(elem) << std::endl;
     }
 
     // std::cout << flt.coff() << std::endl;

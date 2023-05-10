@@ -6,12 +6,14 @@
 
 namespace ppx
 {
-    inline double SIGN(double a, double b)
+    template <typename T>
+    T SIGN(T a, T b)
     {
-        return b > 0.0 ? fabs(a) : -fabs(a);
+        return b > T{} ? std::abs(a) : -std::abs(a);
     }
 
-    inline double SQR(double a)
+    template <typename T>
+    T SQR(T a)
     {
         return a * a;
     }

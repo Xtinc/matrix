@@ -14,7 +14,7 @@ namespace ppx
     constexpr double MAX_SP = std::numeric_limits<float>::max();
     constexpr double MAX_DP = std::numeric_limits<double>::max();
     constexpr int MAJOR_VERSION = 1;
-    constexpr int MINOR_VERSION = 0;
+    constexpr int MINOR_VERSION = 1;
 
     constexpr double DEG_RAD(double deg)
     {
