@@ -2,6 +2,7 @@
 #define VVERY_SIMPLE_ALGORITHM3_HEADER
 
 #include "statistics.hpp"
+#include <queue>
 
 namespace ppx
 {
@@ -54,6 +55,68 @@ namespace ppx
             double period = N - 1;
             return 0.5 * (1.0 - cos(2.0 * PI * i / period));
         }
+
+        // The multiplication has the following form:
+        // (x+p[0])*(x+p[1])*...*(x+p[n-1])
+        // The p[i] coefficients are assumed to be complex and are passed to the
+        // function as an array of doubles of length 2n. where p[2i] (i=0...n-1)
+        // is assumed to be the real part of the coefficient of the ith binomial
+        // and p[2i+1] is assumed to be the imaginary part. The resulting polynomial
+        // has the following form:
+        // x^n + a[0]*x^n-1 + a[1]*x^n-2 + ... +a[n-2]*x + a[n-1]
+        template <size_t N>
+        void binomial_mult(const MatrixS<N, 1> &p, MatrixS<N, 1> &a)
+        {
+            for (int i = 0; i < N / 2; ++i)
+            {
+                for (int j = i; j > 0; --j)
+                {
+                    a[2 * j] += p[2 * i] * a[2 * (j - 1)] - p[2 * i + 1] * a[2 * (j - 1) + 1];
+                    a[2 * j + 1] += p[2 * i] * a[2 * (j - 1) + 1] + p[2 * i + 1] * a[2 * (j - 1)];
+                }
+                a[0] += p[2 * i];
+                a[1] += p[2 * i + 1];
+            }
+        }
+
+        // trinomial_mult - multiplies a series of trinomials together and returns
+        // the coefficients of the resulting polynomial. The multiplication has
+        // the following form:
+        //(x^2 + b[0]x + c[0])*(x^2 + b[1]x + c[1])*...*(x^2 + b[n-1]x + c[n-1])
+        // The b[i] and c[i] coefficients are assumed to be complex and are passed
+        // to the function as arrays of doubles of length 2n. The real
+        // part of the coefficients are stored in the even numbered elements of the
+        // array and the imaginary parts are stored in the odd numbered elements.
+        // The resulting polynomial has the following form:
+        // x^2n + a[0]*x^2n-1 + a[1]*x^2n-2 + ... +a[2n-2]*x + a[2n-1]
+        template <size_t N>
+        void trinomial_mult(const MatrixS<N, 1> &b, const MatrixS<N, 1> &c, MatrixS<2 * N, 1> &a)
+        {
+            // todo: static_assert of N > 4
+            a[2] = c[0];
+            a[3] = c[1];
+            a[0] = b[0];
+            a[1] = b[1];
+
+            for (int i = 1; i < N / 2; ++i)
+            {
+                a[2 * (2 * i + 1)] += c[2 * i] * a[2 * (2 * i - 1)] - c[2 * i + 1] * a[2 * (2 * i - 1) + 1];
+                a[2 * (2 * i + 1) + 1] += c[2 * i] * a[2 * (2 * i - 1) + 1] + c[2 * i + 1] * a[2 * (2 * i - 1)];
+
+                for (int j = 2 * i; j > 1; --j)
+                {
+                    a[2 * j] += b[2 * i] * a[2 * (j - 1)] - b[2 * i + 1] * a[2 * (j - 1) + 1] +
+                                c[2 * i] * a[2 * (j - 2)] - c[2 * i + 1] * a[2 * (j - 2) + 1];
+                    a[2 * j + 1] += b[2 * i] * a[2 * (j - 1) + 1] + b[2 * i + 1] * a[2 * (j - 1)] +
+                                    c[2 * i] * a[2 * (j - 2) + 1] + c[2 * i + 1] * a[2 * (j - 2)];
+                }
+
+                a[2] += b[2 * i] * a[0] - b[2 * i + 1] * a[1] + c[2 * i];
+                a[3] += b[2 * i] * a[1] + b[2 * i + 1] * a[0] + c[2 * i + 1];
+                a[0] += b[2 * i];
+                a[1] += b[2 * i + 1];
+            }
+        }
     }
 
     enum class FreqProperty : char
@@ -64,7 +127,7 @@ namespace ppx
         BandStop
     };
 
-    enum WindowType : char
+    enum FIRType : char
     {
         Boxcar,
         Bartlett,
@@ -73,12 +136,18 @@ namespace ppx
         Hanning
     };
 
+    enum IIRType : char
+    {
+        ButterWorth,
+        Chebyshev
+    };
+
     template <size_t N>
     class FIRFilter
     {
     public:
         FIRFilter(
-            double f1, double f2, FreqProperty k_type = FreqProperty::LowPass, WindowType k_win = WindowType::Hamming)
+            double f1, double f2, FreqProperty k_type = FreqProperty::LowPass, FIRType k_win = FIRType::Hamming)
             : freqtype(k_type), idx(0)
         {
             f1 /= 2.0;
@@ -86,19 +155,19 @@ namespace ppx
             // Calculate the coefficient corresponding to the filter type
             switch (k_win)
             {
-            case WindowType::Bartlett:
+            case FIRType::Bartlett:
                 winfunc = details::BartlettWindow;
                 break;
-            case WindowType::Blackman:
+            case FIRType::Blackman:
                 winfunc = details::BlackmanWindow;
                 break;
-            case WindowType::Hanning:
+            case FIRType::Hanning:
                 winfunc = details::HanningWindow;
                 break;
-            case WindowType::Hamming:
+            case FIRType::Hamming:
                 winfunc = details::HammingWindow;
                 break;
-            case WindowType::Boxcar:
+            case FIRType::Boxcar:
             default:
                 winfunc = [](int, int)
                 { return 1.0; };
@@ -192,10 +261,271 @@ namespace ppx
     };
 
     template <size_t N>
+    class IIRFilter
+    {
+    public:
+        IIRFilter(
+            double f1, double f2, FreqProperty k_type = FreqProperty::LowPass, IIRType func = IIRType::ButterWorth)
+            : freqtype(k_type)
+        {
+            static_assert(N > 1, "order must greater than 1!");
+            switch (k_type)
+            {
+            case FreqProperty::LowPass:
+                std::fill_n(std::back_inserter(c), N + 1, 0.0);
+                std::fill_n(std::back_inserter(d), N + 1, 0.0);
+                cal_lp_coffc(f1);
+                cal_lp_coffd(f1);
+                sca_lp_coffc(f1);
+                break;
+            case FreqProperty::HighPass:
+                std::fill_n(std::back_inserter(c), N + 1, 0.0);
+                std::fill_n(std::back_inserter(d), N + 1, 0.0);
+                cal_hp_coffc(f2);
+                cal_hp_coffd(f2);
+                sca_hp_coffc(f2);
+                break;
+            case FreqProperty::BandPass:
+                std::fill_n(std::back_inserter(c), 2 * N + 1, 0.0);
+                std::fill_n(std::back_inserter(d), 2 * N + 1, 0.0);
+                cal_bp_coffc(f1, f2);
+                cal_bp_coffd(f1, f2);
+                sca_bp_coffc(f1, f2);
+                break;
+            default:
+                break;
+            }
+            std::cout << "c: " << std::endl;
+            for (auto &&i : c)
+            {
+                std::cout << i << " ";
+            }
+            std::cout << std::endl;
+
+            std::cout << "d: " << std::endl;
+            for (auto &&i : d)
+            {
+                std::cout << i << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        double operator()(double new_sample) const
+        {
+            double s1 = 0.0;
+            double s2 = 0.0;
+            samples.push_front(new_sample);
+            if (samples.size() > N + 1)
+            {
+                samples.pop_back();
+            }
+
+            for (int i = 0; i < results.size(); i++)
+            {
+                s1 += results.at(i) * d[i + 1];
+            }
+
+            for (int i = 0; i < samples.size(); i++)
+            {
+                s2 += samples.at(i) * c[i];
+            }
+
+            results.push_front(s2 - s1);
+            if (results.size() > N)
+            {
+                results.pop_back();
+            }
+
+            return results.front();
+        }
+
+    protected:
+        void sca_lp_coffc(double fcf)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+
+            auto sf = 1.0;
+            for (int k = 0; k < N / 2; ++k)
+            {
+                sf *= 1.0 + st * sin((2 * k + 1) * PI / (2 * N));
+            }
+            auto fomega = sin(theta / 2.0);
+            if (N % 2)
+            {
+                sf *= fomega + cos(theta / 2.0);
+            }
+            sf = pow(fomega, N) / sf;
+            for (auto &i : c)
+            {
+                i *= sf;
+            }
+        }
+
+        void sca_hp_coffc(double fcf)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+
+            auto sf = 1.0;
+            for (int k = 0; k < N / 2; ++k)
+            {
+                sf *= 1.0 + st * sin((2 * k + 1) * PI / (2 * N));
+            }
+            auto fomega = cos(theta / 2.0);
+            if (N % 2)
+            {
+                sf *= fomega + sin(theta / 2.0);
+            }
+            sf = pow(fomega, N) / sf;
+            for (auto &i : c)
+            {
+                i *= sf;
+            }
+        }
+
+        void sca_bp_coffc(double f1f, double f2f)
+        {
+            auto ctt = 1.0 / tan(PI * (f2f - f1f) / 2.0);
+            auto sfr = 1.0;
+            auto sfi = 0.0;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto sparg = ctt + sin(parg);
+                auto cparg = cos(parg);
+                auto a = (sfr + sfi) * (sparg - cparg);
+                auto b = sfr * sparg;
+                auto c = -sfi * cparg;
+                sfr = b - c;
+                sfi = a - b - c;
+            }
+            for (auto &i : c)
+            {
+                i /= sfr;
+            }
+        }
+
+        void cal_lp_coffc(double fcf)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+
+            c[0] = 1.0;
+            c[1] = N;
+            for (int i = 2; i <= N / 2; ++i)
+            {
+                c[i] = (double)(N - i + 1) * c[i - 1] / i;
+                c[N - i] = c[i];
+            }
+            c[N - 1] = N;
+            c[N] = 1;
+        }
+
+        void cal_hp_coffc(double fcf)
+        {
+            cal_lp_coffc(fcf);
+            for (size_t i = 1; i < N + 1; i = i + 2)
+            {
+                c[i] *= -1.0;
+            }
+        }
+
+        void cal_lp_coffd(double fcf)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+            MatrixS<2 * N, 1> rcof, dcof;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto a = 1.0 + st * sin(parg);
+                rcof[2 * k] = -ct / a;
+                rcof[2 * k + 1] = -st * cos(parg) / a;
+            }
+            details::binomial_mult(rcof, dcof);
+
+            dcof[1] = dcof[0];
+            dcof[0] = 1.0;
+            for (size_t i = 3; i <= N; i++)
+            {
+                dcof[i] = dcof[2 * i - 2];
+            }
+            std::copy_n(dcof.begin(), N + 1, d.begin());
+        }
+
+        void cal_hp_coffd(double fcf)
+        {
+            cal_lp_coffd(fcf);
+        }
+
+        void cal_bp_coffd(double f1f, double f2f)
+        {
+            auto cp = cos(PI * (f2f + f1f) / 2.0);
+            auto theta = PI * (f2f - f1f) / 2.0;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+            auto s2t = 2.0 * st * ct;
+            auto c2t = 2.0 * ct * ct - 1.0;
+
+            MatrixS<2 * N, 1> rcof, tcof;
+            MatrixS<4 * N, 1> dcof;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto a = 1.0 + s2t * sin(parg);
+                rcof[2 * k] = c2t / a;
+                rcof[2 * k + 1] = s2t * cos(parg) / a;
+                tcof[2 * k] = -2.0 * cp * (ct + st * sin(parg)) / a;
+                tcof[2 * k + 1] = -2.0 * cp * st * cos(parg) / a;
+            }
+
+            details::trinomial_mult(tcof, rcof, dcof);
+            dcof[1] = dcof[0];
+            dcof[0] = 1.0;
+            for (size_t k = 3; k <= 2 * N; ++k)
+            {
+                dcof[k] = dcof[2 * k - 2];
+            }
+            std::copy_n(dcof.begin(), 2 * N + 1, d.begin());
+        }
+
+        void cal_bp_coffc(double f1f, double f2f)
+        {
+            cal_hp_coffc(f2f);
+
+            auto tcof = c;
+
+            for (int i = 0; i < N; ++i)
+            {
+                c[2 * i] = tcof[i];
+                c[2 * i + 1] = 0.0;
+            }
+            c[2 * N] = tcof[N];
+        }
+
+    protected:
+        const FreqProperty freqtype;
+        std::vector<double> c;
+        std::vector<double> d;
+
+        mutable std::deque<double> samples;
+        mutable std::deque<double> results;
+        // what is best way to deal with interv variables ?
+    };
+
+    template <size_t N>
     class MovAvgFilter : public FIRFilter<N>
     {
     public:
-        MovAvgFilter() : FIRFilter<N>(0.0, 0.0, FreqProperty::LowPass, WindowType::Boxcar)
+        MovAvgFilter() : FIRFilter<N>(0.0, 0.0, FreqProperty::LowPass, FIRType::Boxcar)
         {
             FIRFilter<N>::h.fill(1.0 / N);
         }
@@ -205,7 +535,7 @@ namespace ppx
     class SGFilter : public FIRFilter<NP>
     {
     public:
-        SGFilter(int derivative_order = 0) : FIRFilter<NP>(0.0, 0.0, FreqProperty::LowPass, WindowType::Boxcar)
+        SGFilter(int derivative_order = 0) : FIRFilter<NP>(0.0, 0.0, FreqProperty::LowPass, FIRType::Boxcar)
         {
             savgo(FIRFilter<NP>::h, derivative_order);
         }
@@ -250,214 +580,6 @@ namespace ppx
                 c[k + nl] = sum;
             }
         }
-    };
-
-    template <size_t N>
-    class ButterWorthFilter
-    {
-        struct SOS
-        {
-            double b0;
-            double b1;
-            double b2;
-            double a1;
-            double a2;
-            double z1 = 0.0;
-            double z2 = 0.0;
-
-            double operator()(double input)
-            {
-                double out = input * b0 + z1;
-                z1 = input * b1 - a1 * out + z2;
-                z2 = input * b2 - a2 * out;
-                return out;
-            }
-
-            void reset()
-            {
-                z1 = 0.0;
-                z2 = 0.0;
-            }
-        };
-
-    public:
-        ButterWorthFilter(double f1, double f2, FreqProperty k_type = FreqProperty::LowPass)
-        {
-            // Need to pre-warp the frequency for the analog -> digital conversion
-            double freq1 = 2.0 * std::tan(PI * f1 / 2.0);
-            double freq2 = 2.0 * std::tan(PI * f2 / 2.0);
-
-            double centerFreq = freq1;
-            double bandwidth = 0.0;
-
-            // Butterworth filter has N poles and no zeros. The poles all live right on the unit circle.
-            constexpr std::complex<double> k_i(0, 1);
-            constexpr std::complex<double> k_iPi(0, PI);
-            std::vector<std::complex<double>> zeros;
-            std::vector<std::complex<double>> polePairs; // a pole and its implied conjugate
-            // Odd-order filters (3, 5, ...)
-            bool hasOddPole = (N & 1) != 0;
-            std::complex<double> oddPole = -1;
-            // The poles (rounded down) get calculated evenly spaced in the left side of the space (negative real side).
-            for (int i = 1; i < N; i += 2)
-            {
-                polePairs.push_back(std::exp(k_iPi * (double(i) / double(2 * N) + 0.5)));
-            }
-            double gain = 1.0;
-            switch (k_type)
-            {
-            case FreqProperty::LowPass:
-                // multiply the poles by the cutoff frequency
-                for (auto &polePair : polePairs)
-                {
-                    polePair *= centerFreq;
-                }
-                if (hasOddPole)
-                {
-                    oddPole *= centerFreq;
-                }
-                // The gain simply adjusts by the center frequency power.
-                gain = std::pow(centerFreq, N);
-                break;
-            case FreqProperty::HighPass:
-                // flip the pole's value (via a complex divide) while multiplying in the center frequency
-                for (auto &polePair : polePairs)
-                {
-                    polePair = std::complex<double>(centerFreq) / polePair;
-
-                    // High pass has zeros at 0 (one per pole, which means two per pole pair)
-                    zeros.push_back(0.0);
-                    zeros.push_back(0.0);
-                }
-                if (hasOddPole)
-                {
-                    oddPole = std::complex<double>(centerFreq) / oddPole;
-                    zeros.push_back(0.0);
-                }
-                break;
-            case FreqProperty::BandPass:
-            {
-                // Band passes will end up with 2*order poles (so "order" pole pairs)
-                // Calculate the center frequency and the bandwidth
-                centerFreq = std::sqrt(freq1 * freq2);
-                bandwidth = freq2 - freq1;
-                std::vector<std::complex<double>> origPolePairs{polePairs};
-                polePairs = {};
-                for (auto &polePair : origPolePairs)
-                {
-                    // each pole gets modified by the following formula (leaving us still with these values and their conjugates, so the conjugate pairing here still works)
-                    auto a = 0.5 * polePair * bandwidth;
-                    auto b = 0.5 * std::sqrt(SQR(bandwidth) * SQR(polePair) - 4 * SQR(centerFreq));
-                    polePairs.push_back(a + b);
-                    polePairs.push_back(a - b);
-                }
-                // The odd pole itself becomes now a pair (new pole and conjugate), so stop factoring the odd pole in.
-                if (hasOddPole)
-                {
-                    polePairs.push_back(0.5 * bandwidth * oddPole + 0.5 * std::sqrt(SQR(bandwidth) * SQR(oddPole) - 4 * SQR(centerFreq)));
-                    hasOddPole = false;
-                }
-
-                for (int i = 0; i < N; i++)
-                {
-                    zeros.push_back(0.0);
-                }
-                gain = std::pow(bandwidth, N);
-            }
-            break;
-            case FreqProperty::BandStop:
-            {
-                // it's a divide by the pole instead of a multiply.
-                centerFreq = std::sqrt(freq1 * freq2);
-                bandwidth = freq2 - freq1;
-                std::vector<std::complex<double>> origPolePairs{polePairs};
-                polePairs = {};
-                for (auto &polePair : origPolePairs)
-                {
-                    auto a = 0.5 * bandwidth / polePair;
-                    auto b = 0.5 * std::sqrt(SQR(bandwidth) / SQR(polePair) - 4 * SQR(centerFreq));
-                    polePairs.push_back(a + b);
-                    polePairs.push_back(a - b);
-                }
-                if (hasOddPole)
-                {
-                    polePairs.push_back(0.5 * bandwidth / oddPole + 0.5 * std::sqrt(SQR(bandwidth) / SQR(oddPole) - 4 * SQR(centerFreq)));
-                    hasOddPole = false;
-                }
-                for (int i = 0; i < N; i++)
-                {
-                    zeros.push_back({0.0, centerFreq});
-                    zeros.push_back({0.0, -centerFreq});
-                }
-            }
-            break;
-            }
-
-            // map from the s-plane to the z-plane by bilinear transform
-            for (auto &zero : zeros)
-            {
-                // Adjust the gain before modifying the zero
-                gain *= std::abs(2.0 - zero);
-                zero = (2.0 + zero) / (2.0 - zero);
-            }
-            for (auto &polePair : polePairs)
-            {
-                // Each polePair is a conjugate pair so factor each length into the gain twice
-                double gainMod = std::abs(2.0 - polePair);
-                gain /= gainMod * gainMod;
-                polePair = (2.0 + polePair) / (2.0 - polePair);
-            }
-            if (hasOddPole)
-            {
-                gain /= std::abs(2.0 - oddPole);
-                oddPole = (2.0 + oddPole) / (2.0 - oddPole);
-            }
-            // Pad out the zero array with -1*s
-            auto zeroCount = polePairs.size() * 2 + (hasOddPole ? 1 : 0);
-            for (auto i = zeros.size(); i < zeroCount; i++)
-            {
-                zeros.push_back(-1.0);
-            }
-            // Finally, generate second order sections from the poles
-            if (hasOddPole)
-            {
-                // Odd filters have a special second order section that's really a first-order section.
-                coff.push_back(SOS{
-                    gain,
-                    -zeros[zeros.size() - 1].real() * gain,
-                    0.0,
-                    -oddPole.real(),
-                    0.0});
-                gain = 1.0; // Only the first SOS in the set needs to have the gain factored in, so set the gain to 1 so it doesn't affect any more
-            }
-
-            for (unsigned int i = 0; i < polePairs.size(); i++)
-            {
-                auto poleA = polePairs[i];
-                auto zeroA = zeros[i * 2 + 0];
-                auto zeroB = zeros[i * 2 + 1];
-                coff.push_back(SOS{
-                    gain,
-                    -(zeroA + zeroB).real() * gain,
-                    (zeroA * zeroB).real() * gain,
-                    -2.0 * poleA.real(),                                         // This is technically -(pole + conj(pole)), which simplifies down to -2*real
-                    poleA.real() * poleA.real() + poleA.imag() * poleA.imag()}); // This is (pole * conj(pole))
-
-                gain = 1.0; // Only the first SOS in the set needs to have the gain factored in, so set the gain to 1 so it doesn't affect any more
-            }
-        }
-
-        double operator()(double new_sample) const
-        {
-            for (auto &i : coff)
-            {
-                new_sample = i(new_sample);
-            }
-            return new_sample;
-        }
-
-    private:
-        mutable std::vector<SOS> coff;
     };
 
 } // namespace ppx

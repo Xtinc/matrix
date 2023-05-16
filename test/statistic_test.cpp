@@ -21,19 +21,19 @@ public:
 
 TEST_F(STA_TestCase, MovAvgFlt)
 {
-    FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, WindowType::Hamming);
-    ButterWorthFilter<3> but(0.1, 0.0, FreqProperty::LowPass);
+    FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, FIRType::Hamming);
+    IIRFilter<5> iir(0.1, 0.9, FreqProperty::BandPass);
     // SGFilter<2, 12, 2> flt;
-    for (auto &&elem : datas)
-    {
-        std::cout << elem << std::endl;
-    }
-    std::cout << "_____________________________" << std::endl;
+    // for (auto &&elem : datas)
+    // {
+    //     std::cout << elem << std::endl;
+    // }
+    // std::cout << "_____________________________" << std::endl;
 
-    for (auto &&elem : datas)
-    {
-        std::cout << but(elem) << std::endl;
-    }
+    // for (auto &&elem : datas)
+    // {
+    //     std::cout << iir(elem) << std::endl;
+    // }
 
     // std::cout << flt.coff() << std::endl;
 }
