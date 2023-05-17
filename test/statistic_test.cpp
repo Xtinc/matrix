@@ -22,7 +22,7 @@ public:
 TEST_F(STA_TestCase, MovAvgFlt)
 {
     FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, FIRType::Hamming);
-    IIRFilter<5> iir(0.1, 0.9, FreqProperty::BandPass);
+    IIRFilter<5> iir(0.1, 0.9, FreqProperty::BandStop);
     // SGFilter<2, 12, 2> flt;
     // for (auto &&elem : datas)
     // {

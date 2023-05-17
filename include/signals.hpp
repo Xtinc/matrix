@@ -138,8 +138,8 @@ namespace ppx
 
     enum IIRType : char
     {
-        ButterWorth,
-        Chebyshev
+        ButterWorth
+        // Chebyshev
     };
 
     template <size_t N>
@@ -292,6 +292,13 @@ namespace ppx
                 cal_bp_coffd(f1, f2);
                 sca_bp_coffc(f1, f2);
                 break;
+            case FreqProperty::BandStop:
+                std::fill_n(std::back_inserter(c), 2 * N + 1, 0.0);
+                std::fill_n(std::back_inserter(d), 2 * N + 1, 0.0);
+                cal_bs_coffc(f1, f2);
+                cal_bs_coffd(f1, f2);
+                sca_bs_coffc(f1, f2);
+                break;
             default:
                 break;
             }
@@ -409,6 +416,29 @@ namespace ppx
             }
         }
 
+        void sca_bs_coffc(double f1f, double f2f)
+        {
+            auto tt = tan(PI * (f2f - f1f) / 2.0);
+            auto sfr = 1.0;
+            auto sfi = 0.0;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (double)(2 * k + 1) / (double)(2 * N);
+                auto sparg = tt + sin(parg);
+                auto cparg = cos(parg);
+                auto a = (sfr + sfi) * (sparg - cparg);
+                auto b = sfr * sparg;
+                auto c = -sfi * cparg;
+                sfr = b - c;
+                sfi = a - b - c;
+            }
+            for (auto &i : c)
+            {
+                i /= sfr;
+            }
+        }
+
         void cal_lp_coffc(double fcf)
         {
             auto theta = PI * fcf;
@@ -432,6 +462,39 @@ namespace ppx
             for (size_t i = 1; i < N + 1; i = i + 2)
             {
                 c[i] *= -1.0;
+            }
+        }
+
+        void cal_bp_coffc(double f1f, double f2f)
+        {
+            cal_hp_coffc(f2f);
+
+            auto tcof = c;
+
+            for (int i = 0; i < N; ++i)
+            {
+                c[2 * i] = tcof[i];
+                c[2 * i + 1] = 0.0;
+            }
+            c[2 * N] = tcof[N];
+        }
+
+        void cal_bs_coffc(double f1f, double f2f)
+        {
+            auto alpha = -2.0 * cos(PI * (f2f + f1f) / 2.0) / cos(PI * (f2f - f1f) / 2.0);
+            c[0] = 1.0;
+            c[1] = alpha;
+            c[2] = 1.0;
+
+            for (int i = 1; i < N; ++i)
+            {
+                c[2 * i + 2] += c[2 * i];
+                for (int j = 2 * i; j > 1; --j)
+                {
+                    c[j + 1] += alpha * c[j] + c[j - 1];
+                }
+                c[2] += alpha * c[1] + 1.0;
+                c[1] += alpha;
             }
         }
 
@@ -497,18 +560,39 @@ namespace ppx
             std::copy_n(dcof.begin(), 2 * N + 1, d.begin());
         }
 
-        void cal_bp_coffc(double f1f, double f2f)
+        void cal_bs_coffd(double f1f, double f2f)
         {
-            cal_hp_coffc(f2f);
+            auto cp = cos(PI * (f2f + f1f) / 2.0);
+            auto theta = PI * (f2f - f1f) / 2.0;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+            auto s2t = 2.0 * st * ct;       // sine of 2*theta
+            auto c2t = 2.0 * ct * ct - 1.0; // cosine 0f 2*theta
 
-            auto tcof = c;
+            MatrixS<2 * N, 1> rcof, tcof;
+            MatrixS<4 * N, 1> dcof;
 
-            for (int i = 0; i < N; ++i)
+            for (int k = 0; k < N; ++k)
             {
-                c[2 * i] = tcof[i];
-                c[2 * i + 1] = 0.0;
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto sparg = sin(parg);
+                auto cparg = cos(parg);
+                auto a = 1.0 + s2t * sparg;
+                rcof[2 * k] = c2t / a;
+                rcof[2 * k + 1] = -s2t * cparg / a;
+                tcof[2 * k] = -2.0 * cp * (ct + st * sparg) / a;
+                tcof[2 * k + 1] = 2.0 * cp * st * cparg / a;
             }
-            c[2 * N] = tcof[N];
+
+            details::trinomial_mult(tcof, rcof, dcof);
+
+            dcof[1] = dcof[0];
+            dcof[0] = 1.0;
+            for (int k = 3; k <= 2 * N; ++k)
+            {
+                dcof[k] = dcof[2 * k - 2];
+            }
+            std::copy_n(dcof.begin(), 2 * N + 1, d.begin());
         }
 
     protected:
