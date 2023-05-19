@@ -142,6 +142,294 @@ namespace ppx
         // Chebyshev
     };
 
+    class Filter
+    {
+    public:
+        Filter(FreqProperty tp) : freqtype(tp) {}
+
+        std::vector<double> &coff_a()
+        {
+            return a;
+        }
+
+        const std::vector<double> &coff_a() const
+        {
+            return a;
+        }
+
+        std::vector<double> &coff_b()
+        {
+            return b;
+        }
+
+        const std::vector<double> &coff_b() const
+        {
+            return b;
+        }
+
+        FreqProperty type() const
+        {
+            return freqtype;
+        }
+
+        void reset()
+        {
+            samples.clear();
+            results.clear();
+        }
+
+        double operator()(double new_sample) const
+        {
+            auto s1 = 0.0;
+            auto s2 = 0.0;
+            auto n = b.size();
+            auto m = a.size();
+
+            samples.push_front(new_sample);
+
+            if (samples.size() > n)
+            {
+                samples.pop_back();
+            }
+
+            for (int i = 0; i < samples.size(); i++)
+            {
+                s2 += samples.at(i) * b[i];
+            }
+
+            for (int i = 0; i < results.size(); i++)
+            {
+                s1 += results.at(i) * a[i + 1];
+            }
+
+            results.push_front(s2 - s1);
+
+            if (results.size() > (int)m - 1)
+            {
+                results.pop_back();
+            }
+            return results.front();
+        }
+
+    protected:
+        const FreqProperty freqtype;
+        std::vector<double> a;
+        std::vector<double> b;
+
+        mutable std::deque<double> samples;
+        mutable std::deque<double> results;
+    };
+
+    template <size_t N, FreqProperty U>
+    class IIRFilter : public Filter
+    {
+    public:
+        template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::LowPass> * = nullptr>
+        IIRFilter(double fcf) : Filter(U)
+        {
+            static_assert(N > 1, "filter order must greater than 1!");
+            std::fill_n(std::back_inserter(a), N + 1, 0.0);
+            std::fill_n(std::back_inserter(b), N + 1, 0.0);
+            cal_lphp_coffb(fcf, true);
+            cal_lphp_coffa(fcf, true);
+            sca_lphp_coffb(fcf, true);
+        }
+
+        template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::HighPass> * = nullptr>
+        IIRFilter(double fcf) : Filter(U)
+        {
+            static_assert(N > 1, "filter order must greater than 1!");
+            std::fill_n(std::back_inserter(a), N + 1, 0.0);
+            std::fill_n(std::back_inserter(b), N + 1, 0.0);
+            cal_lphp_coffb(fcf, false);
+            cal_lphp_coffa(fcf, false);
+            sca_lphp_coffb(fcf, false);
+        }
+
+        template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandPass> * = nullptr>
+        IIRFilter(double f1f, double f2f) : Filter(U)
+        {
+            static_assert(N > 1, "filter order must greater than 1!");
+            std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
+            std::fill_n(std::back_inserter(b), 2 * N + 1, 0.0);
+            cal_bpbs_coffb(f1f, f2f, true);
+            cal_bpbs_coffa(f1f, f2f, true);
+            sca_bpbs_coffb(f1f, f2f, true);
+        }
+
+        template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandStop> * = nullptr>
+        IIRFilter(double f1f, double f2f) : Filter(U)
+        {
+            static_assert(N > 1, "filter order must greater than 1!");
+            std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
+            std::fill_n(std::back_inserter(b), 2 * N + 1, 0.0);
+            cal_bpbs_coffb(f1f, f2f, false);
+            cal_bpbs_coffa(f1f, f2f, false);
+            sca_bpbs_coffb(f1f, f2f, false);
+        }
+
+    private:
+        void sca_lphp_coffb(double fcf, bool lp)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+
+            auto sf = 1.0;
+            for (int k = 0; k < N / 2; ++k)
+            {
+                sf *= 1.0 + st * sin((2 * k + 1) * PI / (2 * N));
+            }
+            auto fomega = lp ? sin(theta / 2.0) : cos(theta / 2.0);
+            if (N % 2)
+            {
+                sf *= fomega + lp ? cos(theta / 2.0) : sin(theta / 2.0);
+            }
+            sf = std::pow(fomega, N) / sf;
+            for (auto &i : b)
+            {
+                i *= sf;
+            }
+        }
+
+        void sca_bpbs_coffb(double f1f, double f2f, bool bp)
+        {
+            auto ctt = bp ? 1.0 / tan(PI * (f2f - f1f) / 2.0) : tan(PI * (f2f - f1f) / 2.0);
+            auto sfr = 1.0;
+            auto sfi = 0.0;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto sparg = ctt + sin(parg);
+                auto cparg = cos(parg);
+                auto a = (sfr + sfi) * (sparg - cparg);
+                auto b = sfr * sparg;
+                auto c = -sfi * cparg;
+                sfr = b - c;
+                sfi = a - b - c;
+            }
+            for (auto &i : b)
+            {
+                i /= sfr;
+            }
+        }
+
+        void cal_lphp_coffb(double fcf, bool lp)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+
+            b[0] = 1.0;
+            b[1] = N;
+            for (int i = 2; i <= N / 2; ++i)
+            {
+                b[i] = (double)(N - i + 1) * b[i - 1] / i;
+                b[N - i] = b[i];
+            }
+            b[N - 1] = N;
+            b[N] = 1;
+            if (!lp)
+            {
+                for (size_t i = 1; i < N + 1; i = i + 2)
+                {
+                    b[i] *= -1.0;
+                }
+            }
+        }
+
+        void cal_bpbs_coffb(double f1f, double f2f, bool bp)
+        {
+            if (bp)
+            {
+                cal_lphp_coffb(f2f, false);
+                auto tcof = b;
+                for (int i = 0; i < N; ++i)
+                {
+                    b[2 * i] = tcof[i];
+                    b[2 * i + 1] = 0.0;
+                }
+                b[2 * N] = tcof[N];
+            }
+            else
+            {
+                auto alpha = -2.0 * cos(PI * (f2f + f1f) / 2.0) / cos(PI * (f2f - f1f) / 2.0);
+                b[0] = 1.0;
+                b[1] = alpha;
+                b[2] = 1.0;
+
+                for (int i = 1; i < N; ++i)
+                {
+                    b[2 * i + 2] += b[2 * i];
+                    for (int j = 2 * i; j > 1; --j)
+                    {
+                        b[j + 1] += alpha * b[j] + b[j - 1];
+                    }
+                    b[2] += alpha * b[1] + 1.0;
+                    b[1] += alpha;
+                }
+            }
+        }
+
+        void cal_lphp_coffa(double fcf, bool lp)
+        {
+            auto theta = PI * fcf;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+            MatrixS<2 * N, 1> rcof, dcof;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto a = 1.0 + st * sin(parg);
+                rcof[2 * k] = -ct / a;
+                rcof[2 * k + 1] = -st * cos(parg) / a;
+            }
+            details::binomial_mult(rcof, dcof);
+
+            dcof[1] = dcof[0];
+            dcof[0] = 1.0;
+            for (size_t i = 3; i <= N; i++)
+            {
+                dcof[i] = dcof[2 * i - 2];
+            }
+            std::copy_n(dcof.begin(), N + 1, a.begin());
+        }
+
+        void cal_bpbs_coffa(double f1f, double f2f, bool bp)
+        {
+            auto cp = cos(PI * (f2f + f1f) / 2.0);
+            auto theta = PI * (f2f - f1f) / 2.0;
+            auto st = sin(theta);
+            auto ct = cos(theta);
+            auto s2t = 2.0 * st * ct;
+            auto c2t = 2.0 * ct * ct - 1.0;
+
+            MatrixS<2 * N, 1> rcof, tcof;
+            MatrixS<4 * N, 1> dcof;
+
+            for (int k = 0; k < N; ++k)
+            {
+                auto parg = PI * (2 * k + 1) / (double)(2 * N);
+                auto a = 1.0 + s2t * sin(parg);
+                rcof[2 * k] = c2t / a;
+                rcof[2 * k + 1] = (bp ? 1.0 : -1.0) * s2t * cos(parg) / a;
+                tcof[2 * k] = -2.0 * cp * (ct + st * sin(parg)) / a;
+                tcof[2 * k + 1] = (bp ? -2.0 : 2.0) * cp * st * cos(parg) / a;
+            }
+
+            details::trinomial_mult(tcof, rcof, dcof);
+            dcof[1] = dcof[0];
+            dcof[0] = 1.0;
+            for (size_t k = 3; k <= 2 * N; ++k)
+            {
+                dcof[k] = dcof[2 * k - 2];
+            }
+            std::copy_n(dcof.begin(), 2 * N + 1, a.begin());
+        }
+    };
+
     template <size_t N>
     class FIRFilter
     {
@@ -261,10 +549,10 @@ namespace ppx
     };
 
     template <size_t N>
-    class IIRFilter
+    class IIRFilter2
     {
     public:
-        IIRFilter(
+        IIRFilter2(
             double f1, double f2, FreqProperty k_type = FreqProperty::LowPass, IIRType func = IIRType::ButterWorth)
             : freqtype(k_type)
         {
