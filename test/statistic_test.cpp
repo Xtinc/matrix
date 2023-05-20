@@ -8,36 +8,43 @@ class STA_TestCase : public ::testing::Test
 public:
     STA_TestCase()
     {
-        std::normal_distribution<double> dis;
-        std::default_random_engine eng;
-        for (int i = 0; i < 200 * PI; ++i)
+        for (int i = 0; i < 20 * PI; ++i)
         {
-            datas.emplace_back(10 * sin((double)i / 100) + dis(eng));
-            //            datas.emplace_back(10 * sin((double) i / 100) + sin(i));
+            datas1.emplace_back(10 * sin((double)i / 100) + sin((double)i / 10));
+        }
+        for (int i = 0; i < 8; i++)
+        {
+            datas2.emplace_back(i);
         }
     };
-    std::vector<double> datas;
+    std::vector<double> datas1;
+    std::vector<double> datas2;
+
+    bool is_vec_equal(const std::vector<double> &a, const std::vector<double> &b)
+    {
+        return std::equal(a.begin(), a.end(), b.begin(), [](double a, double b)
+                          { return ppx::details::is_same(a, b); });
+    }
 };
 
 TEST_F(STA_TestCase, MovAvgFlt)
 {
-    // FIRFilter<19> flt(0.01, 0.0, FreqProperty::LowPass, FIRType::Hamming);
-    IIRFilter<5, FreqProperty::BandStop> iir(0.1, 0.2);
-    Filter flt(FreqProperty::LowPass);
-    flt.coff_a() = {1, -3.98454311961234, 6.43486709027587, -5.25361517035227, 2.16513290972413, -0.359928245063557};
-    flt.coff_b() = {5.97957803700031e-05, 0.000298978901850016, 0.000597957803700031, 0.000597957803700031, 0.000298978901850016, 5.97957803700031e-05};
-
-    // SGFilter<2, 12, 2> flt;
-    for (auto &&elem : datas)
+    MovAvgFilter<2> flt2;
+    std::vector<double> results;
+    std::vector<double> expects{0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5};
+    for (auto i : datas2)
     {
-        std::cout << elem << std::endl;
+        results.push_back(flt2(i));
     }
-    std::cout << "_____________________________" << std::endl;
+    EXPECT_TRUE(is_vec_equal(expects, results));
+    results.clear();
 
-    for (auto &&elem : datas)
+    MovAvgFilter<5> flt5;
+    expects = {0, 0.2, 0.6, 1.2, 2, 3, 4, 5};
+    for (auto i : datas2)
     {
-        std::cout << flt(elem) << std::endl;
+        results.push_back(flt5(i));
     }
-
-    // std::cout << flt.coff() << std::endl;
+    EXPECT_TRUE(is_vec_equal(expects, results));
+    results.clear();
 }

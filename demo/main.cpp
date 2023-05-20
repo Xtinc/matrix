@@ -405,12 +405,12 @@ void read_real_data()
         }
         datas.emplace_back(a + b);
     }
-    SGFilter<4, 8, 4> sg;
-    FIRFilter<21> filter(0.1, 0.0);
-    for (size_t i = 0; i < datas.size(); i++)
-    {
-        std::cout << sg(datas.at(i)) << std::endl;
-    }
+    // SGFilter<4, 8, 4> sg;
+    // FIRFilter<21> filter(0.1, 0.0);
+    // for (size_t i = 0; i < datas.size(); i++)
+    // {
+    //     std::cout << sg(datas.at(i)) << std::endl;
+    // }
 }
 
 using namespace ppx;
