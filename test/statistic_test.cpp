@@ -48,3 +48,7 @@ TEST_F(STA_TestCase, MovAvgFlt)
     EXPECT_TRUE(is_vec_equal(expects, results));
     results.clear();
 }
+
+TEST_F(STA_TestCase, FIRFilter_TEST)
+{
+}
