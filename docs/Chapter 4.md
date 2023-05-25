@@ -18,7 +18,7 @@
 
 ## 统计线性滤波器
 
-### 统计线性滤波器的数学模型
+**统计线性滤波器的数学模型**
 
 随机过程的频域分析法是提取信号中周期成分然后再进行积分变换在频率域上分析的一种手段。其理论基础是随机过程本身能被模拟成各种特定频率谐波叠加的系统。在这之上操作这些谐波成分的技术称为统计线性估计/滤波/平滑。
 
@@ -36,7 +36,7 @@ $$
 
 特别注意在scipy.signal等软件包中，会限制$-0.5\le f\le0.5$[^3]。因为式2通过Laplace变换连续时间域得到系统传递函数，但实际上采样是离散过程，需要使用z变换到离散频率域。当离散系统采样频率$f_s\le 2f$时，Laplace变换与z变换转换中存在混叠效应。因此这些软件包中会限制一半的频率使用，如$f_s=8000Hz$，那么滤波器频率设定范围只有$4000Hz$。
 
-#### 统计线性滤波器的程序设计
+**统计线性滤波器的程序设计**
 
 线性统计滤波器的程序设计是围绕式1进行。式1是两项卷积之和，每项卷积有如下加乘累计结构：
 
@@ -142,9 +142,35 @@ H(j \omega) & =e^{-j \omega T M}\left\{h(0)+\sum_{n=1}^{M} h[n] \cdot\left(e^{j 
 \end{aligned}
 \tag{8}
 $$
-式8表明，该系统对对频率$w$谐波成分会产生$-wTM$线性相位偏移，此斜率即群延迟。FIR滤波器有着线性相位偏移，即对任何频率谐波成分，有相同群延迟。
+式8表明，该系统对对频率$w$谐波成分会产生$-wTM$线性相位偏移，此斜率即群延迟。FIR滤波器有着线性相位偏移，即对任何频率谐波成分，有相同群延迟，对应于整个系统输入延迟$TM$时间。
 
 #### FIR型滤波器程序设计
+
+FIR型滤波器整体沿用统计线性滤波器框架，特性在于如何根据低通滤波器系数计算高通、带通、带阻滤波器相应脉冲响应系数$h[n]$。
+
+假设现已根据窗函数法求出截止频率$\Omega_c$低通滤波器频率响应$H_{lp}(f)$，相应高通滤波器系数$H_hp(f)$与之存在对应关系[^4]：
+$$
+\begin{aligned}
+H_{lp}(f)+H_{hp}(f)&=1\\
+h_{lp}[n]+h_{hp}[n]&=\delta[n]
+\end{aligned}
+\tag{9}
+$$
+即将低通滤波系数符号取相反，中心项加一得对应高通滤波器：
+
+```c++
+h[n] = n == 0 ? 1 - h[n] : -h[n];
+```
+
+当然，考虑到连续域积分变换与离散域积分变换区别，式9对应实际频率响应函数为：
+$$
+H_{h p}(f)+H_{l p}(f)=e^{-j 2 \pi f \frac{N}{2}}
+$$
+但这种数值误差一般不在考虑之列。
+
+通过低通与高通滤波器也可以生成带通和带阻滤波器[^5]。带通滤波器的系数是两滤波器系数卷积；带阻滤波器系数是两滤波器之和。当然，带通滤波器也可以通过将两个低通滤波器系数相加归一化得到。
+
+![image-20230525225025440](img/image-20230525225025440.png)
 
 ### IIR（Infinite Impulse Response）型滤波器设计
 
@@ -159,3 +185,5 @@ $$
 [^1]: 时间序列分析，汉密尔顿
 [^2]: 信号与系统，奥本海姆
 [^3]: scipy.signal
+[^4]:[fourier transform - How to perform spectral inversion in the frequency domain to convert a low-pass filter into a high-pass filter? - Signal Processing Stack Exchange](https://dsp.stackexchange.com/questions/61071/how-to-perform-spectral-inversion-in-the-frequency-domain-to-convert-a-low-pass)
+[^5]:[Mixed-Signal and DSP Design Techniques, Digital Filters (analog.com)](https://www.analog.com/media/en/training-seminars/design-handbooks/MixedSignal_Sect6.pdf)
