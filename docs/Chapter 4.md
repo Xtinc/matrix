@@ -144,7 +144,7 @@ H(j \omega) & =e^{-j \omega T M}\left\{h(0)+\sum_{n=1}^{M} h[n] \cdot\left(e^{j 
 $$
 式8表明，该系统对对频率$w$谐波成分会产生$-wTM$线性相位偏移，此斜率即群延迟。FIR滤波器有着线性相位偏移，即对任何频率谐波成分，有相同群延迟，对应于整个系统输入延迟$TM$时间。
 
-#### FIR型滤波器程序设计
+#### FIR型滤波器程序实现
 
 FIR型滤波器整体沿用统计线性滤波器框架，特性在于如何根据低通滤波器系数计算高通、带通、带阻滤波器相应脉冲响应系数$h[n]$。
 
@@ -174,16 +174,104 @@ $$
 
 ### IIR（Infinite Impulse Response）型滤波器设计
 
-### 用户文档
+IIR滤波器引入了反馈作用，在实现相同的频谱特性时阶数一半远小于FIR滤波器。因此经典IIR滤波器比FIR滤波器更常见。IIR滤波器缺陷在于如不精心设计式2中的零极点在复平面分布，可能出现滤波发散情况。因此大家都使用数学结构类似的巴特沃斯滤波器（Butterworth）滤波器、切比雪夫（Chebyshev）滤波器等。
+
+#### 巴特沃斯型滤波器设计
+
+以低通巴特沃斯滤波器设计为例，核心思想还是构造频率特性接近理想低通滤波器的传递函数，然后通过反积分变换得时域表达式。巴特沃斯滤波器选取的频域函数是这样一组函数：
+$$
+|H_n(jw)|^{2}=\frac{1}{1+w^{2n}}\tag{10}
+$$
+它的归一化频率响应具有以下特性：
+
+![image-20230528211249065](img/image-20230528211249065.png)
+
+首先它是一个全极点滤波器，然后它通过很少阶数就达到了较好的设计频率特性。为保证稳定性求出式10处于复平面负半部分的极点：
+$$
+p_k=-\sin\frac{\pi(2k+1)}{2n}+j\cos\frac{\pi(2k+1)}{2n}\quad k=0,1,2,\cdots,n-1
+\tag{11}
+$$
+这样在Laplace变换下：
+$$
+H_{n}(s)=\prod_{k=0}^{n}{\frac{1}{(s-p_k)}}
+$$
+如1~5阶巴特沃斯滤波器频域表达式：
+$$
+\begin{aligned}
+G_{1}(s)&=\frac{1}{s+1}\\
+G_{2}(s)&=\frac{1}{s^{2}+\sqrt{2} s+1}\\
+G_{3}(s)& =\frac{1}{s^{3}+2 s^{2}+2 s+1}\\
+G_4(s)&=\frac{1}{s^{4}+\sqrt{4+\sqrt{8}} s^{3}+(2+\sqrt{2}) s^{2}+\sqrt{4+\sqrt{8}} s+1}\\
+G_5(s)&=\frac{1}{(s+1)(s^4+\sqrt{5}s^3+3s^2+\sqrt{5}s+1)}
+\end{aligned}
+$$
+极点的分布是均匀对称于复平面，因此有简化表达式：
+$$
+\begin{array}{l}
+H_{n}(s)=\frac{1}{D_{n}(s)} \quad n=1,2,3 \ldots \\
+D_{n}(s)=\left\{\begin{array}{l}
+(s+1) \prod_{k=0}^{(n-3) / 2}\left(s^{2}+2 r_{k} s+1\right) \quad n=1,3,5, \ldots \\
+\prod_{k=0}^{(n-2) / 2}\left(s^{2}+2 r_{k} s+1\right) \quad n=2,4,6, \ldots
+\end{array}\right. \\
+r_{k}=\sin \left(\frac{\pi(2 k+1)}{2 n}\right)
+\end{array}
+\tag{12}
+$$
+
+式12处于连续域中，需要使用双线性变换至离散域。因此引入双线性变换[^6]：它是一种保形变换，将Laplace域变换至z域。对于截止频率$\omega_0$，采样周期$T$的低通滤波器，这种变换写作：
+$$
+\begin{aligned}
+s\rightarrow&\frac{1}{a}\frac{z-1}{z+1}\\
+a=&\tan(\frac{\omega_0T}{2})
+\end{aligned}
+\tag{13}
+$$
+该情况下，1阶与2阶巴特沃斯滤波器频域表达式如下：
+$$
+\begin{aligned}
+\frac{1}{s+1} \rightarrow& \frac{a(z+1)}{(1+a) z-(1-a)}\\
+\frac{1}{s^{2}+2 r s+1} \rightarrow& \frac{a^{2}(z+1)^{2}}{\left(a^{2}+2 a r+1\right) z^{2}-2\left(1-a^{2}\right) z+\left(a^{2}-2 a r+1\right)}
+\end{aligned}
+$$
+然后对这些式子进行反z变换就得到时域表达式。值得注意，对于线性时不变系统，式1反z变换有简单方法，把式1改写成如下形式：
+$$
+\sum_{k=0}^{M} c_{k} x_{n-k}=\sum_{k=0}^{N}e_jy_{n-j}
+$$
+同时取反z变换，并作时移：
+$$
+\begin{aligned}
+\sum_{k=0}^{M} c_{k} z^{-k}X(z)&=\sum_{k=0}^{N}e_jz^{-j}Y(z)\\
+H(z)&=\frac{\sum_{k=0}^{N}e_jz^{-j}}{\sum_{k=0}^{M} c_{k} z^{-k}}
+\end{aligned}
+\tag{14}
+$$
+式14系数与式12经双线性变换后系数一致，同时式14中系数即为IIR滤波器设计时域系数[^7]。巴特沃斯滤波器设计中，高通、带通、带阻滤波器区别仅在于双线性变换式13表达式不同。
+
+#### 频幅响应与相位偏移
+
+巴特沃斯滤波器相位特性是非线性，因此只以6阶低通（截止频率$f_c=0.2f_s$）巴特沃斯滤波器为例说明其幅相特性：
+
+![image-20230530000335488](img/image-20230530000335488.png)
+
+![image-20230529234937685](img/image-20230529234937685.png)
+
+该滤波器在通频带内有较均匀幅值增益，对频率为$0.2f_s$信号出现最大群延迟11周期，平均相偏约8周期。
+
+### 用户文档 
 
 
 
 ## 贝叶斯滤波器
 
-参考文献
+## 参考目录
 
-[^1]: 时间序列分析，汉密尔顿
-[^2]: 信号与系统，奥本海姆
-[^3]: scipy.signal
+[^1]: Hamilton J. D. (2020). *Time series analysis*. Princeton university press.
+[^2]: Oppenheim, Alan (2010). *Discrete Time Signal Processing Third Edition*. Upper Saddle River, NJ: Pearson Higher Education, Inc.
+[^3]: [Signal Processing (scipy.signal) — SciPy v1.10.1 Manual](https://docs.scipy.org/doc/scipy/tutorial/signal.html)
 [^4]:[fourier transform - How to perform spectral inversion in the frequency domain to convert a low-pass filter into a high-pass filter? - Signal Processing Stack Exchange](https://dsp.stackexchange.com/questions/61071/how-to-perform-spectral-inversion-in-the-frequency-domain-to-convert-a-low-pass)
 [^5]:[Mixed-Signal and DSP Design Techniques, Digital Filters (analog.com)](https://www.analog.com/media/en/training-seminars/design-handbooks/MixedSignal_Sect6.pdf)
+[^6]:[Bilinear transform - Wikipedia](https://en.wikipedia.org/wiki/Bilinear_transform)
+[^7]:Shouran M. & Elgamli E. (2020). Design and implementation of Butterworth filter. *International Journal of Innovative Research in Science, Engineering and Technology*, *9*(9).
+
+
+
