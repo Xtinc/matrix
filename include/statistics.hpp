@@ -109,7 +109,7 @@ namespace ppx
     public:
         using samples = std::vector<double>;
 
-        MultiNormalDistribution() : m_mean(0.0), m_cov(0.0), m_gen(std::random_device{}()) {}
+        MultiNormalDistribution() : m_mean(0.0), m_cov(1.0), m_gen(std::random_device{}()) {}
 
         MultiNormalDistribution(double mu, double sigma)
             : m_mean(mu), m_cov(sigma) {}

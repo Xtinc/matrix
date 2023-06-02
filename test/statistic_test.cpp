@@ -27,6 +27,15 @@ public:
     }
 };
 
+TEST_F(STA_TestCase, NormalDistribution)
+{
+    MultiNormalDistribution<1> dis(3.3, 5);
+    for (size_t i = 0; i < 200; i++)
+    {
+        std::cout << dis.pdf(-1 + i * 0.01) << std::endl;
+    }
+}
+
 TEST_F(STA_TestCase, MovAvgFlt)
 {
     MovAvgFilter<2> flt2;
