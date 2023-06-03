@@ -145,7 +145,7 @@ namespace ppx
     class Filter
     {
     public:
-        Filter(FreqProperty tp) : freqtype(tp) {}
+        Filter(FreqProperty tp = FreqProperty::LowPass) : freqtype(tp) {}
 
         std::vector<double> &coff_a()
         {

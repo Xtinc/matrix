@@ -1,6 +1,6 @@
 # Chapter 4. General program design of filter
 
-## 统计线性滤波
+## 信号处理与数据估计
 
 对随机信号的时间演化进行估计是一类常见任务。通常根据可用数据因果性，这些估计有更具体名称：
 
@@ -255,7 +255,7 @@ $$
 
 该滤波器在通频带内有较均匀幅值增益，对频率为$0.2f_s$信号出现最大群延迟11周期，平均相偏约8周期。
 
-### 滑动均值滤波器设计
+### 滑动均值型滤波器设计
 
 滑动均值滤波器本质上是一种FIR滤波器[^2]，因此程序设计中继承FIR滤波器，并将其系数设置为$1/N$。
 
@@ -280,8 +280,40 @@ $$
 H(jw)=\frac{1}{3}[e^{jw}+1+e^{-jw}]=\frac{1}{3}(1+2\cos w)
 $$
 
+### Savitzky-Golay型滤波器设计
+
+Savitzky-Golay型滤波器是一种在长度$k-m,...,k+m$的数据窗口中对局部数据进行$n$阶多项式拟合的数据平滑方法[^8]。
 
 ## 贝叶斯滤波器
+
+## 用户接口
+
+### Filter
+
+#### 说明
+
+Filter类是ppx实现的一般统计线性滤波器设计与使用接口，它基于第二节式1，定义对应有理传递函数有如下形式：
+$$
+Y(z)=\frac{b(1)+b(2) z^{-1}+\ldots+b\left(n_{b}+1\right) z^{-n_b}}{1+a(2) z^{-1}+\ldots+a\left(n_{a}+1\right) z^{-n_{a}}} X(z)
+$$
+这种形式能同时处理FIR与IIR型滤波器，其中$n_a$是反馈滤波器阶数，$n_b$是前馈滤波器阶数。由归一化设定$a(1)=1$。还可以将有理传递函数表示为以下差分方程：
+$$
+a(1)y(n)=b(1)x(n)+b(2)x(n-1)+\cdots +b(n_b+1)x(n-n_b)-a(2)y(n-1)-\cdots -a(n_a+1)y(n-n_a)
+$$
+
+#### 功能
+| 构造方法     |                                           |
+| ------------ | ----------------------------------------- |
+| constructor  | 滤波器类型：低通（默认值）/高通/带通/带阻 |
+| **成员方法** |                                           |
+| coff_a       | 返回反馈滤波器系数                        |
+| coff_b       | 返回前馈滤波器系数                        |
+| reset        | 重置滤波器状态                            |
+| operator()   | 滤波操作                                  |
+
+#### 示例
+
+
 
 ## 参考目录
 
@@ -292,3 +324,4 @@ $$
 [^5]:[Mixed-Signal and DSP Design Techniques, Digital Filters (analog.com)](https://www.analog.com/media/en/training-seminars/design-handbooks/MixedSignal_Sect6.pdf)
 [^6]:[Bilinear transform - Wikipedia](https://en.wikipedia.org/wiki/Bilinear_transform)
 [^7]:Shouran M. & Elgamli E. (2020). Design and implementation of Butterworth filter. *International Journal of Innovative Research in Science, Engineering and Technology*, *9*(9).
+[^8]:Schmid, M., Rath, D., & Diebold, U. (2022). Why and How Savitzky–Golay Filters Should Be Replaced. *ACS Measurement Science Au*, *2*(2), 185-196.
