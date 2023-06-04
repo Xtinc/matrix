@@ -441,7 +441,7 @@ namespace ppx
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
             std::fill_n(std::back_inserter(b), N, 0.0);
             set_window_function(k_win);
-            cal_lphp_coffb(fcf, true);
+            cal_lphp_coffb(fcf / 2.0, true);
             sca_lphp_coffb(true);
         }
 
@@ -452,7 +452,7 @@ namespace ppx
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
             std::fill_n(std::back_inserter(b), N, 0.0);
             set_window_function(k_win);
-            cal_lphp_coffb(fcf, false);
+            cal_lphp_coffb(fcf / 2.0, false);
             sca_lphp_coffb(false);
         }
 
@@ -462,7 +462,7 @@ namespace ppx
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
             set_window_function(k_win);
-            cal_bpbs_coffb(f1f, f2f, true);
+            cal_bpbs_coffb(f1f / 2.0, f2f / 2.0, true);
             sca_lphp_coffb(false);
         }
 
@@ -472,7 +472,7 @@ namespace ppx
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
             set_window_function(k_win);
-            cal_bpbs_coffb(f1f, f2f, false);
+            cal_bpbs_coffb(f1f / 2.0, f2f / 2.0, false);
             sca_lphp_coffb(true);
         }
 

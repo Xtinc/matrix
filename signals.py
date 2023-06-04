@@ -13,6 +13,8 @@ y = 7 * np.sin(120 * x) + 5 * np.sin(500 * x) + 9 * np.sin(10 * x)
 
 w = np.arange(0, N, 1)  # 频域轴
 
+print(signal.firwin(3,0.1))
+
 b1 = signal.firwin(51, [0.42, 0.8], window="hamming",
                    pass_zero='bandstop')  # 哈明窗，截至频率100Hz
 b2 = [
