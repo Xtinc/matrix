@@ -18,6 +18,25 @@ namespace ppx
         return a * a;
     }
 
+    template <class T, class Compare>
+    constexpr const T &CLAMP(const T &v, const T &lo, const T &hi, Compare comp)
+    {
+        return comp(v, lo) ? lo : comp(hi, v) ? hi
+                                              : v;
+    }
+
+    template <class T>
+    constexpr const T &CLAMP(const T &v, const T &lo, const T &hi)
+    {
+        return CLAMP(v, lo, hi, std::less<T>{});
+    }
+
+    template <class T>
+    constexpr const T &CLAMP(const T &v, const std::pair<T, T> &ra)
+    {
+        return CLAMP(v, ra.first, ra.second, std::less<T>{});
+    }
+
     // matrix related
     enum class Factorization : char
     {
@@ -178,6 +197,69 @@ namespace ppx
         auto max_pos = std::max_element(mat.begin(), mat.end());
         auto max_dis = std::div(std::distance(mat.begin(), max_pos), M);
         return {max_dis.rem, max_dis.quot};
+    }
+
+    enum class Orientation
+    {
+        Horizontal,
+        Vertical
+    };
+
+    template <Orientation ori, size_t M, size_t N>
+    std::enable_if_t<ori == Orientation::Vertical, MatrixS<2 * M, N>> concat(const MatrixS<M, N> &a, const MatrixS<M, N> &b)
+    {
+        MatrixS<2 * M, N> result;
+        for (size_t i = 0; i < 2 * M; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                result(i, j) = i < M ? a(i, j) : b(i - M, j);
+            }
+        }
+        return result;
+    }
+
+    template <Orientation ori, size_t M, size_t N>
+    std::enable_if_t<ori == Orientation::Horizontal, MatrixS<M, 2 * N>> concat(const MatrixS<M, N> &a,
+                                                                               const MatrixS<M, N> &b)
+    {
+        MatrixS<M, 2 * N> result;
+        for (size_t i = 0; i < M; ++i)
+        {
+            for (size_t j = 0; j < 2 * N; ++j)
+            {
+                result(i, j) = j < N ? a(i, j) : b(i, j - N);
+            }
+        }
+        return result;
+    }
+
+    template <size_t M, size_t N, size_t L>
+    MatrixS<M + N, L> concat(const MatrixS<M, L> &a, const MatrixS<N, L> &b)
+    {
+        MatrixS<M + N, L> result;
+        for (size_t i = 0; i < M + N; ++i)
+        {
+            for (size_t j = 0; j < L; ++j)
+            {
+                result(i, j) = i < M ? a(i, j) : b(i - M, j);
+            }
+        }
+        return result;
+    }
+
+    template <size_t M, size_t N, size_t L>
+    MatrixS<L, M + N> concat(const MatrixS<L, M> &a, const MatrixS<L, N> &b)
+    {
+        MatrixS<L, M + N> result;
+        for (size_t i = 0; i < L; ++i)
+        {
+            for (size_t j = 0; j < M + N; ++j)
+            {
+                result(i, j) = j < M ? a(i, j) : b(i, j - M);
+            }
+        }
+        return result;
     }
 
     // solver linear system

@@ -86,6 +86,24 @@ TEST_F(MatrixS_TestCase, fac)
     EXPECT_EQ(e1.vec, result3);
 }
 
+TEST_F(MatrixS_TestCase, cat)
+{
+    MatrixS<2, 2> x = {1, 2, 3, 4};
+    MatrixS<2, 2> y = {5, 6, 7, 8};
+    MatrixS<2, 4> expect1{1, 2, 3, 4, 5, 6, 7, 8};
+    MatrixS<4, 2> expect2{1, 2, 5, 6, 3, 4, 7, 8};
+    EXPECT_EQ(expect1, concat<Orientation::Horizontal>(x, y));
+    EXPECT_EQ(expect2, concat<Orientation::Vertical>(x, y));
+
+    MatrixS<2, 3> a{1, 2, 3, 4, 5, 6};
+    MatrixS<2, 1> b{9, 9};
+    MatrixS<1, 3> c{-1, -1, -1};
+    MatrixS<2, 4> expect3{1, 2, 3, 4, 5, 6, 9, 9};
+    MatrixS<3, 3> expect4{1, 2, -1, 3, 4, -1, 5, 6, -1};
+    EXPECT_EQ(expect3, concat(a, b));
+    EXPECT_EQ(expect4, concat(a, c));
+}
+
 int main(int argc, char **argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
