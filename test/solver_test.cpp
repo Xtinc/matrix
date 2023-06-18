@@ -10,6 +10,13 @@ public:
     std::default_random_engine eni;
 };
 
+TEST_F(LinEqn_TestCase, Quadtratic)
+{
+    auto res = quadsolve(1.0, -2 * 12345678, -1);
+    EXPECT_EQ(res.s, StatusCode::NORMAL);
+    EXPECT_NEAR(res.x[1] / -4.050000332100021e-08, 1, 1e-7);
+}
+
 TEST_F(LinEqn_TestCase, LU_decompose)
 {
     std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);

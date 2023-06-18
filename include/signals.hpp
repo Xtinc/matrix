@@ -1,5 +1,5 @@
-#ifndef VVERY_SIMPLE_ALGORITHM3_HEADER
-#define VVERY_SIMPLE_ALGORITHM3_HEADER
+#ifndef VVERY_SIMPLE_SIGNALS_HEADER
+#define VVERY_SIMPLE_SIGNALS_HEADER
 
 #include "statistics.hpp"
 #include <queue>
@@ -283,7 +283,7 @@ namespace ppx
             auto fomega = lp ? sin(theta / 2.0) : cos(theta / 2.0);
             if (N % 2)
             {
-                sf *= fomega + lp ? cos(theta / 2.0) : sin(theta / 2.0);
+                sf *= fomega + (lp ? cos(theta / 2.0) : sin(theta / 2.0));
             }
             sf = std::pow(fomega, N) / sf;
             for (auto &i : b)

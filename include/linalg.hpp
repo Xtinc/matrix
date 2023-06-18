@@ -812,6 +812,17 @@ namespace ppx
         return V * W * U.T();
     }
 
+    EqnResult<2> quadsolve(double a, double b, double c)
+    {
+        auto det = b * b - 4 * a * c;
+        if (det < 0.0 || fabs(a) < EPS_DP)
+        {
+            return {{}, StatusCode::SINGULAR};
+        }
+        auto q = -0.5 * (b + SIGN(sqrt(det), b));
+        return {{q / a, c / q}, StatusCode::NORMAL};
+    }
+
     // eigen system
     namespace details
     {
