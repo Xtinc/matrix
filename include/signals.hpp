@@ -211,6 +211,16 @@ namespace ppx
             return results.front();
         }
 
+        double diff() const
+        {
+            auto capacity = results.size();
+            if (capacity > 1)
+            {
+                return results[capacity - 1] - results[capacity - 2];
+            }
+            return 0.0;
+        }
+
     protected:
         const FreqProperty freqtype;
         std::vector<double> a;
