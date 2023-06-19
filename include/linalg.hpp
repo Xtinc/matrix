@@ -262,6 +262,42 @@ namespace ppx
         return result;
     }
 
+    template <size_t M>
+    MatrixS<M + 1, 1> concat(const MatrixS<M, 1> &a, double b)
+    {
+        MatrixS<M + 1, 1> result;
+        std::copy_n(a.begin(), M, result.begin());
+        result[M] = b;
+        return result;
+    }
+
+    template <size_t M>
+    MatrixS<1, M + 1> concat(const MatrixS<1, M> &a, double b)
+    {
+        MatrixS<1, M + 1> result;
+        std::copy_n(a.begin(), M, result.begin());
+        result[M] = b;
+        return result;
+    }
+
+    template <size_t M>
+    MatrixS<M + 1, 1> concat(double a, const MatrixS<M, 1> &b)
+    {
+        MatrixS<M + 1, 1> result;
+        std::copy_n(b.begin(), M, result.begin() + 1);
+        result[0] = a;
+        return result;
+    }
+
+    template <size_t M>
+    MatrixS<1, M + 1> concat(double a, const MatrixS<1, M> &b)
+    {
+        MatrixS<1, M + 1> result;
+        std::copy_n(b.begin(), M, result.begin() + 1);
+        result[0] = a;
+        return result;
+    }
+
     // solver linear system
 
     template <size_t N>

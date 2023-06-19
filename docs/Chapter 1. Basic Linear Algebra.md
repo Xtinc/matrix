@@ -96,7 +96,7 @@ MatrixS中常见操作的复杂度如下:
 | adjugate       | 伴随矩阵                                               |
 | determinant    | 矩阵行列式                                             |
 | inverse        | 矩阵逆                                                 |
-| slice          | 返回矩阵处于 $i_1,i_2$ 行与 $j_1,j_2$ 列之间的视图切片 |
+| concat         | 矩阵拼接                                        |
 | transpose      | 矩阵转置                                               |
 | norm2          | 向量范数（2范数）                                       |
 | norminf        | 向量范数（无穷范数）                                      |

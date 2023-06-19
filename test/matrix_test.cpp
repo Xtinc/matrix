@@ -102,6 +102,12 @@ TEST_F(MatrixS_TestCase, cat)
     MatrixS<3, 3> expect4{1, 2, -1, 3, 4, -1, 5, 6, -1};
     EXPECT_EQ(expect3, concat(a, b));
     EXPECT_EQ(expect4, concat(a, c));
+    MatrixS<3, 1> expect5{9, 9, 1};
+    MatrixS<3, 1> expect6{1, 9, 9};
+    MatrixS<1, 4> expect7{-1, -1, -1, 3};
+    EXPECT_EQ(expect5, concat(b, 1));
+    EXPECT_EQ(expect6, concat(1, b));
+    EXPECT_EQ(expect7, concat(c, 3));
 }
 
 int main(int argc, char **argv)
