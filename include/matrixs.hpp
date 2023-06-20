@@ -477,8 +477,8 @@ namespace ppx
         }
 
         template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
-        MatrixS(const MatrixS<3, 1> &_1, const MatrixS<3, 1> &_2)
-            : details::MatrixBase<M, N>({_1[0], _1[1], _1[2], _2[0], _2[1], _2[2]})
+        MatrixS(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
+            : details::MatrixBase<M, N>({elem1[0], elem1[1], elem1[2], elem2[0], elem2[1], elem2[2]})
         {
         }
 

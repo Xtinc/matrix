@@ -848,7 +848,7 @@ namespace ppx
         return V * W * U.T();
     }
 
-    EqnResult<2> quadsolve(double a, double b, double c)
+    inline EqnResult<2> quadsolve(double a, double b, double c)
     {
         auto det = b * b - 4 * a * c;
         if (det < 0.0 || fabs(a) < EPS_DP)
