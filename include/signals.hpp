@@ -145,7 +145,7 @@ namespace ppx
     class Filter
     {
     public:
-        Filter(FreqProperty tp = FreqProperty::LowPass) : freqtype(tp) {}
+        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = false) : freqtype(tp), deferred(isdeferred) {}
 
         std::vector<double> &coff_a()
         {
@@ -202,11 +202,14 @@ namespace ppx
                 s1 += results.at(i) * a[i + 1];
             }
 
-            results.push_front(s2 - s1);
-
             if (results.size() > std::max((int)m - 1, 1))
             {
+                results.push_front(s2 - s1);
                 results.pop_back();
+            }
+            else
+            {
+                results.push_front(deferred ? new_sample : s2 - s1);
             }
             return results.front();
         }
@@ -223,6 +226,7 @@ namespace ppx
 
     protected:
         const FreqProperty freqtype;
+        const bool deferred;
         std::vector<double> a;
         std::vector<double> b;
 
@@ -235,7 +239,7 @@ namespace ppx
     {
     public:
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::LowPass> * = nullptr>
-        IIRFilter(double fcf) : Filter(U)
+        IIRFilter(double fcf, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), N + 1, 0.0);
@@ -246,7 +250,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::HighPass> * = nullptr>
-        IIRFilter(double fcf) : Filter(U)
+        IIRFilter(double fcf, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), N + 1, 0.0);
@@ -257,7 +261,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandPass> * = nullptr>
-        IIRFilter(double f1f, double f2f) : Filter(U)
+        IIRFilter(double f1f, double f2f, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
@@ -268,7 +272,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandStop> * = nullptr>
-        IIRFilter(double f1f, double f2f) : Filter(U)
+        IIRFilter(double f1f, double f2f, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
@@ -445,7 +449,7 @@ namespace ppx
     {
     public:
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::LowPass> * = nullptr>
-        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming) : Filter(U)
+        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
@@ -456,7 +460,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::HighPass> * = nullptr>
-        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming) : Filter(U)
+        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
@@ -467,7 +471,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandPass> * = nullptr>
-        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming) : Filter(U)
+        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
@@ -477,7 +481,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandStop> * = nullptr>
-        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming) : Filter(U)
+        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
@@ -562,7 +566,7 @@ namespace ppx
     class MovAvgFilter : public Filter
     {
     public:
-        MovAvgFilter() : Filter(FreqProperty::LowPass)
+        MovAvgFilter(bool isdeferred = false) : Filter(FreqProperty::LowPass, isdeferred)
         {
             std::fill_n(std::back_inserter(b), N, 1.0 / N);
         }
