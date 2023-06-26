@@ -151,7 +151,31 @@ $$
 $$
 f'(x)=\lim_{h\rightarrow 0}\frac{f(x+h)-f(x)}{h}
 $$
-在数学上，该式随*h*缩小而收敛。但程序中，$x+h$和$x$本身都是浮点数会有舍入误差，并且差分近似微分也有截断误差。假设$x=10.3,h=0.0001$，则$f(x+h)$和$f(x)$天生带上了$\epsilon$的舍入误差，又假设这一切都是在单精度下进行的，有$\epsilon \approx 10^-7$，整个系统的舍入误差约在$\epsilon x/h\approx0.01$，是一个相当糟糕的精度。如果$f(x)$的值能准确获取，那么误差界限会限制到$\epsilon |f(x)/h|$水平。
+在数学上，该式随*h*缩小而收敛。但程序中，$x+h$和$x$本身都是浮点数会有舍入误差，并且差分近似微分也有截断误差。假设$x=10.3,h=0.0001$，则$f(x+h)$和$f(x)$天生带上了$\epsilon$的舍入误差，又假设这一切都是在单精度下进行的，有$\epsilon \approx 10^-7$，整个系统的舍入误差约在$\epsilon x/h\approx0.01$，是一个相当糟糕的精度。如果$f(x)$的值能准确获取，那么误差界限会限制到$e_r\approx\epsilon |f(x)/h|$水平。当$f(x)$的值不能准确获取时，选取$h$大小则是一门复杂技术：圆整误差带来的求值点不精确与差分截断误差带来的近似损失对离散步长要求是矛盾的。
+
+考虑到一阶差分的截断误差$e_t \approx|hf^{''}(x)|$，求对应离散步长使总误差$e_r+e_t$最小：
+$$
+h\sim \sqrt{\frac{\epsilon_ff}{f^{''}}}\approx\epsilon_f^{\frac{1}{2}}x_c
+$$
+其中$x_c=\sqrt{f/f^{''}}$是对函数*f*在离散点处曲率的度量，故有限精度表示下的一阶差分在步长$\sqrt{\epsilon_f}$量级中取得最好精度，若*f*满足此处一阶导数与二阶导数均在同数量级，则此时相对误差为：
+$$
+(e_r+e_t)/|f^{'}|\sim\sqrt{\epsilon_f(ff^{''}/f^{'2})}\sim\epsilon_f^{\frac{1}{2}}
+$$
+同理，可推断对于二阶差分：
+$$
+f^{'}(x)\approx\frac{f(x+h)-f(x-h)}{2h}
+$$
+最佳步长：
+$$
+h\sim (\frac{\epsilon_ff}{f^{'''}})^{\frac{1}{3}}\sim \epsilon_f^{\frac{1}{3}}x_c
+$$
+相对误差：
+$$
+(e_r+e_t)/|f^{'}|\sim\epsilon_f^{\frac{2}{3}}f^{\frac{2}{3}}(f^{'''})^{\frac{1}{3}})\sim\epsilon_f^{\frac{2}{3}}
+$$
+更多相关的技术可参考C.J.F. Ridders[^6]关于计算机中有限差分精度的分析。
+
+
 
 ## 参考文献
 
@@ -162,3 +186,5 @@ $$
 [^4]: [Type float | Microsoft Learn](https://learn.microsoft.com/en-us/cpp/c-language/type-float?view=msvc-170)
 
 [^5]:[灾难性抵消 - 维基百科，自由的百科全书 (wikipedia.org)](https://zh.wikipedia.org/zh-cn/灾难性抵消)
+[^6]: https://www.sciencedirect.com/science/article/pii/S0141119582800570 "C.J.F. Ridders (1982).  Accurate computation of F′(x) and F′(x) F″(x).  *Advances in Engineering Software*. Volume 4, Issue 2, 1982, Pages 75-76."
+
