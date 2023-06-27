@@ -67,7 +67,7 @@ namespace ppx
         template <size_t N>
         void binomial_mult(const MatrixS<N, 1> &p, MatrixS<N, 1> &a)
         {
-            for (int i = 0; i < N / 2; ++i)
+            for (int i = 0; i < (int)N / 2; ++i)
             {
                 for (int j = i; j > 0; --j)
                 {
@@ -98,7 +98,7 @@ namespace ppx
             a[0] = b[0];
             a[1] = b[1];
 
-            for (int i = 1; i < N / 2; ++i)
+            for (int i = 1; i < (int)N / 2; ++i)
             {
                 a[2 * (2 * i + 1)] += c[2 * i] * a[2 * (2 * i - 1)] - c[2 * i + 1] * a[2 * (2 * i - 1) + 1];
                 a[2 * (2 * i + 1) + 1] += c[2 * i] * a[2 * (2 * i - 1) + 1] + c[2 * i + 1] * a[2 * (2 * i - 1)];
@@ -289,7 +289,7 @@ namespace ppx
             auto st = sin(theta);
 
             auto sf = 1.0;
-            for (int k = 0; k < N / 2; ++k)
+            for (int k = 0; k < (int)N / 2; ++k)
             {
                 sf *= 1.0 + st * sin((2 * k + 1) * PI / (2 * N));
             }
@@ -332,7 +332,7 @@ namespace ppx
         {
             b[0] = 1.0;
             b[1] = N;
-            for (int i = 2; i <= N / 2; ++i)
+            for (int i = 2; i <= (int)N / 2; ++i)
             {
                 b[i] = (double)(N - i + 1) * b[i - 1] / i;
                 b[N - i] = b[i];
@@ -388,7 +388,7 @@ namespace ppx
             auto ct = cos(theta);
             MatrixS<2 * N, 1> rcof, dcof;
 
-            for (int k = 0; k < N; ++k)
+            for (int k = 0; k < (int)N; ++k)
             {
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
                 auto dena = 1.0 + st * sin(parg);
@@ -526,7 +526,7 @@ namespace ppx
         {
             auto omega = 2 * PI * fcf;
             auto bsign = lp ? 2.0 : -2.0;
-            for (int i = 0; i < N; i++)
+            for (int i = 0; i < (int)N; i++)
             {
                 auto ni = i - int(N / 2);
                 b[i] = bsign * fcf * sinc(omega * ni) * winfunc(N, i);
