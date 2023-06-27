@@ -202,7 +202,7 @@ namespace ppx
                 s1 += results.at(i) * a[i + 1];
             }
 
-            if (results.size() > std::max((int)m - 1, 1))
+            if (results.size() > std::max((int)m - 2, 0))
             {
                 results.push_front(s2 - s1);
                 results.pop_back();
@@ -244,8 +244,8 @@ namespace ppx
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), N + 1, 0.0);
             std::fill_n(std::back_inserter(b), N + 1, 0.0);
-            cal_lphp_coffb(fcf, true);
-            cal_lphp_coffa(fcf, true);
+            cal_lphp_coffb(true);
+            cal_lphp_coffa(fcf);
             sca_lphp_coffb(fcf, true);
         }
 
@@ -287,7 +287,6 @@ namespace ppx
         {
             auto theta = PI * fcf;
             auto st = sin(theta);
-            auto ct = cos(theta);
 
             auto sf = 1.0;
             for (int k = 0; k < N / 2; ++k)
@@ -329,12 +328,8 @@ namespace ppx
             }
         }
 
-        void cal_lphp_coffb(double fcf, bool lp)
+        void cal_lphp_coffb(bool lp)
         {
-            auto theta = PI * fcf;
-            auto st = sin(theta);
-            auto ct = cos(theta);
-
             b[0] = 1.0;
             b[1] = N;
             for (int i = 2; i <= N / 2; ++i)
@@ -357,7 +352,7 @@ namespace ppx
         {
             if (bp)
             {
-                cal_lphp_coffb(f2f, false);
+                cal_lphp_coffb(false);
                 auto tcof = b;
                 for (int i = 0; i < N; ++i)
                 {
@@ -386,7 +381,7 @@ namespace ppx
             }
         }
 
-        void cal_lphp_coffa(double fcf, bool lp)
+        void cal_lphp_coffa(double fcf)
         {
             auto theta = PI * fcf;
             auto st = sin(theta);
@@ -396,9 +391,9 @@ namespace ppx
             for (int k = 0; k < N; ++k)
             {
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
-                auto a = 1.0 + st * sin(parg);
-                rcof[2 * k] = -ct / a;
-                rcof[2 * k + 1] = -st * cos(parg) / a;
+                auto dena = 1.0 + st * sin(parg);
+                rcof[2 * k] = -ct / dena;
+                rcof[2 * k + 1] = -st * cos(parg) / dena;
             }
             details::binomial_mult(rcof, dcof);
 
