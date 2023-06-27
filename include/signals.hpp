@@ -192,17 +192,17 @@ namespace ppx
                 samples.pop_back();
             }
 
-            for (int i = 0; i < samples.size(); i++)
+            for (size_t i = 0; i < samples.size(); i++)
             {
                 s2 += samples.at(i) * b[i];
             }
 
-            for (int i = 0; i < std::min(m, results.size()); i++)
+            for (size_t i = 0; i < std::min(m, results.size()); i++)
             {
                 s1 += results.at(i) * a[i + 1];
             }
 
-            if (results.size() > std::max((int)m - 2, 0))
+            if (results.size() + 2 > m)
             {
                 results.push_front(s2 - s1);
                 results.pop_back();
