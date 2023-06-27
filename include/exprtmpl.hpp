@@ -18,12 +18,12 @@ namespace ppx
 
     constexpr double DEG_RAD(double deg)
     {
-        return deg * PI / 180;
+        return deg * PI / 180.0;
     }
 
     constexpr double RAD_DEG(double rad)
     {
-        return 180 * rad / PI;
+        return 180.0 * rad / PI;
     }
 
     template <size_t A, size_t B, typename RT = void>

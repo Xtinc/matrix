@@ -175,6 +175,153 @@ $$
 $$
 更多相关的技术可参考C.J.F. Ridders[^6]关于计算机中有限差分精度的分析。
 
+## 基本数值运算接口
+
+ppx中内置一些科学计算常量以及浮点数表示参数，以方便数值分析与程序编写：
+
+| 常量名 | 数值                                   | 备注               |
+| :----: | -------------------------------------- | ------------------ |
+|   PI   | $\pi$                                  | 圆周率             |
+| EPS_SP | $1.175494351\times 10^{- 38}$          | 机器精度（单精度） |
+| EPS_DP | $2.2250738585072014 \times 10^{- 308}$ | 机器精度（双精度） |
+| MAX_SP | $3.402823466\times 10^{38}$            | 浮点上限（单精度） |
+| MAX_DP | $1.7976931348623158\times 10^{308}$    | 浮点上限（双精度） |
+
+此外，ppx对基本的数值代数操作也进行封装，形式来源于Fortran/Python/Matlab等。
+
+### SIGN函数
+
+`SIGN`函数即符号函数，最早是Fortran77内置函数[^7]，在后续的语言如Matlab和Python中，其语法发生了变化。ppx中同时提供以上两种语言风格重载。
+
+**语法**
+
+```c++
+// Fortran style
+auto result = SIGN(2, -1);
+
+// Matlab style
+auto result = SIGN(-1) * 2;
+```
+
+**函数原型**
+
+*Fortran*风格：
+
+```c++
+template <typename T>
+T SIGN(T a, T b);
+```
+
+| 参数 | 备注                              |
+| ---- | --------------------------------- |
+| a    | 输入参数，数字类型                |
+| b    | 输入参数，数字类型                |
+| Ret  | 若$b\ge 0$，返回$|a|$，否则$-|a|$ |
+
+*Matlab*风格：
+
+```c++
+template <typename T>
+int SIGN(T a)；
+```
+
+
+
+| 参数 | 备注                          |
+| ---- | ----------------------------- |
+| a    | 输入参数，数字类型            |
+| Ret  | 若a为零返回0，a正数1，a负数-1 |
+
+### SQR函数
+
+`SQR`函数即平方函数，出现于Visual Basic与部分Fortran方言中。接口原型来源于[Sqr 函数 (Visual Basic for Applications) | Microsoft Learn](https://learn.microsoft.com/zh-cn/office/vba/language/reference/user-interface-help/sqr-function)。
+
+**语法**
+
+```c++
+auto a = SQR(4);
+auto b = SQR(-1.2);
+```
+
+**函数原型**
+
+```c++
+template <typename T>
+T SQR(T a)；
+```
+
+
+
+| 参数 | 备注               |
+| ---- | ------------------ |
+| a    | 输入参数，数字类型 |
+| Ret  | 返回输入参数平方   |
+
+### DEG_RAD函数
+
+`DEG_RAD`函数将角度制数值转换为弧度制数值，同理，`RAD_DEG`将弧度制数值转换为角度值数值。
+
+**语法**
+
+```c++
+auto a = RAD_DEG(PI / 2);
+auto b = DEG_RAD(90);
+```
+
+**函数原型**
+
+```c++
+constexpr double DEG_RAD(double deg)；
+constexpr double RAD_DEG(double rad)；
+```
+
+
+
+| 参数 | 备注                    |
+| ---- | ----------------------- |
+| a    | 输入参数，数字类型      |
+| Ret  | (弧度制/角度制)数字类型 |
+
+### CLAMP函数
+
+`CLAMP`函数是将数值截断于特定区间的函数。在C++17以后的版本，包含头文件<algorithm>可以使用。ppx中CLAMP接口与std::clamp基本一致。
+
+**语法**
+
+```c++
+for (const int v : {-129, -128, -1, 0, 42, 127, 128, 255, 256})
+{
+    std::cout
+        << std::setw(04) << v
+        << std::setw(20) << CLAMP(v, INT8_MIN, INT8_MAX)
+        << std::setw(21) << CLAMP(v, {0, UINT8_MAX}) << '\n';
+}
+```
+
+**函数原型**
+
+```c++
+template <class T, class Compare>
+constexpr const T &CLAMP(const T &v, const T &lo, const T &hi, Compare comp);
+
+template <class T>
+constexpr const T &CLAMP(const T &v, const T &lo, const T &hi);
+
+template <class T>
+constexpr const T &CLAMP(const T &v, const std::pair<T, T> &ra);
+```
+
+
+
+
+| 参数 | 备注                    |
+| ---- | ----------------------- |
+| v    | 输入参数，数字类型      |
+| lo   | 截断范围下限            |
+| hi   | 截断范围上限            |
+| ra   | 截断范围（等同[lo,hi]） |
+| comp | 自定义比较函数          |
+
 
 
 ## 参考文献
@@ -188,3 +335,4 @@ $$
 [^5]:[灾难性抵消 - 维基百科，自由的百科全书 (wikipedia.org)](https://zh.wikipedia.org/zh-cn/灾难性抵消)
 [^6]: https://www.sciencedirect.com/science/article/pii/S0141119582800570 "C.J.F. Ridders (1982).  Accurate computation of F′(x) and F′(x) F″(x).  *Advances in Engineering Software*. Volume 4, Issue 2, 1982, Pages 75-76."
 
+[^7]: [SIGN (The GNU Fortran Compiler)](https://gcc.gnu.org/onlinedocs/gfortran/SIGN.html)

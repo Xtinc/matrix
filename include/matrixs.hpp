@@ -802,6 +802,8 @@ namespace ppx
             return os;
         }
 
+        constexpr static auto LEN = M * N;
+
         // Static function.
         static MatrixS eye()
         {

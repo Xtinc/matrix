@@ -7,9 +7,26 @@
 namespace ppx
 {
     template <typename T>
+    int SIGN(T a)
+    {
+        if (a > T{})
+        {
+            return 1;
+        }
+        else if (a < T{})
+        {
+            return -1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    template <typename T>
     T SIGN(T a, T b)
     {
-        return b > T{} ? std::abs(a) : -std::abs(a);
+        return b >= T{} ? std::abs(a) : -std::abs(a);
     }
 
     template <typename T>
