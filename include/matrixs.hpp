@@ -788,20 +788,32 @@ namespace ppx
         }
 
         // Generate function.
-        friend std::ostream &operator<<(std::ostream &os, const MatrixS &self)
+        template <size_t A = M>
+        friend enable_when_matrix_t<A, N, std::ostream &> operator<<(std::ostream &os, const MatrixS &self)
         {
-            os << "Matrix<" << M << "," << N << ">:\n";
+            os << "MAT<" << M << ',' << N << ">:\n";
             for (auto i = 0u; i < M; i++)
             {
                 for (auto j = 0u; j < N; j++)
                 {
-                    os << std::setw(12) << self(i, j) << "\t";
+                    os << std::setw(12) << self(i, j) << '\t';
                 }
-                os << std::endl;
+                os << (i == M - 1 ? ' ' : '\n');
             }
             return os;
         }
 
+        template <size_t A = M>
+        friend enable_when_array_t<A, N, std::ostream &> operator<<(std::ostream &os, const MatrixS &self)
+        {
+            os << "ARR<" << M * N << ">:";
+            for (auto j = 0u; j < M * N; j++)
+            {
+                os << std::setw(12) << self[j] << "\t";
+            }
+            return os;
+        }
+        
         constexpr static auto LEN = M * N;
 
         // Static function.

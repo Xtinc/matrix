@@ -219,7 +219,7 @@ namespace ppx
             auto capacity = results.size();
             if (capacity > 1)
             {
-                return results[capacity - 1] - results[capacity - 2];
+                return results[capacity - 2] - results[capacity - 1];
             }
             return 0.0;
         }
