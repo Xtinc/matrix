@@ -202,7 +202,7 @@ namespace ppx
                 s1 += results.at(i) * a[i + 1];
             }
 
-            if (results.size() + 2 > std::max(m, 2ull))
+            if (results.size() + 2 > std::max(m, (size_t)2))
             {
                 results.push_front(s2 - s1);
                 results.pop_back();
