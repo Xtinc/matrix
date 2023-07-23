@@ -145,7 +145,7 @@ namespace ppx
     class Filter
     {
     public:
-        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = false) : freqtype(tp), deferred(isdeferred) {}
+        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = true) : freqtype(tp), deferred(isdeferred), last_result(0.0) {}
 
         std::vector<double> &coff_a()
         {
@@ -187,7 +187,9 @@ namespace ppx
 
             samples.push_front(new_sample);
 
-            if (samples.size() > n)
+            auto samples_full = samples.size() > n;
+
+            if (samples_full)
             {
                 samples.pop_back();
             }
@@ -204,22 +206,19 @@ namespace ppx
 
             if (results.size() + 2 > std::max(m, (size_t)2))
             {
-                results.push_front(s2 - s1);
+                last_result = results.front();
                 results.pop_back();
             }
-            else
-            {
-                results.push_front(deferred ? new_sample : s2 - s1);
-            }
-            return results.front();
+            auto res = deferred && (!samples_full) ? new_sample : s2 - s1;
+            results.push_front(res);
+            return res;
         }
 
         double diff() const
         {
-            auto capacity = results.size();
-            if (capacity > 1)
+            if (!results.empty())
             {
-                return results[capacity - 2] - results[capacity - 1];
+                return results.front() - last_result;
             }
             return 0.0;
         }
@@ -232,6 +231,7 @@ namespace ppx
 
         mutable std::deque<double> samples;
         mutable std::deque<double> results;
+        mutable double last_result;
     };
 
     template <size_t N, FreqProperty U>
@@ -239,7 +239,7 @@ namespace ppx
     {
     public:
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::LowPass> * = nullptr>
-        IIRFilter(double fcf, bool isdeferred = false) : Filter(U, isdeferred)
+        IIRFilter(double fcf, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), N + 1, 0.0);
@@ -250,7 +250,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::HighPass> * = nullptr>
-        IIRFilter(double fcf, bool isdeferred = false) : Filter(U, isdeferred)
+        IIRFilter(double fcf, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), N + 1, 0.0);
@@ -261,7 +261,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandPass> * = nullptr>
-        IIRFilter(double f1f, double f2f, bool isdeferred = false) : Filter(U, isdeferred)
+        IIRFilter(double f1f, double f2f, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
@@ -272,7 +272,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandStop> * = nullptr>
-        IIRFilter(double f1f, double f2f, bool isdeferred = false) : Filter(U, isdeferred)
+        IIRFilter(double f1f, double f2f, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
@@ -444,7 +444,7 @@ namespace ppx
     {
     public:
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::LowPass> * = nullptr>
-        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
+        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
@@ -455,7 +455,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::HighPass> * = nullptr>
-        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
+        FIRFilter(double fcf, FIRType k_win = FIRType::Hamming, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             static_assert(N % 2 != 0, "lowpass FIR filter degree must be odd");
@@ -466,7 +466,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandPass> * = nullptr>
-        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
+        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
@@ -476,7 +476,7 @@ namespace ppx
         }
 
         template <FreqProperty T = U, std::enable_if_t<T == FreqProperty::BandStop> * = nullptr>
-        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = false) : Filter(U, isdeferred)
+        FIRFilter(double f1f, double f2f, FIRType k_win = FIRType::Hamming, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
             std::fill_n(std::back_inserter(b), N, 0.0);
@@ -561,7 +561,7 @@ namespace ppx
     class MovAvgFilter : public Filter
     {
     public:
-        MovAvgFilter(bool isdeferred = false) : Filter(FreqProperty::LowPass, isdeferred)
+        MovAvgFilter(bool isdeferred = true) : Filter(FreqProperty::LowPass, isdeferred)
         {
             std::fill_n(std::back_inserter(b), N, 1.0 / N);
         }

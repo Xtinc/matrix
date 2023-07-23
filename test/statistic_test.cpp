@@ -9,6 +9,24 @@ bool compare_vector(const std::vector<double> &expected, const std::vector<doubl
                       { return fabs(a - b) < EPS_SP; });
 }
 
+void test_filter(const Filter &flt, const std::vector<double> &input, const std::vector<double> &expected)
+{
+    std::vector<double> results, velocity, expects_vel;
+    for (auto i : input)
+    {
+        results.push_back(flt(i));
+        velocity.push_back(flt.diff());
+    }
+    expects_vel.push_back(0.0);
+    for (size_t i = 1; i < expected.size(); i++)
+    {
+        expects_vel.push_back(expected[i] - expected[i - 1]);
+    }
+
+    EXPECT_TRUE(compare_vector(expected, results));
+    EXPECT_TRUE(compare_vector(velocity, expects_vel));
+}
+
 class STA_TestCase : public ::testing::Test
 {
 public:
@@ -27,12 +45,6 @@ public:
     MultiNormalDistribution<1> rand;
     std::vector<double> datas1;
     std::vector<double> datas2;
-
-    bool is_vec_equal(const std::vector<double> &a, const std::vector<double> &b)
-    {
-        return std::equal(a.begin(), a.end(), b.begin(), [](double a, double b)
-                          { return ppx::details::is_same(a, b); });
-    }
 };
 
 TEST_F(STA_TestCase, NormalDistribution)
@@ -69,22 +81,19 @@ TEST_F(STA_TestCase, IIRFilter)
 
 TEST_F(STA_TestCase, MovAvgFlt)
 {
-    MovAvgFilter<2> flt2;
-    std::vector<double> results;
-    std::vector<double> expects{0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5};
-    for (auto i : datas2)
-    {
-        results.push_back(flt2(i));
-    }
-    EXPECT_TRUE(is_vec_equal(expects, results));
-    results.clear();
+    MovAvgFilter<2> flt1;
+    std::vector<double> expects{0, 1.0, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5};
+    test_filter(flt1, datas2, expects);
 
-    MovAvgFilter<5> flt5;
+    MovAvgFilter<2> flt2(false);
+    expects = {0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5};
+    test_filter(flt2, datas2, expects);
+
+    MovAvgFilter<5> flt3;
+    expects = {0, 1, 2, 3, 4, 3, 4, 5};
+    test_filter(flt3, datas2, expects);
+
+    MovAvgFilter<5> flt4(false);
     expects = {0, 0.2, 0.6, 1.2, 2, 3, 4, 5};
-    for (auto i : datas2)
-    {
-        results.push_back(flt5(i));
-    }
-    EXPECT_TRUE(is_vec_equal(expects, results));
-    results.clear();
+    test_filter(flt4, datas2, expects);
 }
