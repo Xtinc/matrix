@@ -3,10 +3,16 @@
 
 using namespace ppx;
 
-bool compare_vector(const std::vector<double> &expected, const std::vector<double> &input)
+bool compare_vector(const std::vector<double> &expected, const std::vector<double> &input, double threshold = 10e-5)
 {
-    return std::equal(expected.begin(), expected.end(), input.begin(), [](double a, double b)
-                      { return fabs(a - b) < EPS_SP; });
+    return std::equal(expected.begin(), expected.end(), input.begin(), [threshold](double a, double b)
+                      { auto diff=fabs(a - b);
+                      if(diff<threshold){
+                        return true;
+                      }else{
+                        std::cout<<"not equal between "<<a<<":"<<b<<std::endl;
+                        return false;
+                      } });
 }
 
 void test_filter(const Filter &flt, const std::vector<double> &input, const std::vector<double> &expected)
@@ -66,17 +72,21 @@ TEST_F(STA_TestCase, UDFFilter)
 TEST_F(STA_TestCase, FIRFilter)
 {
     std::vector<double> expected{0.0679901667389975, 0.864019666522005, 0.0679901667389975};
-    FIRFilter<3, FreqProperty::LowPass> flt(0.1);
+    std::vector<double> results{0.0, 0.0680, 1.0000, 2.0000, 3.0000, 4.0000, 5.0000, 6.0000};
+    FIRFilter<3, FreqProperty::LowPass> flt(0.1, FIRType::Hamming, false);
     EXPECT_TRUE(compare_vector(expected, flt.coff_b()));
+    test_filter(flt, datas2, results);
 }
 
 TEST_F(STA_TestCase, IIRFilter)
 {
     std::vector<double> expected_b{8.57655707325943e-06, 5.14593424395566e-05, 0.000128648356098892, 0.000171531141465189, 0.000128648356098892, 5.14593424395566e-05, 8.57655707325943e-06};
     std::vector<double> expected_a{1, -4.78713549885213, 9.64951772872191, -10.4690788925439, 6.44111188100806, -2.12903875003045, 0.295172431349155};
-    IIRFilter<6, FreqProperty::LowPass> flt(0.1);
+    std::vector<double> results{0, 8.57655707325942e-06, 0.000109669597409407, 0.000699540295571364, 0.00299783621920436, 0.00980009466680698, 0.0262688145029736, 0.0604915116363023};
+    IIRFilter<6, FreqProperty::LowPass> flt(0.1, false);
     EXPECT_TRUE(compare_vector(expected_a, flt.coff_a()));
     EXPECT_TRUE(compare_vector(expected_b, flt.coff_b()));
+    test_filter(flt, datas2, results);
 }
 
 TEST_F(STA_TestCase, MovAvgFlt)
