@@ -145,7 +145,7 @@ namespace ppx
     class Filter
     {
     public:
-        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = true) : freqtype(tp), deferred(isdeferred), last_result(0.0) {}
+        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = true) : freqtype(tp), deferred(isdeferred), last_result(0.0), a{1.0} {}
 
         std::vector<double> &coff_a()
         {
@@ -188,10 +188,21 @@ namespace ppx
             samples.push_front(new_sample);
 
             auto samples_full = samples.size() > n;
+            auto results_full = results.size() + 1 > m;
+
+            if (!results.empty())
+            {
+                last_result = results.front();
+            }
 
             if (samples_full)
             {
                 samples.pop_back();
+            }
+
+            if (results_full)
+            {
+                results.pop_back();
             }
 
             for (size_t i = 0; i < samples.size(); i++)
@@ -199,16 +210,11 @@ namespace ppx
                 s2 += samples.at(i) * b[i];
             }
 
-            for (size_t i = 0; i < std::min(m, results.size()); i++)
+            for (size_t i = 0; i < results.size(); i++)
             {
                 s1 += results.at(i) * a[i + 1];
             }
 
-            if (results.size() + 2 > std::max(m, (size_t)2))
-            {
-                last_result = results.front();
-                results.pop_back();
-            }
             auto res = deferred && (!samples_full) ? new_sample : s2 - s1;
             results.push_front(res);
             return res;
@@ -316,11 +322,11 @@ namespace ppx
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
                 auto sparg = ctt + sin(parg);
                 auto cparg = cos(parg);
-                auto a = (sfr + sfi) * (sparg - cparg);
-                auto b = sfr * sparg;
-                auto c = -sfi * cparg;
-                sfr = b - c;
-                sfi = a - b - c;
+                auto sa = (sfr + sfi) * (sparg - cparg);
+                auto sb = sfr * sparg;
+                auto sc = -sfi * cparg;
+                sfr = sb - sc;
+                sfi = sa - sb - sc;
             }
             for (auto &i : b)
             {
@@ -421,11 +427,11 @@ namespace ppx
             for (int k = 0; k < N; ++k)
             {
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
-                auto a = 1.0 + s2t * sin(parg);
-                rcof[2 * k] = c2t / a;
-                rcof[2 * k + 1] = (bp ? 1.0 : -1.0) * s2t * cos(parg) / a;
-                tcof[2 * k] = -2.0 * cp * (ct + st * sin(parg)) / a;
-                tcof[2 * k + 1] = (bp ? -2.0 : 2.0) * cp * st * cos(parg) / a;
+                auto sa = 1.0 + s2t * sin(parg);
+                rcof[2 * k] = c2t / sa;
+                rcof[2 * k + 1] = (bp ? 1.0 : -1.0) * s2t * cos(parg) / sa;
+                tcof[2 * k] = -2.0 * cp * (ct + st * sin(parg)) / sa;
+                tcof[2 * k + 1] = (bp ? -2.0 : 2.0) * cp * st * cos(parg) / sa;
             }
 
             details::trinomial_mult(tcof, rcof, dcof);
