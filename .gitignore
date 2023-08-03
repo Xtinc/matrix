@@ -3,3 +3,4 @@
 /build
 /Eigen
 /cmake-build*
+/tools/__pycache__
