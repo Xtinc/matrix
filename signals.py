@@ -4,11 +4,18 @@ import matplotlib.pyplot as plt
 import tools.misc as misc
 
 plt.style.use("tools.gnuplot")
-N = 1024  # 采样点的个数
+N = 2048 * 5  # 采样点的个数
 x = np.arange(0, 2 * np.pi, 2 * np.pi / N)
+fs = N / (2 * np.pi)
 # 产生频率为120、500、10hz的信号进行模拟
-y = 7 * np.sin(120 * x) + 5 * np.sin(500 * x) + 9 * np.sin(10 * x)
-
+y = (
+    7 * np.sin(120 * 2 * np.pi * x)
+    + 5 * np.sin(500 * 2 * np.pi * x)
+    + 9 * np.sin(10 * 2 * np.pi * x)
+    + np.random.normal(scale=np.sqrt(1.89), size=len(x))
+)
+[fre, amp] = misc.psd(y, fs)
+plt.semilogy(fre, amp)
 w = np.arange(0, N, 1)  # 频域轴
 
 

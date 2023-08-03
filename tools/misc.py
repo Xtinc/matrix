@@ -5,10 +5,11 @@ Contains:
 """
 import numpy as np
 from scipy.fft import fft as scipyfft
+from scipy.signal import welch as scipywelch
 
 
 def fft(x_s, f_s):
-    """Calculate FFT of sequence xs , fs is sampling frequence."""
+    """Calculate FFT of sequence xs, fs is sampling frequence."""
     idx = int(np.log2(len(x_s)))
     seq_x = x_s[1 : int(np.exp2(idx))]
     data_len = len(seq_x)
@@ -20,17 +21,17 @@ def fft(x_s, f_s):
     amp_half[0] = 0
     fre = lable_x / data_len * f_s
     pha = np.unwrap(np.angle(fft_x))
-    return amp_half, fre, pha
+    return fre, amp_half, pha
 
 
-def signal_gen(sample_num, sample_freq, signal_type):
-    """generator of a signal sequence. type should be uniform/guassian"""
-    signal_sequence = []
-    if signal_type == "linear":
-        signal_sequence = np.arange(sample_num) / sample_freq
-    elif signal_type == "guassian":
-        signal_sequence = np.random.normal(size=sample_num)
-    return signal_sequence
+def psd(x_s, f_s, scale_type="density"):
+    """Calculate PSD by welch Periodogram, fs is sampling frequence."""
+    idx = int(np.log2(len(x_s)))
+    if scale_type == "density":
+        return scipywelch(x_s, f_s, nperseg=int(np.exp2(idx)), scaling="density")
+    return scipywelch(
+        x_s, f_s, "flattop", nperseg=int(np.exp2(idx)), scaling="spectrum"
+    )
 
 
 def convertq(content):
