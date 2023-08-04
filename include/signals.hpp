@@ -248,7 +248,7 @@ namespace ppx
         IIRFilter(double fcf, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
-            std::fill_n(std::back_inserter(a), N + 1, 0.0);
+            std::fill_n(std::back_inserter(a), N, 0.0);
             std::fill_n(std::back_inserter(b), N + 1, 0.0);
             cal_lphp_coffb(true);
             cal_lphp_coffa(fcf);
@@ -259,10 +259,10 @@ namespace ppx
         IIRFilter(double fcf, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
-            std::fill_n(std::back_inserter(a), N + 1, 0.0);
+            std::fill_n(std::back_inserter(a), N, 0.0);
             std::fill_n(std::back_inserter(b), N + 1, 0.0);
-            cal_lphp_coffb(fcf, false);
-            cal_lphp_coffa(fcf, false);
+            cal_lphp_coffb(false);
+            cal_lphp_coffa(fcf);
             sca_lphp_coffb(fcf, false);
         }
 
@@ -270,7 +270,7 @@ namespace ppx
         IIRFilter(double f1f, double f2f, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
-            std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
+            std::fill_n(std::back_inserter(a), 2 * N, 0.0);
             std::fill_n(std::back_inserter(b), 2 * N + 1, 0.0);
             cal_bpbs_coffb(f1f, f2f, true);
             cal_bpbs_coffa(f1f, f2f, true);
@@ -281,7 +281,7 @@ namespace ppx
         IIRFilter(double f1f, double f2f, bool isdeferred = true) : Filter(U, isdeferred)
         {
             static_assert(N > 1, "filter order must greater than 1!");
-            std::fill_n(std::back_inserter(a), 2 * N + 1, 0.0);
+            std::fill_n(std::back_inserter(a), 2 * N, 0.0);
             std::fill_n(std::back_inserter(b), 2 * N + 1, 0.0);
             cal_bpbs_coffb(f1f, f2f, false);
             cal_bpbs_coffa(f1f, f2f, false);
