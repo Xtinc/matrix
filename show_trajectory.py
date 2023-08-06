@@ -17,7 +17,7 @@ class VisualPose:
     func: function which will be called to update transform.
     """
 
-    def __init__(self, axis, func, traj_len: int = 100) -> None:
+    def __init__(self, axis, func, traj_len: int = 50) -> None:
         self.__func = func
         trans = self.__func(0)
         self.__trans = Frame(trans)
@@ -27,7 +27,7 @@ class VisualPose:
         self.__py = deque([trans[1, 3]], maxlen=traj_len)
         self.__pz = deque([trans[2, 3]], maxlen=traj_len)
 
-        self.__line = ax.plot(self.__px, self.__py, self.__pz, c="k", alpha=0.5)[0]
+        self.__line = ax.plot(self.__px, self.__py, self.__pz, c="r", alpha=0.2)[0]
 
     def __iter__(self):
         return (
@@ -38,11 +38,8 @@ class VisualPose:
     def __str__(self) -> str:
         return str(tuple(self))
 
-    @property
-    def trajectory(self):
-        return (self.__px, self.__py, self.__pz)
-
     def update(self, timepoint: int, total_time: int):
+        """update transform by single parameter."""
         data = self.__func(timepoint / total_time)
         self.__trans.set_data(data)
         self.__px.append(data[0, 3])
@@ -90,7 +87,7 @@ if __name__ == "__main__":
     pytr.plot_transform(ax, A2B=T2, name="Start")
     pytr.plot_transform(ax, A2B=T1, name="End")
 
-    NFRAME = 10
+    NFRAME = 300
     animated_obj = []
     animated_obj.append(VisualPose(ax, cal_cur_trans1))
     animated_obj.append(VisualPose(ax, cal_cur_trans2))
