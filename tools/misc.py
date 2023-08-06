@@ -42,9 +42,8 @@ class VisualPose:
     func: function which will be called to update transform.
     """
 
-    def __init__(self, axis3d, func, traj_len: int = 50):
-        self.__func = func
-        self.__trans = self.__func(0)
+    def __init__(self, axis3d, trans, traj_len: int = 50):
+        self.__trans = trans
         self.__frame = Frame(self.__trans)
         self.__frame.add_frame(axis3d)
 
@@ -68,24 +67,21 @@ class VisualPose:
     def __str__(self) -> str:
         return str(tuple(self))
 
-    def update(self, timepoint: int, total_time: int):
+    def update(self, trans):
         """update transform by single parameter."""
-        self.__trans = self.__func(timepoint / total_time)
+        self.__trans = trans
         self.__frame.set_data(self.__trans)
         self.__px.append(self.__trans[0, 3])
         self.__py.append(self.__trans[1, 3])
         self.__pz.append(self.__trans[2, 3])
         self.__line.set_data(self.__px, self.__py)
         self.__line.set_3d_properties(self.__pz)
-        return self.__trans
 
     def clear(self):
         """clear trajectory."""
-        self.__trans = self.__func(0)
         self.__frame.set_data(self.__trans)
         for pos in (self.__px, self.__py, self.__pz):
             pos.clear()
-        return self.__trans
 
 
 class VisualLink:
