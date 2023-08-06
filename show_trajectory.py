@@ -17,17 +17,21 @@ class VisualPose:
     func: function which will be called to update transform.
     """
 
-    def __init__(self, axis, func, traj_len: int = 50) -> None:
+    def __init__(self, axis, func, traj_len: int = 50):
         self.__func = func
-        trans = self.__func(0)
-        self.__trans = Frame(trans)
-        self.__trans.add_frame(axis)
+        self.__trans = self.__func(0)
+        self.__frame = Frame(self.__trans)
+        self.__frame.add_frame(axis)
 
-        self.__px = deque([trans[0, 3]], maxlen=traj_len)
-        self.__py = deque([trans[1, 3]], maxlen=traj_len)
-        self.__pz = deque([trans[2, 3]], maxlen=traj_len)
+        self.__px = deque([self.__trans[0, 3]], maxlen=traj_len)
+        self.__py = deque([self.__trans[1, 3]], maxlen=traj_len)
+        self.__pz = deque([self.__trans[2, 3]], maxlen=traj_len)
 
-        self.__line = ax.plot(self.__px, self.__py, self.__pz, c="r", alpha=0.2)[0]
+        self.__line = axis.plot(self.__px, self.__py, self.__pz, c="r", alpha=0.2)[0]
+
+    @property
+    def trans(self):
+        return self.__trans
 
     def __iter__(self):
         return (
@@ -40,20 +44,46 @@ class VisualPose:
 
     def update(self, timepoint: int, total_time: int):
         """update transform by single parameter."""
-        data = self.__func(timepoint / total_time)
-        self.__trans.set_data(data)
-        self.__px.append(data[0, 3])
-        self.__py.append(data[1, 3])
-        self.__pz.append(data[2, 3])
+        self.__trans = self.__func(timepoint / total_time)
+        self.__frame.set_data(self.__trans)
+        self.__px.append(self.__trans[0, 3])
+        self.__py.append(self.__trans[1, 3])
+        self.__pz.append(self.__trans[2, 3])
         self.__line.set_data(self.__px, self.__py)
         self.__line.set_3d_properties(self.__pz)
-        return (self.__trans, self.__line)
+        return self.__trans
 
     def clear(self):
-        self.__trans.set_data(self.__func(0))
+        """clear trajectory."""
+        self.__trans = self.__func(0)
+        self.__frame.set_data(self.__trans)
         for pos in (self.__px, self.__py, self.__pz):
             pos.clear()
-        return (self.__trans, self.__line)
+        return self.__trans
+
+
+class VisualLink:
+    """plot linkage between frame"""
+
+    def __init__(self, axis, obj1: VisualPose, obj2: VisualPose):
+        self.__line = axis.plot(
+            (obj1.trans[0, 3], obj2.trans[0, 3]),
+            (obj1.trans[1, 3], obj2.trans[1, 3]),
+            (obj1.trans[2, 3], obj2.trans[2, 3]),
+            c="k",
+        )[0]
+        self.__objs = obj1
+        self.__obje = obj2
+
+    def update(self):
+        """update linkage with transform."""
+        self.__line.set_data(
+            (self.__objs.trans[0, 3], self.__obje.trans[0, 3]),
+            (self.__objs.trans[1, 3], self.__obje.trans[1, 3]),
+        )
+        self.__line.set_3d_properties(
+            (self.__objs.trans[2, 3], self.__obje.trans[2, 3])
+        )
 
 
 R1 = pr.active_matrix_from_extrinsic_euler_zyz([np.pi / 3, np.pi / 6, np.pi / 2])
@@ -87,23 +117,34 @@ if __name__ == "__main__":
     pytr.plot_transform(ax, A2B=T2, name="Start")
     pytr.plot_transform(ax, A2B=T1, name="End")
 
-    NFRAME = 300
-    animated_obj = []
-    animated_obj.append(VisualPose(ax, cal_cur_trans1))
-    animated_obj.append(VisualPose(ax, cal_cur_trans2))
+    NFRAME = 200
+    transform_obj = []
+    transform_obj.append(VisualPose(ax, cal_cur_trans1))
+    transform_obj.append(VisualPose(ax, cal_cur_trans2))
+
+    linkage_obj = []
+    linkage_obj.append(VisualLink(ax, transform_obj[0], transform_obj[1]))
 
     def update_obj(cur_f):
         """Collect all animated objs to update."""
-        for obj in animated_obj:
+        for obj in transform_obj:
             obj.update(cur_f, NFRAME)
+        for link in linkage_obj:
+            link.update()
 
     def init_obj():
         """Collect all animated objs to init."""
-        for obj in animated_obj:
+        for obj in transform_obj:
             obj.clear()
+        for link in linkage_obj:
+            link.update()
 
     anim = animation.FuncAnimation(
-        fig, update_obj, NFRAME, init_obj, interval=int(10000 / NFRAME)
+        fig,
+        update_obj,
+        NFRAME,
+        init_obj,
+        interval=int(10000 / NFRAME),
     )
 
     plt.show()
