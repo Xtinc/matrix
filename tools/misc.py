@@ -32,9 +32,3 @@ def psd(x_s, f_s, scale_type="density"):
     return scipywelch(
         x_s, f_s, "flattop", nperseg=int(np.exp2(idx)), scaling="spectrum"
     )
-
-
-def convertq(content):
-    """Convert Q from a string, size should be same as q."""
-    list_q = [float(ele) for ele in content.split()]
-    return list_q
