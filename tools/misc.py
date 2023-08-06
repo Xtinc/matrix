@@ -42,9 +42,9 @@ class VisualPose:
     func: function which will be called to update transform.
     """
 
-    def __init__(self, axis3d, trans, traj_len: int = 50):
+    def __init__(self, axis3d, trans, traj_len: int = 50, scale=1.0):
         self.__trans = trans
-        self.__frame = Frame(self.__trans)
+        self.__frame = Frame(self.__trans, s=scale)
         self.__frame.add_frame(axis3d)
 
         self.__px = deque([self.__trans[0, 3]], maxlen=traj_len)
