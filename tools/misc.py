@@ -3,9 +3,11 @@
 Contains:
     Packed FFT function.
 """
+from collections import deque
 import numpy as np
 from scipy.fft import fft as scipyfft
 from scipy.signal import welch as scipywelch
+from pytransform3d.plot_utils import Frame
 
 
 def fft(x_s, f_s):
@@ -32,3 +34,79 @@ def psd(x_s, f_s, scale_type="density"):
     return scipywelch(
         x_s, f_s, "flattop", nperseg=int(np.exp2(idx)), scaling="spectrum"
     )
+
+
+class VisualPose:
+    """Store Transform and trajectory for plot.
+
+    func: function which will be called to update transform.
+    """
+
+    def __init__(self, axis3d, func, traj_len: int = 50):
+        self.__func = func
+        self.__trans = self.__func(0)
+        self.__frame = Frame(self.__trans)
+        self.__frame.add_frame(axis3d)
+
+        self.__px = deque([self.__trans[0, 3]], maxlen=traj_len)
+        self.__py = deque([self.__trans[1, 3]], maxlen=traj_len)
+        self.__pz = deque([self.__trans[2, 3]], maxlen=traj_len)
+
+        self.__line = axis3d.plot(self.__px, self.__py, self.__pz, c="r", alpha=0.2)[0]
+
+    @property
+    def trans(self):
+        """return transform now."""
+        return self.__trans
+
+    def __iter__(self):
+        return (
+            (self.__px[idx], self.__py[idx], self.__pz[idx])
+            for idx in range(len(self.__px))
+        )
+
+    def __str__(self) -> str:
+        return str(tuple(self))
+
+    def update(self, timepoint: int, total_time: int):
+        """update transform by single parameter."""
+        self.__trans = self.__func(timepoint / total_time)
+        self.__frame.set_data(self.__trans)
+        self.__px.append(self.__trans[0, 3])
+        self.__py.append(self.__trans[1, 3])
+        self.__pz.append(self.__trans[2, 3])
+        self.__line.set_data(self.__px, self.__py)
+        self.__line.set_3d_properties(self.__pz)
+        return self.__trans
+
+    def clear(self):
+        """clear trajectory."""
+        self.__trans = self.__func(0)
+        self.__frame.set_data(self.__trans)
+        for pos in (self.__px, self.__py, self.__pz):
+            pos.clear()
+        return self.__trans
+
+
+class VisualLink:
+    """plot linkage between frame"""
+
+    def __init__(self, axis3d, obj1: VisualPose, obj2: VisualPose):
+        self.__line = axis3d.plot(
+            (obj1.trans[0, 3], obj2.trans[0, 3]),
+            (obj1.trans[1, 3], obj2.trans[1, 3]),
+            (obj1.trans[2, 3], obj2.trans[2, 3]),
+            c="k",
+        )[0]
+        self.__objs = obj1
+        self.__obje = obj2
+
+    def update(self):
+        """update linkage with transform."""
+        self.__line.set_data(
+            (self.__objs.trans[0, 3], self.__obje.trans[0, 3]),
+            (self.__objs.trans[1, 3], self.__obje.trans[1, 3]),
+        )
+        self.__line.set_3d_properties(
+            (self.__objs.trans[2, 3], self.__obje.trans[2, 3])
+        )
