@@ -6,6 +6,7 @@
 namespace ppx
 {
     using so3 = MatrixS<3, 1>;
+    using T3 = MatrixS<3, 1>;
     using se3 = MatrixS<6, 1>;
 
     inline MatrixS<3, 3> hat(const so3 &vec)
@@ -145,7 +146,6 @@ namespace ppx
     class SE3 : public MatrixS<4, 4>
     {
         using Rep = MatrixS<4, 4>;
-        using T3 = MatrixS<3, 1>;
 
     public:
         using MatrixS::MatrixS;
