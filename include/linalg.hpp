@@ -54,6 +54,32 @@ namespace ppx
         return CLAMP(v, ra.first, ra.second, std::less<T>{});
     }
 
+    template <typename T, std::enable_if_t<std::is_floating_point<T>::value, void> * = nullptr>
+    std::vector<T> LINSPACE(T lo, T hi, size_t num)
+    {
+        if (num < 2)
+        {
+            // throw new exception ?;
+            return {};
+        }
+        auto partitions = num - 1;
+        std::vector<T> pts(num, 0.0);
+        T length = (hi - lo) / partitions;
+        pts[0] = lo;
+        for (size_t i = 1; i < partitions; i++)
+        {
+            pts[i] = lo + i * length;
+        }
+        pts[num - 1] = hi;
+        return pts;
+    }
+
+    template <typename T>
+    std::vector<T> LINSPACE(std::pair<T, T> range, size_t num)
+    {
+        return LINSPACE(range.first, range.second, num);
+    }
+
     // matrix related
     enum class Factorization : char
     {
