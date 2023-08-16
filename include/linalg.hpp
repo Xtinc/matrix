@@ -534,7 +534,7 @@ namespace ppx
                 {
                     scale += fabs(u(k, i));
                 }
-                if (scale > EPS_SP)
+                if (scale != 0.0)
                 {
                     for (k = i; k < m; k++)
                     {
@@ -571,7 +571,7 @@ namespace ppx
                 {
                     scale += fabs(u(i, k));
                 }
-                if (scale > EPS_SP)
+                if (scale != 0.0)
                 {
                     for (k = l - 1; k < n; k++)
                     {
@@ -609,7 +609,7 @@ namespace ppx
         {
             if (i < n - 1)
             {
-                if (fabs(g) > EPS_SP)
+                if (g != 0.0)
                 {
                     for (j = l; j < n; j++)
                     {
@@ -645,7 +645,7 @@ namespace ppx
             {
                 u(i, j) = 0.0;
             }
-            if (fabs(g) > EPS_SP)
+            if (g != 0.0)
             {
                 g = 1.0 / g;
                 for (j = l; j < n; j++)
@@ -678,17 +678,16 @@ namespace ppx
         {
             for (its = 0; its < 30; its++)
             {
-                bool flag = true;
-                nm = k - 1;
+                auto flag = true;
                 for (l = k; l >= 0; l--)
                 {
                     nm = l - 1;
-                    if (l == 0 || fabs(rv1[l]) <= EPS_SP * anorm)
+                    if (l == 0 || fabs(rv1[l]) < EPS_DP * anorm)
                     {
                         flag = false;
                         break;
                     }
-                    if (fabs(w[nm]) <= EPS_SP * anorm)
+                    if (fabs(w[nm]) < EPS_DP * anorm)
                     {
                         break;
                     }
@@ -701,7 +700,7 @@ namespace ppx
                     {
                         f = s * rv1[i];
                         rv1[i] = c * rv1[i];
-                        if (fabs(f) <= EPS_SP * anorm)
+                        if (fabs(f) < EPS_DP * anorm)
                         {
                             break;
                         }
@@ -728,14 +727,14 @@ namespace ppx
                         w[k] = -z;
                         for (j = 0; j < n; j++)
                         {
-                            v(j, k) = -v(j, k);
+                            v(j, k) *= -1;
                         }
                     }
                     break;
                 }
                 if (its == 29)
                 {
-                    return {MatrixS<M, N>(), StatusCode::SINGULAR};
+                    return {{}, StatusCode::SINGULAR};
                 }
                 x = w[l];
                 nm = k - 1;
@@ -770,7 +769,7 @@ namespace ppx
                     }
                     z = sqrt(f * f + h * h);
                     w[j] = z;
-                    if (fabs(z) > EPS_SP)
+                    if (fabs(z) > EPS_DP)
                     {
                         z = 1.0 / z;
                         c = f * z;
@@ -873,8 +872,8 @@ namespace ppx
         MatrixS<N, 1> w{};
         MatrixS<N, N> V{};
         bool sing = false;
-        auto U = svdcmp(mat, w, V, sing);
-        if (sing)
+        auto U = svdcmp(mat, w, V);
+        if (U.s == StatusCode::SINGULAR)
         {
             return {};
         }
@@ -888,7 +887,7 @@ namespace ppx
                 W(i, i) = 1.0 / w[i];
             }
         }
-        return V * W * U.T();
+        return V * W * U.x.T();
     }
 
     inline EqnResult<2> quadsolve(double a, double b, double c)

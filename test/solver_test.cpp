@@ -87,7 +87,7 @@ TEST_F(LinEqn_TestCase, SVD_decompose)
         if (result.s != StatusCode::SINGULAR)
         {
             auto residual = norm2((result.x - x).eval());
-            EXPECT_LE(residual / norm2(x), 1);
+            EXPECT_LE(residual, ppx::EPS_SP * 1e3);
         }
     }
 }
