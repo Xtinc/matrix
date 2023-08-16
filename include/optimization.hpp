@@ -580,6 +580,49 @@ namespace ppx
         return bfgs(func, dfunc, x0);
     }
 
+    template <size_t M, size_t N>
+    MatrixS<N, 1> regress(MatrixS<M, 1> y, const MatrixS<M, N> &X, double lambda = 0.0)
+    {
+        MatrixS<N, 1> w;
+        MatrixS<N, N> v;
+        const auto &u = svdcmp(X, w, v).x;
+
+        svbksb(U.x, w, V, b.data());
+        const int m = M;
+        const int n = N;
+        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+        auto eigen_min = *std::min_element(w.cbegin(), w.cend());
+        auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_SP;
+        bool allowBias = fabs(lambda) > EPS_DP && eigen_min < tsh;
+        std::array<double, N> tmp;
+        for (int j = 0; j < n; j++)
+        {
+            auto s = 0.0;
+            for (int i = 0; i < m; i++)
+            {
+                s += u(i, j) * b[i];
+            }
+            if (allowBias)
+            {
+                s = s * w[j] * w[j] / (w[j] * w[j] + lambda);
+            }
+            else
+            {
+                s = w[j] > tsh ? s / w[j] : 0.0;
+            }
+            tmp[j] = s;
+        }
+        for (int j = 0; j < n; j++)
+        {
+            auto s = 0.0;
+            for (int jj = 0; jj < n; jj++)
+            {
+                s += v(j, jj) * tmp[jj];
+            }
+            y[j] = s;
+        }
+        return {y, U.s};
+    }
 }
 
 #endif
