@@ -587,7 +587,6 @@ namespace ppx
         MatrixS<N, N> v;
         const auto &u = svdcmp(X, w, v).x;
 
-        svbksb(U.x, w, V, b.data());
         const int m = M;
         const int n = N;
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
@@ -600,7 +599,7 @@ namespace ppx
             auto s = 0.0;
             for (int i = 0; i < m; i++)
             {
-                s += u(i, j) * b[i];
+                s += u(i, j) * y[i];
             }
             if (allowBias)
             {
@@ -621,7 +620,7 @@ namespace ppx
             }
             y[j] = s;
         }
-        return {y, U.s};
+        return {y, 0.0, StatusCode::CONVERGED};
     }
 }
 
