@@ -96,8 +96,8 @@ if __name__ == "__main__":
 
     NFRAME = 200
     trans_list = []
-    for idx in range(NFRAME):
-        theta_list = ur6_joint_gen(idx / NFRAME)
+    for i in range(NFRAME):
+        theta_list = ur6_joint_gen(i / NFRAME)
         trans_list.append(fk_space(theta_list))
 
     transform_obj = [VisualPose(ax, t, traj_len=0, scale=0) for t in Mlist[:-1]]

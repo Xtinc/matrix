@@ -800,7 +800,7 @@ namespace ppx
         const int n = N;
         std::array<double, N> tmp{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_SP;
+        auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_DP;
         for (int j = 0; j < n; j++)
         {
             auto s = 0.0;
@@ -879,7 +879,7 @@ namespace ppx
         }
         MatrixS<N, N> W{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_SP;
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_DP;
         for (size_t i = 0; i < N; i++)
         {
             if (fabs(w[i]) > tsh)

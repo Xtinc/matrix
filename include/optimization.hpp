@@ -581,7 +581,7 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    MatrixS<N, 1> regress(MatrixS<M, 1> y, const MatrixS<M, N> &X, double lambda = 0.0)
+    OptResult<N> regress(MatrixS<M, 1> y, const MatrixS<M, N> &X, double lambda = 0.0)
     {
         MatrixS<N, 1> w;
         MatrixS<N, N> v;
@@ -620,7 +620,7 @@ namespace ppx
             }
             y[j] = s;
         }
-        return {y, 0.0, StatusCode::CONVERGED};
+        return {y.template sub<N, 1>(0, 0), 0.0, StatusCode::CONVERGED};
     }
 }
 
