@@ -603,7 +603,7 @@ namespace ppx
             }
             if (allowBias)
             {
-                s = s * w[j] * w[j] / (w[j] * w[j] + lambda);
+                s = s * w[j] / (w[j] * w[j] + lambda);
             }
             else
             {

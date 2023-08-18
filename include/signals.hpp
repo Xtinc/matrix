@@ -145,7 +145,7 @@ namespace ppx
     class Filter
     {
     public:
-        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = true) : freqtype(tp), deferred(isdeferred), last_result(0.0), a{1.0} {}
+        Filter(FreqProperty tp = FreqProperty::LowPass, bool isdeferred = true) : freqtype(tp), deferred(isdeferred), a{1.0}, last_result(std::nan("1")) {}
 
         std::vector<double> &coff_a()
         {
@@ -222,7 +222,7 @@ namespace ppx
 
         double diff() const
         {
-            if (!results.empty())
+            if (!std::isnan(last_result))
             {
                 return results.front() - last_result;
             }

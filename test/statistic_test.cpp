@@ -135,10 +135,10 @@ TEST_F(STA_TestCase, MovAvgFlt)
     test_filter(flt2, datas2, expects);
 
     MovAvgFilter<5> flt3;
-    expects = {0, 1, 2, 3, 4, 3, 4, 5};
-    test_filter(flt3, datas2, expects);
+    expects = {1, 2, 3, 4, 5, 4, 5, 6};
+    test_filter(flt3, {1, 2, 3, 4, 5, 6, 7, 8}, expects);
 
     MovAvgFilter<5> flt4(false);
-    expects = {0, 0.2, 0.6, 1.2, 2, 3, 4, 5};
-    test_filter(flt4, datas2, expects);
+    expects = {0.2, 0.6, 1.2, 2, 3, 4, 5, 6};
+    test_filter(flt4, {1, 2, 3, 4, 5, 6, 7, 8}, expects);
 }
