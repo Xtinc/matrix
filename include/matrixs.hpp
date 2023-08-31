@@ -96,24 +96,23 @@ namespace ppx
             using iterator = typename std::array<double, M * N>::iterator;
             using const_iterator = typename std::array<double, M * N>::const_iterator;
 
-            MatrixBase() : m_data{} {}
+            MatrixBase() noexcept : m_data{} {}
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::array<T, L> &list) : m_data{}
+            MatrixBase(const std::array<T, L> &list) noexcept : m_data{}
             {
                 constexpr auto real_idx = std::min(L, M * N);
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
-            template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::initializer_list<T> &list) : m_data{}
+            MatrixBase(const std::initializer_list<double> &list) noexcept : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::vector<T> &list) : m_data{}
+            MatrixBase(const std::vector<T> &list) noexcept : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -466,8 +465,7 @@ namespace ppx
         {
         }
 
-        template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        MatrixS(const std::initializer_list<T> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::initializer_list<double> &list) : details::MatrixBase<M, N>(list)
         {
         }
 
@@ -813,7 +811,7 @@ namespace ppx
             }
             return os;
         }
-        
+
         constexpr static auto LEN = M * N;
 
         // Static function.
