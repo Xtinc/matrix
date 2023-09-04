@@ -288,7 +288,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(std::initializer_list<T> list)
+            SubMatrix &operator=(const std::initializer_list<T> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
@@ -379,7 +379,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(std::initializer_list<T> list)
+            SubMatrix &operator=(const std::initializer_list<T> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
