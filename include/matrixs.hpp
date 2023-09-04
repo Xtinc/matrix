@@ -105,7 +105,7 @@ namespace ppx
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
-            MatrixBase(const std::initializer_list<double> &list) noexcept : m_data{}
+            MatrixBase(std::initializer_list<double> list) noexcept : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -138,7 +138,7 @@ namespace ppx
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
-            MatrixBase(const std::initializer_list<int> &list) : m_data(M * N, 0.0)
+            MatrixBase(std::initializer_list<double> list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -288,7 +288,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::initializer_list<T> &list)
+            SubMatrix &operator=(std::initializer_list<T> list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
@@ -379,7 +379,7 @@ namespace ppx
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::initializer_list<T> &list)
+            SubMatrix &operator=(std::initializer_list<T> list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
