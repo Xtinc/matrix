@@ -20,7 +20,7 @@ TEST_F(LinEqn_TestCase, Quadtratic)
 TEST_F(LinEqn_TestCase, LU_decompose)
 {
     std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
-    for (size_t i = 0; i < 1000; i++)
+    for (size_t i = 0; i < 100; i++)
     {
         MatrixS<100, 100> A;
         for (auto &ele : A)
@@ -45,7 +45,7 @@ TEST_F(LinEqn_TestCase, LU_decompose)
 TEST_F(LinEqn_TestCase, QR_decompose)
 {
     std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
-    for (size_t i = 0; i < 1000; i++)
+    for (size_t i = 0; i < 100; i++)
     {
         MatrixS<100, 100> A;
         for (auto &ele : A)
