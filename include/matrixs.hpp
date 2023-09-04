@@ -105,7 +105,7 @@ namespace ppx
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
-            MatrixBase(std::initializer_list<double> list) noexcept : m_data{}
+            MatrixBase(const std::initializer_list<double> &list) noexcept : m_data{}
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
@@ -138,7 +138,7 @@ namespace ppx
                 std::copy_n(list.begin(), real_idx, m_data.begin());
             }
 
-            MatrixBase(std::initializer_list<double> list) : m_data(M * N, 0.0)
+            MatrixBase(const std::initializer_list<double> &list) : m_data(M * N, 0.0)
             {
                 auto real_idx = list.size() < M * N ? list.size() : M * N;
                 std::copy_n(list.begin(), real_idx, m_data.begin());
