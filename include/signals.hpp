@@ -317,7 +317,7 @@ namespace ppx
             auto sfr = 1.0;
             auto sfi = 0.0;
 
-            for (int k = 0; k < N; ++k)
+            for (int k = 0; k < (int)N; ++k)
             {
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
                 auto sparg = ctt + sin(parg);
@@ -360,7 +360,7 @@ namespace ppx
             {
                 cal_lphp_coffb(false);
                 auto tcof = b;
-                for (int i = 0; i < N; ++i)
+                for (size_t i = 0; i < N; ++i)
                 {
                     b[2 * i] = tcof[i];
                     b[2 * i + 1] = 0.0;
@@ -374,7 +374,7 @@ namespace ppx
                 b[1] = alpha;
                 b[2] = 1.0;
 
-                for (int i = 1; i < N; ++i)
+                for (int i = 1; i < (int)N; ++i)
                 {
                     b[2 * i + 2] += b[2 * i];
                     for (int j = 2 * i; j > 1; --j)
@@ -424,7 +424,7 @@ namespace ppx
             MatrixS<2 * N, 1> rcof, tcof;
             MatrixS<4 * N, 1> dcof;
 
-            for (int k = 0; k < N; ++k)
+            for (int k = 0; k < (int)N; ++k)
             {
                 auto parg = PI * (2 * k + 1) / (double)(2 * N);
                 auto sa = 1.0 + s2t * sin(parg);
