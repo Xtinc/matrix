@@ -497,15 +497,15 @@ namespace ppx
         constexpr int n = N;
         for (int j = 0; j < n; j++)
         {
-            double sum = 0.0;
+            auto sum = 0.0;
             for (int i = j; i < m; i++)
             {
                 sum += a(i, j) * b[i];
             }
-            double tau = sum / c[j];
+            sum /= c[j];
             for (int i = j; i < m; i++)
             {
-                b[i] -= tau * a(i, j);
+                b[i] -= sum * a(i, j);
             }
         }
         // b[N - 1] /= d[N - 1];
