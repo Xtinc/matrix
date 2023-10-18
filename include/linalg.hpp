@@ -440,15 +440,14 @@ namespace ppx
         constexpr int m = M;
         constexpr int n = N;
         StatusCode sing = StatusCode::NORMAL;
-        double scale, sigma, sum, tau;
         for (int k = 0; k < n; k++)
         {
-            scale = 0.0;
+            auto scale = 0.0;
             for (int i = k; i < n; i++)
             {
                 scale = std::max(scale, fabs(a(i, k)));
             }
-            if (scale < EPS_SP)
+            if (scale < EPS_DP)
             {
                 sing = StatusCode::SINGULAR;
                 c[k] = 0.0;
@@ -456,16 +455,17 @@ namespace ppx
             }
             else
             {
-                sum = 0.0;
+                auto sum = 0.0;
                 for (int i = k; i < m; i++)
                 {
+                    a(i, k) /= scale;
                     sum += a(i, k) * a(i, k);
                 }
-                sigma = fabs(a(k, k)) < EPS_SP ? sqrt(sum) : SIGN(sqrt(sum), a(k, k));
+                auto sigma = SIGN(sqrt(sum), a(k, k));
                 a(k, k) += sigma;
                 c[k] = sigma * a(k, k);
-                // d[k] = -scale * sigma;
-                d[k] = -sigma;
+                d[k] = -scale * sigma;
+                // d[k] = -sigma;
                 for (int j = k + 1; j < n; j++)
                 {
                     sum = 0.0;
@@ -473,7 +473,7 @@ namespace ppx
                     {
                         sum += a(i, k) * a(i, j);
                     }
-                    tau = sum / c[k];
+                    auto tau = sum / c[k];
                     for (int i = k; i < m; i++)
                     {
                         a(i, j) -= tau * a(i, k);
