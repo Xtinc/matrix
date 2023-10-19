@@ -440,54 +440,65 @@ namespace ppx
         constexpr int m = M;
         constexpr int n = N;
         StatusCode sing = StatusCode::NORMAL;
-        for (int k = 0; k < n; k++)
+        for (int k = 0; k < std::min(m, n); k++)
         {
-            auto scale = 0.0;
-            for (int i = k; i < n; i++)
+            auto sum = 0.0;
+            for (int i = k; i < m; i++)
             {
-                scale = std::max(scale, fabs(a(i, k)));
+                sum += a(i, k) * a(i, k);
             }
-            if (scale < EPS_DP)
+            if (fabs(sum) < EPS_DP)
             {
                 sing = StatusCode::SINGULAR;
-                c[k] = 0.0;
-                d[k] = 0.0;
             }
-            else
+            auto sigma = SIGN(sqrt(sum), a(k, k));
+            a(k, k) += sigma;
+            c[k] = sigma * a(k, k);
+            d[k] = -sigma;
+            for (int j = k + 1; j < n; j++)
             {
-                auto sum = 0.0;
+                auto tau = 0.0;
                 for (int i = k; i < m; i++)
                 {
-                    a(i, k) /= scale;
-                    sum += a(i, k) * a(i, k);
+                    tau += a(i, k) * a(i, j);
                 }
-                auto sigma = SIGN(sqrt(sum), a(k, k));
-                a(k, k) += sigma;
-                c[k] = sigma * a(k, k);
-                d[k] = -scale * sigma;
-                // d[k] = -sigma;
-                for (int j = k + 1; j < n; j++)
+                tau = fabs(c[k]) > EPS_DP ? tau / c[k] : 0.0;
+                for (int i = k; i < m; i++)
                 {
-                    sum = 0.0;
-                    for (int i = k; i < m; i++)
-                    {
-                        sum += a(i, k) * a(i, j);
-                    }
-                    auto tau = sum / c[k];
-                    for (int i = k; i < m; i++)
-                    {
-                        a(i, j) -= tau * a(i, k);
-                    }
-                    // details::PRINT_SINGLE_ELEMENTS(a);
+                    a(i, j) -= tau * a(i, k);
                 }
             }
         }
-        // d[N - 1] = a(N - 1, N - 1);
-        if (fabs(d[n - 1]) < EPS_SP)
-        {
-            sing = StatusCode::SINGULAR;
-        }
         return {a, sing};
+    }
+
+    template <size_t M, size_t N>
+    MatrixS<M, N> qrctor(const MatrixS<M, N> &a, const MatrixS<N, 1> &c)
+    {
+        auto qt = MatrixS<M, M>::eye();
+        constexpr int m = M;
+        constexpr int n = N;
+
+        for (int k = 0; k < n - 1; k++)
+        {
+            if (fabs(c[k]) > EPS_DP)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    auto sum = 0.0;
+                    for (int i = k; i < n; i++)
+                    {
+                        sum += a(i, k) * qt(i, j);
+                    }
+                    sum /= c[k];
+                    for (int i = k; i < n; i++)
+                    {
+                        qt(i, j) -= sum * a(i, k);
+                    }
+                }
+            }
+        }
+        return qt;
     }
 
     template <size_t M, size_t N>
@@ -508,7 +519,6 @@ namespace ppx
                 b[i] -= sum * a(i, j);
             }
         }
-        // b[N - 1] /= d[N - 1];
         for (int i = n - 1; i >= 0; i--)
         {
             double sum = 0.0;
