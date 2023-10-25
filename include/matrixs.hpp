@@ -651,6 +651,18 @@ namespace ppx
         std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> adt() const;
 
         template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> ljac() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> ljacinv() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> rjac() const;
+
+        template <size_t A = M, size_t B = N>
+        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> rjacinv() const;
+
+        template <size_t A = M, size_t B = N>
         std::enable_if_t<A == 6 && B == 1, SE3> exp() const;
 
         template <size_t A = M, size_t B = N>

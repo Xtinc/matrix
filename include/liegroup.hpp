@@ -143,6 +143,50 @@ namespace ppx
         return hat(*this);
     }
 
+    template <>
+    template <>
+    inline MatrixS<3, 3> so3::ljac<3, 1>() const
+    {
+        auto result = MatrixS<3, 3>::eye();
+        auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
+        auto X = hat(*this);
+        if (x2 < EPS_DP)
+        {
+            return result + 0.5 * X;
+        }
+        auto x = sqrt(x2);
+        return result + (1 - cos(x)) / x2 * X + (x - sin(x)) / (x2 * x) * X * X;
+    }
+
+    template <>
+    template <>
+    inline MatrixS<3, 3> so3::ljacinv<3, 1>() const
+    {
+        auto result = MatrixS<3, 3>::eye();
+        auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
+        auto X = hat(*this);
+        if (x2 < EPS_DP)
+        {
+            return result - 0.5 * X;
+        }
+        auto x = sqrt(x2);
+        return result - 0.5 * X + (1 / x2 - (1 + cos(x)) / (2 * x * sin(x))) * X * X;
+    }
+
+    template <>
+    template <>
+    inline MatrixS<3, 3> so3::rjac<3, 1>() const
+    {
+        return ljac().T();
+    }
+
+    template <>
+    template <>
+    inline MatrixS<3, 3> so3::rjacinv<3, 1>() const
+    {
+        return ljacinv().T();
+    }
+
     class SE3 : public MatrixS<4, 4>
     {
         using Rep = MatrixS<4, 4>;
