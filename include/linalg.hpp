@@ -35,6 +35,12 @@ namespace ppx
         return a * a;
     }
 
+    template <typename T>
+    T CUB(T a)
+    {
+        return a * a * a;
+    }
+
     template <class T, class Compare>
     constexpr const T &CLAMP(const T &v, const T &lo, const T &hi, Compare comp)
     {
@@ -243,6 +249,22 @@ namespace ppx
     double inner_product(const MatrixS<N, 1> &a, const MatrixS<N, 1> &b)
     {
         return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
+    }
+
+    template <size_t M, size_t N>
+    double inner_product(const MatrixS<M, 1> &a, const MatrixS<N, 1> &b, const MatrixS<M, N> &Q)
+    {
+        auto result = 0.0;
+        for (size_t i = 0; i < N; i++)
+        {
+            auto sum = 0.0;
+            for (size_t j = 0; j < M; j++)
+            {
+                sum += a[j] * Q(i, j);
+            }
+            result += b[i] * sum;
+        }
+        return result;
     }
 
     template <size_t M, size_t N>
