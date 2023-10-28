@@ -14,6 +14,12 @@ struct joint
     joint() = default;
     joint(const std::string &name_, const se3 &screw_, const SE3 &pose_)
         : name(name_), screw(screw_), pose(pose_){};
+    friend std::ostream &operator<<(std::ostream &os, const joint &self)
+    {
+        std::cout << "Name:\t" << self.name << "\nrange:\t" << self.range.first << " " << self.range.second
+                  << "\nscrew:\t" << self.screw << "\npose:\t" << self.pose;
+        return os;
+    }
 };
 
 template <size_t N>
@@ -27,19 +33,23 @@ private:
 public:
     using Q = MatrixS<N, 1>;
     template <size_t L>
-    idx_available_t<L, joint &> getJoint()
+    idx_available_t<L, joint &> Joint()
     {
         return JList[L];
     }
     template <size_t L>
-    idx_available_t<L, const joint &> getJoint() const
+    idx_available_t<L, const joint &> Joint() const
     {
         return JList[L];
     }
-    template <size_t L>
-    idx_available_t<L> setJoint(const joint &j)
+
+    std::array<joint, N> &JointList()
     {
-        JList[L] = j;
+        return JList;
+    }
+    const std::array<joint, N> &JointList() const
+    {
+        return JList;
     }
     SE3 forwardSpace(const std::string &jointName, const Q &jointAngle) const
     {

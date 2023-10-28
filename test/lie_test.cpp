@@ -24,12 +24,12 @@ private:
 public:
     using Q = MatrixS<N, 1>;
     template <size_t L>
-    idx_available_t<L, joint &> getJoint()
+    idx_available_t<L, joint &> Joint()
     {
         return JList[L];
     }
     template <size_t L>
-    idx_available_t<L, const joint &> getJoint() const
+    idx_available_t<L, const joint &> Joint() const
     {
         return JList[L];
     }
