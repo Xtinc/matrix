@@ -80,6 +80,7 @@ public:
     MatrixS<6, N> jacobiSpace(const Q &jointAngle)
     {
         MatrixS<6, N> Js;
+        Js.sub<6, 1, false>(0, 0) = JList[0].screw;
         SE3 T;
         for (int i = 1; i < (int)N; i++)
         {
@@ -108,35 +109,80 @@ public:
     }
     Q inverseSpace(const SE3 &pose, Q init)
     {
-        SE3 Tsb;
-        se3 Vs;
-        bool converage = false;
+        auto Tsb = forwardSpace(init);
+        auto Js = jacobiSpace(init);
+        auto err = (pose * Tsb.I()).log();
+
+        auto dtd = 4 * inner_product(err, err);
         auto iter = 0u;
-        while (!converage && iter < 20)
+
+        while (++iter < 20 && norm2(err) > EPS_SP && dtd > EPS_SP)
         {
-            Tsb = forwardSpace(init);
-            Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-            auto err_w = norm2(Vs._1());
-            auto err_v = norm2(Vs._2());
-            printf("iter=%d, w_error=%f, v_error=%f\n", iter, err_w, err_v);
-            converage = err_w < EPS_SP && err_v < EPS_SP;
-            init += linsolve<Factorization::SVD>(jacobiSpace(init), Vs).x;
-            ++iter;
+            auto err_w = norm2(err._1());
+            auto err_v = norm2(err._2());
+            printf("iter=%d, w_error=%15.8f, v_error=%15.8f, err=%15.8f\n", iter, err_w, err_v, norm2(err));
+
+            auto g = Js.T() * err;
+            auto alpha = inner_product(err, Js * g) / SQR(norm2(Js * g));
+            auto result = linsolve<Factorization::LU>(Js.T() * Js, g);
+
+            Q dq{};
+            if (result.s == StatusCode::CONVERGED)
+            {
+                Q pU = alpha * g;
+                const auto &pB = result.x;
+                auto npB = norm2(pB);
+                auto npU = norm2(pU);
+                if (npB < dtd)
+                {
+                    std::cout << "use GN ";
+                    dq = result.x;
+                }
+                else if (npU > dtd)
+                {
+                    std::cout << "use GD1 ";
+                    dq = sqrt(dtd) / norm2(g) * g;
+                }
+                else
+                {
+                    std::cout << "use MX ";
+                    Q pBU = pB - pU;
+                    auto tau = sqrt(inner_product(pU, pBU) - inner_product(pBU, pBU) * (npU - dtd));
+                    tau = (tau - inner_product(pU, pBU)) / inner_product(pBU, pBU);
+                    dq = pU + tau * pBU;
+                }
+            }
+            else
+            {
+                std::cout << "use GD2 ";
+                dq = alpha * g;
+                // should use GD in trust region ?
+            }
+
+            auto pseudo_init = init + dq;
+            auto pseudo_Tsb = forwardSpace(pseudo_init);
+            auto pseudo_Js = jacobiSpace(pseudo_init);
+            auto pseudo_err = (pose * pseudo_Tsb.I()).log();
+            auto rho = inner_product(err, err) - inner_product(pseudo_err, pseudo_err);
+            rho /= inner_product(dq, Js.T() * err);
+            std::cout << "rho: " << rho << " dtd: " << dtd << "\n";
+            if (rho > 1e-5)
+            {
+                init = pseudo_init;
+                Tsb = pseudo_Tsb;
+                Js = pseudo_Js;
+                err = pseudo_err;
+            }
+            if (rho > 0.75)
+            {
+                dtd = std::max(dtd, 9 * norm2(dq));
+            }
+            else if (rho < 0.25)
+            {
+                dtd /= 9;
+            }
         }
         return init;
-        // auto fn = [this, pose](const Q &x)
-        // {
-        //     auto Tsb = forwardSpace(x);
-        //     auto Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-        //     return 0.5 * inner_product(Vs, Vs);
-        // };
-        // auto dfn = [this, pose](const Q &x)
-        // {
-        //     auto Tsb = forwardSpace(x);
-        //     se3 Vs = Tsb.Adt() * (Tsb.I() * pose).log();
-        //     return Q(jacobiSpace(x) * Vs);
-        // };
-        // return fminunc<Optimization::GradientDescent>(fn, dfn, init).x;
     }
 };
 

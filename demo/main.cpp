@@ -362,28 +362,23 @@ void test_lieGroup()
 
 void test_robotics()
 {
-    {
-        kinematics<6> UR5;
-        SE3 F6{-1.0, 0.0, 0.0, 0.0,
-               0.0, 0.0, 1.0, 0.0,
-               0.0, 1.0, 0.0, 0.0,
-               0.817, 0.191, -0.006, 1.0};
-        UR5.Joint<0>() = {"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3()};
-        UR5.Joint<1>() = {"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}};
-        UR5.Joint<2>() = {"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}};
-        UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}};
-        UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}};
-        UR5.Joint<5>() = {"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6};
-        PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
-        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
-        PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
-        SE3 TargetPose{0.0, 1.0, 0.0, 0.0,
-                       -1.0, 0.0, 0.0, 0.0,
-                       0.0, 0.0, 1.0, 0.0,
-                       0.095, 0.109, 0.988, 1.0};
-        PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.0, -1.5, 0.0, 0.0, 1.5, 0.0}), "IKSpace = ");
-        std::cout << UR5.JointList()[0] << std::endl;
-    }
+    kinematics<6> UR5;
+    SE3 F6{-1.0, 0.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.817, 0.191, -0.006, 1.0};
+    UR5.Joint<0>() = {"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3()};
+    UR5.Joint<1>() = {"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}};
+    UR5.Joint<2>() = {"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}};
+    UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}};
+    UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}};
+    UR5.Joint<5>() = {"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6};
+    PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
+    PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
+    PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
+    SE3 TargetPose = UR5.forwardSpace({-0.3, -1.66, 1.0, 2.1, 1.66, -1.84});
+
+    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.0, -1.5, 0.9, 1.4, 0.5, -0.6}), "IKSpace = ");
 }
 
 void read_real_data()
@@ -420,21 +415,21 @@ int main(int, char **)
 {
     ppx::initialize_log("./", "test", 100);
     ppx::set_log_level(~CH08);
-    LOG_CH(01) << "test_expr";
-    test_expr();
-    LOG_CH(02) << "test_matrix";
-    test_matrix();
-    LOG_CH(03) << "test_linear";
-    test_linear();
-    LOG_CH(04) << "test_statics";
-    test_statics();
-    LOG_CH(05) << "test_lieGroup";
-    test_lieGroup();
-    LOG_CH(06) << "test_robotics";
+    // LOG_CH(01) << "test_expr";
+    // test_expr();
+    // LOG_CH(02) << "test_matrix";
+    // test_matrix();
+    // LOG_CH(03) << "test_linear";
+    // test_linear();
+    // LOG_CH(04) << "test_statics";
+    // test_statics();
+    // LOG_CH(05) << "test_lieGroup";
+    // test_lieGroup();
+    // LOG_CH(06) << "test_robotics";
     test_robotics();
-    LOG_CH(07) << "test_nonlinear";
-    test_nonlinear();
-    LOG_CH(01) << "test end";
+    // LOG_CH(07) << "test_nonlinear";
+    // test_nonlinear();
+    // LOG_CH(01) << "test end";
     // read_real_data();
 
     return EXIT_SUCCESS;
