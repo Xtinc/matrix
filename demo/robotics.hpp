@@ -80,7 +80,7 @@ public:
     MatrixS<6, N> jacobiSpace(const Q &jointAngle)
     {
         MatrixS<6, N> Js;
-        Js.sub<6, 1, false>(0, 0) = JList[0].screw;
+        Js.template sub<6, 1, false>(0, 0) = JList[0].screw;
         SE3 T;
         for (int i = 1; i < (int)N; i++)
         {
@@ -116,7 +116,7 @@ public:
         auto dtd = 4 * inner_product(err, err);
         auto iter = 0u;
 
-        while (++iter < 20 && norm2(err) > EPS_SP && dtd > EPS_SP)
+        while (++iter < 20 && norm2(err) > EPS_SP && sqrt(dtd) > EPS_SP)
         {
             auto err_w = norm2(err._1());
             auto err_v = norm2(err._2());
