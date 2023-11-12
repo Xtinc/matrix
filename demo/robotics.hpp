@@ -147,7 +147,7 @@ public:
                 {
                     std::cout << "use MX ";
                     Q pBU = pB - pU;
-                    auto tau = sqrt(inner_product(pU, pBU) - inner_product(pBU, pBU) * (npU - dtd));
+                    auto tau = sqrt(SQR(inner_product(pU, pBU)) - inner_product(pBU, pBU) * (npU - dtd));
                     tau = (tau - inner_product(pU, pBU)) / inner_product(pBU, pBU);
                     dq = pU + tau * pBU;
                 }
@@ -155,7 +155,7 @@ public:
             else
             {
                 std::cout << "use GD2 ";
-                dq = alpha * g;
+                dq = sqrt(dtd) / norm2(g) * g;
                 // should use GD in trust region ?
             }
 

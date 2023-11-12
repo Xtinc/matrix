@@ -372,44 +372,14 @@ void test_robotics()
     UR5.Joint<2>() = {"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}};
     UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}};
     UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}};
-    UR5.Joint<5>() = {"R6", se3{0.0, 1.0, 0.0, 0.006, 0.0, 0.817}, F6};
-    PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
-    PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
-    PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
-    SE3 TargetPose = UR5.forwardSpace({-0.3, -1.66, 1.0, 2.1, 1.66, -1.84});
+    UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6};
+    // PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
+    // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
+    // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
+    SE3 TargetPose = UR5.forwardSpace({-0.3, 0.0, 0.0, 2.1, 1.66, -1.84});
 
-    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.0, -1.5, 0.9, 1.4, 0.5, -0.6}), "IKSpace = ");
+    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.3, 0.0, 0.0, 0.4, 1.5, -0.6}), "IKSpace = ");
 }
-
-void read_real_data()
-{
-    std::ifstream ifs("data.txt");
-    std::vector<double> datas;
-    std::string line;
-    while (std::getline(ifs, line, '\n'))
-    {
-        double a = 0.0;
-        double b = 0.0;
-        std::stringstream ss(line);
-        for (int i = 0; i < 13; i++)
-        {
-            ss >> a;
-        }
-        for (int i = 0; i < 5; i++)
-        {
-            ss >> b;
-        }
-        datas.emplace_back(a + b);
-    }
-    // SGFilter<4, 8, 4> sg;
-    // FIRFilter<21> filter(0.1, 0.0);
-    // for (size_t i = 0; i < datas.size(); i++)
-    // {
-    //     std::cout << sg(datas.at(i)) << std::endl;
-    // }
-}
-
-using namespace ppx;
 
 int main(int, char **)
 {
