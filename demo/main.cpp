@@ -1,5 +1,4 @@
 #include "robotics.hpp"
-#include "ppxlog.h"
 #include "signals.hpp"
 #include <random>
 #include <future>
@@ -383,24 +382,12 @@ void test_robotics()
 
 int main(int, char **)
 {
-    ppx::initialize_log("./", "test", 100);
-    ppx::set_log_level(~CH08);
-    // LOG_CH(01) << "test_expr";
-    // test_expr();
-    // LOG_CH(02) << "test_matrix";
-    // test_matrix();
-    // LOG_CH(03) << "test_linear";
-    // test_linear();
-    // LOG_CH(04) << "test_statics";
-    // test_statics();
-    // LOG_CH(05) << "test_lieGroup";
-    // test_lieGroup();
-    // LOG_CH(06) << "test_robotics";
+    test_expr();
+    test_matrix();
+    test_linear();
+    test_statics();
+    test_lieGroup();
     test_robotics();
-    // LOG_CH(07) << "test_nonlinear";
-    // test_nonlinear();
-    // LOG_CH(01) << "test end";
-    // read_real_data();
-
+    test_nonlinear();
     return EXIT_SUCCESS;
 }

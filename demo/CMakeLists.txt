@@ -1,7 +1,7 @@
 set(SUBPRJ "demo")
 message(STATUS "---------------------------")
 message(STATUS "Current : ${SUBPRJ}")
-add_executable(demo ppxlog.cpp main.cpp)
+add_executable(demo main.cpp)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   target_link_libraries(demo PRIVATE ppx pthread)
   else()

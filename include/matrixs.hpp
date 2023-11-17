@@ -759,6 +759,11 @@ namespace ppx
                               { return details::is_same(ele1, ele2); });
         }
 
+        bool operator!=(const MatrixS &other) const
+        {
+            return !(*this == other);
+        }
+
         template <typename T>
         details::enable_arith_type_t<T, MatrixS &> operator+=(T ele)
         {

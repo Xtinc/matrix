@@ -944,14 +944,6 @@ namespace ppx
         return {{q / a, c / q}, StatusCode::NORMAL};
     }
 
-    template <size_t M, size_t N>
-    MatrixS<N, 1> rank(const MatrixS<M, N> &mat)
-    {
-        MatrixS<N, 1> d;
-        auto R = qrdcmp(mat, MatrixS<N, 1>{}, d);
-        return d;
-    }
-
     // eigen system
     namespace details
     {
