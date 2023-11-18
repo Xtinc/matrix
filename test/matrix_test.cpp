@@ -92,8 +92,8 @@ TEST_F(MatrixS_TestCase, cat)
     MatrixS<2, 2> y = {5, 6, 7, 8};
     MatrixS<2, 4> expect1{1, 2, 3, 4, 5, 6, 7, 8};
     MatrixS<4, 2> expect2{1, 2, 5, 6, 3, 4, 7, 8};
-    EXPECT_EQ(expect1, concat<Orientation::Horizontal>(x, y));
-    EXPECT_EQ(expect2, concat<Orientation::Vertical>(x, y));
+    EXPECT_EQ(expect1, concat<Ori::Col>(x, y));
+    EXPECT_EQ(expect2, concat<Ori::Row>(x, y));
 
     MatrixS<2, 3> a{1, 2, 3, 4, 5, 6};
     MatrixS<2, 1> b{9, 9};

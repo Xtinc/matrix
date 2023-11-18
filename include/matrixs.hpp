@@ -19,6 +19,12 @@ namespace ppx
     class SO3;
     class SE3;
 
+    enum class Ori : char
+    {
+        Row,
+        Col
+    };
+
     enum class StatusCode : char
     {
         NORMAL,
@@ -98,27 +104,6 @@ namespace ppx
 
             MatrixBase() noexcept : m_data{} {}
 
-            template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::array<T, L> &list) noexcept : m_data{}
-            {
-                constexpr auto real_idx = std::min(L, M * N);
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
-
-            template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(std::initializer_list<T> list) noexcept : m_data{}
-            {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
-
-            template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::vector<T> &list) noexcept : m_data{}
-            {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
-
         protected:
             std::array<double, M * N> m_data;
         };
@@ -131,26 +116,6 @@ namespace ppx
             using const_iterator = typename std::vector<double>::const_iterator;
 
             MatrixBase() : m_data(M * N, 0.0) {}
-
-            template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::array<T, L> &list) : m_data(M * N, 0.0)
-            {
-                constexpr auto real_idx = std::min(L, M * N);
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
-
-            MatrixBase(std::initializer_list<double> list) : m_data(M * N, 0.0)
-            {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
-
-            template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            MatrixBase(const std::vector<T> &list) : m_data(M * N, 0.0)
-            {
-                auto real_idx = list.size() < M * N ? list.size() : M * N;
-                std::copy_n(list.begin(), real_idx, m_data.begin());
-            }
 
         protected:
             std::vector<double> m_data;
@@ -462,24 +427,73 @@ namespace ppx
         MatrixS() = default;
 
         template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-        MatrixS(const std::array<T, L> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::array<T, L> &list)
         {
+            constexpr auto real_idx = std::min(L, M * N);
+            std::copy_n(list.begin(), real_idx, m_data.begin());
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        MatrixS(std::initializer_list<T> list) : details::MatrixBase<M, N>(list)
+        MatrixS(std::initializer_list<T> list)
         {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        MatrixS(const std::vector<T> &list) : details::MatrixBase<M, N>(list)
+        MatrixS(const std::vector<T> &list)
         {
+            auto real_idx = list.size() < M * N ? list.size() : M * N;
+            std::copy_n(list.begin(), real_idx, m_data.begin());
+        }
+
+        template <typename T, std::enable_if_t<std::is_arithmetic<T>::value> * = nullptr>
+        MatrixS(std::initializer_list<std::initializer_list<T>> lst, Ori RowOrCol = Ori::Col)
+        {
+            if (RowOrCol == Ori::Col)
+            {
+                auto real_col_cnt = std::min(lst.size(), N);
+                auto col_iter = lst.begin();
+                for (size_t j = 0; j < real_col_cnt; j++)
+                {
+                    auto real_row_cnt = std::min(col_iter->size(), M);
+                    auto row_iter = col_iter->begin();
+                    for (size_t i = 0; i < real_row_cnt; i++)
+                    {
+                        (*this)(i, j) = *row_iter;
+                        ++row_iter;
+                    }
+                    ++col_iter;
+                }
+            }
+            else
+            {
+                auto real_row_cnt = std::min(lst.size(), M);
+                auto row_iter = lst.begin();
+                for (size_t i = 0; i < real_row_cnt; i++)
+                {
+                    auto real_col_cnt = std::min(row_iter->size(), N);
+                    auto col_iter = row_iter->begin();
+                    for (size_t j = 0; j < real_col_cnt; j++)
+                    {
+                        (*this)(i, j) = *col_iter;
+                        ++col_iter;
+                    }
+                    ++row_iter;
+                }
+            }
         }
 
         template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
         MatrixS(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
-            : details::MatrixBase<M, N>({elem1[0], elem1[1], elem1[2], elem2[0], elem2[1], elem2[2]})
         {
+            m_data[0] = elem1[0];
+            m_data[1] = elem1[1];
+            m_data[2] = elem1[2];
+
+            m_data[3] = elem2[0];
+            m_data[4] = elem2[1];
+            m_data[5] = elem2[2];
         }
 
         // Member functions

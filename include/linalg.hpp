@@ -275,14 +275,9 @@ namespace ppx
         return {max_dis.rem, max_dis.quot};
     }
 
-    enum class Orientation
-    {
-        Horizontal,
-        Vertical
-    };
-
-    template <Orientation ori, size_t M, size_t N>
-    std::enable_if_t<ori == Orientation::Vertical, MatrixS<2 * M, N>> concat(const MatrixS<M, N> &a, const MatrixS<M, N> &b)
+    template <Ori ori, size_t M, size_t N>
+    std::enable_if_t<ori == Ori::Row, MatrixS<2 * M, N>> concat(const MatrixS<M, N> &a,
+                                                                const MatrixS<M, N> &b)
     {
         MatrixS<2 * M, N> result;
         for (size_t i = 0; i < 2 * M; ++i)
@@ -295,9 +290,9 @@ namespace ppx
         return result;
     }
 
-    template <Orientation ori, size_t M, size_t N>
-    std::enable_if_t<ori == Orientation::Horizontal, MatrixS<M, 2 * N>> concat(const MatrixS<M, N> &a,
-                                                                               const MatrixS<M, N> &b)
+    template <Ori ori, size_t M, size_t N>
+    std::enable_if_t<ori == Ori::Col, MatrixS<M, 2 * N>> concat(const MatrixS<M, N> &a,
+                                                                const MatrixS<M, N> &b)
     {
         MatrixS<M, 2 * N> result;
         for (size_t i = 0; i < M; ++i)
