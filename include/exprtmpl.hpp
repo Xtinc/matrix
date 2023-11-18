@@ -177,7 +177,7 @@ namespace ppx
                 return static_cast<T &>(*this);
             }
 
-            auto eval() const
+            decltype(auto) eval() const
             {
                 return (typename T::elem_type)self();
             }
