@@ -16,9 +16,6 @@ namespace ppx
     template <size_t M, size_t N>
     class MatrixS;
 
-    class SO3;
-    class SE3;
-
     enum class Ori : char
     {
         Row,
@@ -484,18 +481,6 @@ namespace ppx
             }
         }
 
-        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
-        MatrixS(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
-        {
-            m_data[0] = elem1[0];
-            m_data[1] = elem1[1];
-            m_data[2] = elem1[2];
-
-            m_data[3] = elem2[0];
-            m_data[4] = elem2[1];
-            m_data[5] = elem2[2];
-        }
-
         // Member functions
         double *data()
         {
@@ -656,42 +641,6 @@ namespace ppx
                 result(i, i) = (*this)[i];
             }
             return result;
-        }
-        // Lie Group
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, SO3> exp() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> adt() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> ljac() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> ljacinv() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> rjac() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 3 && B == 1, MatrixS<3, 3>> rjacinv() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 6 && B == 1, SE3> exp() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 6 && B == 1, MatrixS<6, 6>> adt() const;
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 6 && B == 1, MatrixS<3, 1>> _1() const
-        {
-            return {(*this)[0], (*this)[1], (*this)[2]};
-        }
-
-        template <size_t A = M, size_t B = N>
-        std::enable_if_t<A == 6 && B == 1, MatrixS<3, 1>> _2() const
-        {
-            return {(*this)[3], (*this)[4], (*this)[5]};
         }
 
         // Overloaded Operators

@@ -21,6 +21,13 @@ TEST_F(MatrixS_TestCase, ctor)
     EXPECT_EQ(C, D);
     EXPECT_EQ(sizeof(MatrixS<2, 2>), (sizeof(double)) * 4);
     EXPECT_EQ(sizeof(MatrixS<20, 20>), sizeof(std::vector<double>));
+    MatrixS<3, 2> E{1, 2, 3, 4, 5, 6};
+    MatrixS<3, 2> F{{1, 2, 3}, {4, 5, 6}};
+    MatrixS<3, 2> G{{{1, 4}, {2, 5}, {3, 6}}, Ori::Row};
+    EXPECT_EQ(E, F);
+    EXPECT_EQ(F, G);
+    MatrixS<3, 2> H{{1, 2, 3, 4}, {4, 5, 6}};
+    EXPECT_EQ(G, H);
 }
 
 TEST_F(MatrixS_TestCase, expr)

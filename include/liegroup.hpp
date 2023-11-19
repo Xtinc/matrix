@@ -5,9 +5,32 @@
 
 namespace ppx
 {
-    using so3 = MatrixS<3, 1>;
+    class SO3;
+    class SE3;
     using T3 = MatrixS<3, 1>;
-    using se3 = MatrixS<6, 1>;
+
+    class so3 : public MatrixS<3, 1>
+    {
+    public:
+        so3() = default;
+
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
+        so3(std::initializer_list<T> list) : MatrixS<3, 1>(list) {}
+
+        so3(const MatrixS<3, 1> &mat) : MatrixS<3, 1>(mat) {}
+
+        SO3 exp() const;
+
+        MatrixS<3, 3> adt() const;
+
+        MatrixS<3, 3> ljac() const;
+
+        MatrixS<3, 3> ljacinv() const;
+
+        MatrixS<3, 3> rjac() const;
+
+        MatrixS<3, 3> rjacinv() const;
+    };
 
     inline MatrixS<3, 3> hat(const so3 &vec)
     {
@@ -18,6 +41,42 @@ namespace ppx
     {
         return {mat[5], mat[6], mat[1]};
     }
+
+    class se3 : public MatrixS<6, 1>
+    {
+    public:
+        se3() = default;
+
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
+        se3(std::initializer_list<T> list) : MatrixS<6, 1>(list) {}
+
+        se3(const MatrixS<6, 1> &mat) : MatrixS(mat) {}
+
+        se3(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
+        {
+            m_data[0] = elem1[0];
+            m_data[1] = elem1[1];
+            m_data[2] = elem1[2];
+
+            m_data[3] = elem2[0];
+            m_data[4] = elem2[1];
+            m_data[5] = elem2[2];
+        }
+
+        SE3 exp() const;
+
+        MatrixS<6, 6> adt() const;
+
+        MatrixS<3, 1> _1() const
+        {
+            return {(*this)[0], (*this)[1], (*this)[2]};
+        }
+
+        MatrixS<3, 1> _2() const
+        {
+            return {(*this)[3], (*this)[4], (*this)[5]};
+        }
+    };
 
     inline MatrixS<4, 4> hat(const se3 &vec)
     {
@@ -34,8 +93,9 @@ namespace ppx
         using Rep = MatrixS<3, 3>;
 
     public:
-        using MatrixS::MatrixS;
-        SO3(Rep &&other) : MatrixS(std::forward<Rep>(other)) {}
+        template <typename T>
+        SO3(std::initializer_list<T> list) : MatrixS(list) {}
+        SO3(const Rep &other) : MatrixS(other) {}
         SO3() : MatrixS(Rep::eye()){};
         SO3(const MatrixS<3, 1> &xAxis, const MatrixS<3, 1> &yAxis, const MatrixS<3, 1> &zAxis)
             : MatrixS<3, 3>{xAxis[0], xAxis[1], xAxis[2], yAxis[0], yAxis[1], yAxis[2], zAxis[0], zAxis[1], zAxis[2]} {}
@@ -69,20 +129,17 @@ namespace ppx
             else if (acosinput <= -1.0)
             {
                 MatrixS<3, 1> omg{};
-                if (!details::near_zero(1 + R(2, 2)))
+                if (!details::is_same(1 + R(2, 2), 0.0))
                 {
-                    // omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * MatrixS<3, 1>{R(0, 2), R(1, 2), R(2, 2)};
-                    omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * R.col(2);
+                    omg = (1.0 / sqrt(2 + 2 * R(2, 2))) * T3{R(0, 2), R(1, 2), 1 + R(2, 2)};
                 }
-                else if (!details::near_zero(1 + R(1, 1)))
+                else if (!details::is_same(1 + R(1, 1), 0.0))
                 {
-                    omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * R.col(1);
-                    // omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * MatrixS<3, 1>{R(0, 1), R(1, 1), +R(2, 1)};
+                    omg = (1.0 / sqrt(2 + 2 * R(1, 1))) * T3{R(0, 1), 1 + R(1, 1), +R(2, 1)};
                 }
                 else
                 {
-                    omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * R.col(0);
-                    // omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * MatrixS<3, 1>{R(0, 0), R(1, 0), +R(2, 0)};
+                    omg = (1.0 / sqrt(2 + 2 * R(0, 0))) * T3{1 + R(0, 0), R(1, 0), +R(2, 0)};
                 }
                 return PI * omg;
             }
@@ -104,22 +161,20 @@ namespace ppx
 
         static SO3 RotY(double theta)
         {
-            return {cos(theta), 0.0, sin(theta),
+            return {cos(theta), 0.0, -sin(theta),
                     0.0, 1.0, 0.0,
-                    -sin(theta), 0.0, cos(theta)};
+                    sin(theta), 0.0, cos(theta)};
         }
 
         static SO3 RotZ(double theta)
         {
-            return {cos(theta), -sin(theta), 0.0,
-                    sin(theta), cos(theta), 0.0,
+            return {cos(theta), sin(theta), 0.0,
+                    -sin(theta), cos(theta), 0.0,
                     0.0, 0.0, 1.0};
         }
     };
 
-    template <>
-    template <>
-    inline SO3 so3::exp<3, 1>() const
+    inline SO3 so3::exp() const
     {
         const auto &s = *this;
         double theta = norm2(s);
@@ -136,16 +191,12 @@ namespace ppx
         }
     }
 
-    template <>
-    template <>
-    inline MatrixS<3, 3> so3::adt<3, 1>() const
+    inline MatrixS<3, 3> so3::adt() const
     {
         return hat(*this);
     }
 
-    template <>
-    template <>
-    inline MatrixS<3, 3> so3::ljac<3, 1>() const
+    inline MatrixS<3, 3> so3::ljac() const
     {
         auto result = MatrixS<3, 3>::eye();
         auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
@@ -158,9 +209,7 @@ namespace ppx
         return result + (1 - cos(x)) / x2 * X + (x - sin(x)) / (x2 * x) * X * X;
     }
 
-    template <>
-    template <>
-    inline MatrixS<3, 3> so3::ljacinv<3, 1>() const
+    inline MatrixS<3, 3> so3::ljacinv() const
     {
         auto result = MatrixS<3, 3>::eye();
         auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
@@ -173,16 +222,12 @@ namespace ppx
         return result - 0.5 * X + (1 / x2 - (1 + cos(x)) / (2 * x * sin(x))) * X * X;
     }
 
-    template <>
-    template <>
-    inline MatrixS<3, 3> so3::rjac<3, 1>() const
+    inline MatrixS<3, 3> so3::rjac() const
     {
         return ljac().T();
     }
 
-    template <>
-    template <>
-    inline MatrixS<3, 3> so3::rjacinv<3, 1>() const
+    inline MatrixS<3, 3> so3::rjacinv() const
     {
         return ljacinv().T();
     }
@@ -192,8 +237,9 @@ namespace ppx
         using Rep = MatrixS<4, 4>;
 
     public:
-        using MatrixS::MatrixS;
-        SE3(Rep &&other) : MatrixS(std::forward<Rep>(other)) {}
+        template <typename T>
+        SE3(std::initializer_list<T> list) : MatrixS(list) {}
+        SE3(const Rep &other) : MatrixS(other) {}
         SE3(const SO3 &Rot, const T3 &Pos) : MatrixS(Rep::eye())
         {
             (*this).sub<3, 3, false>(0, 0) = Rot;
@@ -237,28 +283,28 @@ namespace ppx
         {
             const auto &R = Rot();
             const auto &p = Pos();
-            if (R == SO3{})
+            auto ctheta = (R.trace() - 1) / 2.0;
+            assert(fabs(ctheta) < 1 + EPS_SP);
+            if (fabs(ctheta) < 1)
             {
-                return se3(T3{}, p);
-            }
-            else
-            {
-                auto theta = acos((R.trace() - 1) / 2.0);
+                auto theta = acos(ctheta);
                 auto omg = R.log();
                 auto omgmat = hat(omg);
                 auto coff1 = (1.0 / theta - 1.0 / (tan(theta / 2.0) * 2.0)) / theta;
                 MatrixS<3, 3> logExpand = SO3::eye() - omgmat / 2.0 + coff1 * (omgmat * omgmat);
-                return se3(omg, logExpand * p);
+                return {omg, logExpand * p};
+            }
+            else
+            {
+                return {T3{}, p};
             }
         }
     };
 
-    template <>
-    template <>
-    inline SE3 se3::exp<6, 1>() const
+    inline SE3 se3::exp() const
     {
         auto phi = norm2(_1());
-        if (details::near_zero(phi))
+        if (details::is_same(phi, 0))
         {
             return {SO3(), _2()};
         }
@@ -271,9 +317,7 @@ namespace ppx
         }
     }
 
-    template <>
-    template <>
-    inline MatrixS<6, 6> se3::adt<6, 1>() const
+    inline MatrixS<6, 6> se3::adt() const
     {
         MatrixS<6, 6> result;
         result.sub<3, 3, false>(0, 0) = hat(_1());

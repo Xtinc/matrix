@@ -141,6 +141,18 @@ TEST_F(LieGroup_TestCase, so3)
     EXPECT_EQ(result, expected);
 }
 
+TEST_F(LieGroup_TestCase, SO3)
+{
+    for (int i = -179; i < 180; i++)
+    {
+        so3 w{0.0, 0.0, DEG_RAD((double)i)};
+        auto R = w.exp();
+        EXPECT_EQ(SO3::RotZ(DEG_RAD((double)i)), R);
+        auto dR = R.log();
+        EXPECT_NEAR(norm2((dR - w).eval()), 0.0, EPS_SP);
+    }
+}
+
 TEST_F(LieGroup_TestCase, SE3)
 {
     SE3 Tinput{1, 0, 0, 0,
@@ -158,8 +170,8 @@ TEST_F(LieGroup_TestCase, SE3)
 TEST_F(LieGroup_TestCase, se3)
 {
     MatrixS<4, 4> se3mat = {0.0, 0.0, 0.0, 0.0,
-                            0.0, 0.0, 1.5708, 0.0,
-                            0.0, -1.5708, 0.0, 0.0,
+                            0.0, 0.0, PI / 2.0, 0.0,
+                            0.0, -PI / 2.0, 0.0, 0.0,
                             0.0, 2.3562, 2.3562, 0.0};
     SE3 result{{1, 0, 0, 0, 0, 1, 0, -1, 0, 0}, {0, 0, 3}};
     auto cal = vee(se3mat).exp();
