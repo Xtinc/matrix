@@ -427,21 +427,21 @@ namespace ppx
         MatrixS(const std::array<T, L> &list)
         {
             constexpr auto real_idx = std::min(L, M * N);
-            std::copy_n(list.begin(), real_idx, m_data.begin());
+            std::copy_n(list.begin(), real_idx, this->m_data.begin());
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
         MatrixS(std::initializer_list<T> list)
         {
             auto real_idx = list.size() < M * N ? list.size() : M * N;
-            std::copy_n(list.begin(), real_idx, m_data.begin());
+            std::copy_n(list.begin(), real_idx, this->m_data.begin());
         }
 
         template <typename T, details::enable_arith_type_t<T> * = nullptr>
         MatrixS(const std::vector<T> &list)
         {
             auto real_idx = list.size() < M * N ? list.size() : M * N;
-            std::copy_n(list.begin(), real_idx, m_data.begin());
+            std::copy_n(list.begin(), real_idx, this->m_data.begin());
         }
 
         template <typename T, std::enable_if_t<std::is_arithmetic<T>::value> * = nullptr>
