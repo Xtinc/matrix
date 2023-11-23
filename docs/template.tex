@@ -1,0 +1,91 @@
+\documentclass[12pt, a4paper, twoside]{ctexrep}
+\usepackage{amsmath, amsthm, amssymb, appendix, bm, fancyhdr, graphicx, geometry, mathrsfs, zhnumber, url}
+\usepackage{tcolorbox, booktabs, listings, accsupp}
+\usepackage[bookmarks=true, colorlinks, citecolor=black, linkcolor=black]{hyperref}
+\usepackage[ruled]{algorithm2e}
+% \usepackage[framed, numbered, autolinebreaks, useliterate]{mcode}
+
+\linespread{1.2}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\ctexset {chapter={name={第\,,\,章},number={\arabic{chapter}}}}
+\renewcommand{\thesection}{\arabic{section}.}
+\renewcommand{\baselinestretch}{1.0}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\thetable}{\arabic{section}.\arabic{table}}
+\renewcommand{\thefigure}{\arabic{section}.\arabic{figure}}
+
+\newcommand{\ud}{\mathop{}\negthinspace\mathrm{d}}
+
+% 代码环境
+\usepackage{listings}
+% 复制代码时不复制行号
+\usepackage{accsupp}
+  \newcommand{\emptyaccsupp}[1]{\BeginAccSupp{ActualText={}}#1\EndAccSupp{}}
+\usepackage{tcolorbox}
+  \tcbuselibrary{listings,skins,breakable,xparse}
+
+% global style
+\lstset{
+  basicstyle=\small\ttfamily,
+  % Word styles
+  keywordstyle=\color{blue},
+  commentstyle=\color{green!50!black},
+  columns=fullflexible,  % Avoid too sparse word spaces
+  keepspaces=true,
+  % Numbering
+  numbers=left,
+  numberstyle=\color{red!75!black}\emptyaccsupp,
+  % Lines and Skips
+  aboveskip=0pt plus 6pt,
+  belowskip=0pt plus 6pt,
+  breaklines=true,
+  breakatwhitespace=true,
+  emptylines=1}
+  
+\graphicspath{{./graphics/}}
+
+\begin{document}
+
+\pagestyle{empty}
+\setcounter{page}{0}
+
+\begin{center}
+    \Large{\textbf{\LaTeX 模板3.0}}
+\end{center}
+
+\begin{center}
+    \Large{\textbf{摘要}}
+\end{center}
+
+这里是摘要。
+
+\textbf{关键词：}这里是关键词；这里是关键词。
+
+\newpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+\pagestyle{plain}
+\fancyfoot[C]{\thepage}
+
+\input{chapter1.tex}
+
+\input{chapter4.tex}
+
+\newpage
+\begin{center}
+    \Large{\textbf{附录}}
+\end{center}
+
+\begin{appendices}
+    \renewcommand{\thesection}{\Alph{section}}
+    \section{所用软件}
+    论文使用\LaTeX 排版。
+    \section{代码}
+    所使用的代码如下。
+    % \begin{lstlisting}
+    %     Hello. 
+    % \end{lstlisting}
+\end{appendices}
+
+\end{document}
