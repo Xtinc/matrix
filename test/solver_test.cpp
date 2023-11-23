@@ -17,6 +17,24 @@ TEST_F(LinEqn_TestCase, Quadtratic)
     EXPECT_NEAR(res.x[1] / -4.050000332100021e-08, 1, 1e-7);
 }
 
+TEST_F(LinEqn_TestCase, MGS)
+{
+    MatrixS<3, 3> A{
+        {{1.0001, 0.5000, 0.3333},
+         {0.5000, 0.3334, 0.2500},
+         {0.3333, 0.2500, 0.2001}},
+        Ori::Row};
+    auto Q = MGS(A);
+    EXPECT_TRUE(norm1((Q.T() * Q - MatrixS<3, 3>::eye()).eval()) < EPS_SP);
+    MatrixS<100, 100> B;
+    for (size_t i = 0; i < 100; i++)
+    {
+        random(B);
+        auto R = MGS(B);
+        EXPECT_TRUE(norm1((R.T() * R - MatrixS<100, 100>::eye()).eval()) < EPS_SP);
+    }
+}
+
 TEST_F(LinEqn_TestCase, LU_decompose)
 {
     std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
