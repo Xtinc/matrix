@@ -136,7 +136,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<Factorization::LU>(A, b);
-        auto residual = norm2((result.x - x).eval());
+        auto residual = norm2(result.x - x);
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear linsolver SVD\n");
@@ -154,7 +154,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<Factorization::SVD>(A, b);
-        auto residual = norm2((result.x - x).eval());
+        auto residual = norm2(result.x - x);
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
     printf("Test linear linsolver QR\n");
@@ -172,7 +172,7 @@ void test_linear()
         }
         auto b = A * x;
         auto result = linsolve<Factorization::QR>(A, b);
-        auto residual = norm2((result.x - x).eval());
+        auto residual = norm2(result.x - x);
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
 }

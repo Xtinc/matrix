@@ -54,7 +54,7 @@ TEST_F(LinEqn_TestCase, LU_decompose)
         auto result = linsolve<Factorization::LU>(A, b);
         if (result.s != StatusCode::SINGULAR)
         {
-            auto residual = norm2((result.x - x).eval());
+            auto residual = norm2(result.x - x);
             EXPECT_LE(residual, ppx::EPS_SP * 1e3);
         }
     }
@@ -79,7 +79,7 @@ TEST_F(LinEqn_TestCase, QR_decompose)
         auto result = linsolve<Factorization::QR>(A, b);
         if (result.s != StatusCode::SINGULAR)
         {
-            auto residual = norm2((result.x - x).eval());
+            auto residual = norm2(result.x - x);
             EXPECT_LE(residual, ppx::EPS_SP * 1e3);
         }
     }
@@ -104,7 +104,7 @@ TEST_F(LinEqn_TestCase, SVD_decompose)
         auto result = linsolve<Factorization::SVD>(A, b);
         if (result.s != StatusCode::SINGULAR)
         {
-            auto residual = norm2((result.x - x).eval());
+            auto residual = norm2(result.x - x);
             EXPECT_LE(residual, ppx::EPS_SP * 1e3);
         }
     }

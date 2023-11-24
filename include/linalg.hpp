@@ -233,7 +233,7 @@ namespace ppx
     template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
     double norm2(T &&expr)
     {
-        U mat = t;
+        U mat = expr;
         return norm2(mat);
     }
 
