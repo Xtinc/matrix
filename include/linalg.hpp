@@ -188,7 +188,7 @@ namespace ppx
         return res;
     }
 
-    template <typename T, typename U = T::elem_type, size_t M = U::ROW, size_t N = U::COL>
+    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
     double norm1(T &&expr)
     {
         U mat = expr;
@@ -211,7 +211,7 @@ namespace ppx
         return res;
     }
 
-    template <typename T, typename U = T::elem_type, size_t M = U::ROW, size_t N = U::COL>
+    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
     double norminf(T &&expr)
     {
         U mat = expr;
@@ -230,7 +230,7 @@ namespace ppx
         return sqrt(res);
     }
 
-    template <typename T, typename U = T::elem_type, size_t M = U::ROW, size_t N = U::COL>
+    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
     double norm2(T &&expr)
     {
         U mat = t;
