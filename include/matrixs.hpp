@@ -22,54 +22,6 @@ namespace ppx
         Col
     };
 
-    enum class StatusCode : char
-    {
-        NORMAL,
-        CONVERGED,
-        DIVERGED,
-        SINGULAR
-    };
-
-    template <size_t M, size_t N>
-    struct FacResult
-    {
-        MatrixS<M, N> x;
-        StatusCode s = StatusCode::NORMAL;
-    };
-
-    inline std::ostream &operator<<(std::ostream &os, const StatusCode &self)
-    {
-        switch (self)
-        {
-        case StatusCode::NORMAL:
-            os << "NORMAL";
-            break;
-        case StatusCode::CONVERGED:
-            os << "CONVERGED";
-            break;
-        case StatusCode::DIVERGED:
-            os << "DIVERGED";
-            break;
-        case StatusCode::SINGULAR:
-            os << "SINGULAR";
-        default:
-            break;
-        }
-        return os;
-    }
-
-    template <size_t N>
-    FacResult<N, N> ludcmp(MatrixS<N, N> A, MatrixS<N, 1> &indx, bool &even);
-
-    template <size_t M, size_t N>
-    FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v);
-
-    template <size_t N>
-    void ludbksb(const MatrixS<N, N> &A, const MatrixS<N, 1> &indx, double *b);
-
-    template <size_t M, size_t N>
-    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b);
-
     namespace details
     {
         constexpr size_t MAX_SIZE_LIMIT = 260;
@@ -129,14 +81,14 @@ namespace ppx
         using disable_when_squre_t = std::enable_if_t<A != N, RT>;
 
         template <size_t A, size_t B>
-        class SubMatrixBase
+        class SubPartBase
         {
 
         public:
             using elem_tag = details::ElemTags::Mblock;
             using cast_type = MatrixS<A, B>;
 
-            SubMatrixBase(MatrixS<M, N> &self, size_t r, size_t c)
+            SubPartBase(MatrixS<M, N> &self, size_t r, size_t c)
                 : row_idx(r), col_idx(c), data(self)
             {
                 assert(row_idx + A <= M && col_idx + B <= N);
@@ -165,7 +117,7 @@ namespace ppx
                 }
             }
 
-            void copy_data(const SubMatrixBase &other)
+            void copy_data(const SubPartBase &other)
             {
                 for (size_t i = 0; i < A; i++)
                 {
@@ -198,74 +150,74 @@ namespace ppx
         };
 
         template <size_t A, size_t B, bool RefAndVal = true>
-        class SubMatrix : public SubMatrixBase<A, B>
+        class SubPart : public SubPartBase<A, B>
         {
-            using base_type = SubMatrixBase<A, B>;
+            using base_type = SubPartBase<A, B>;
 
         public:
             using elem_tag = typename base_type::elem_tag;
             using cast_type = typename base_type::cast_type;
 
-            SubMatrix(MatrixS<M, N> &self, size_t r, size_t c)
-                : SubMatrixBase<A, B>(self, r, c)
+            SubPart(MatrixS<M, N> &self, size_t r, size_t c)
+                : SubPartBase<A, B>(self, r, c)
             {
-                SubMatrixBase<A, B>::take_snap();
+                SubPartBase<A, B>::take_snap();
             }
 
-            SubMatrix(const SubMatrix &other)
+            SubPart(const SubPart &other)
             {
                 base_type::copy_data(other);
                 *base_type::copy = *other.copy;
             }
 
-            SubMatrix(SubMatrix &&other) noexcept : base_type::copy(std::move(other.copy))
+            SubPart(SubPart &&other) noexcept : base_type::copy(std::move(other.copy))
             {
                 base_type::copy_data(other);
             }
 
-            SubMatrix &operator=(const SubMatrix &other)
+            SubPart &operator=(const SubPart &other)
             {
                 base_type::copy_data(other);
                 *base_type::copy = *other.copy;
                 return *this;
             }
 
-            SubMatrix &operator=(SubMatrix &&other) noexcept
+            SubPart &operator=(SubPart &&other) noexcept
             {
                 base_type::copy_data(other);
                 base_type::copy = std::move(other.copy);
                 return *this;
             }
 
-            SubMatrix &operator=(const MatrixS<A, B> &other)
+            SubPart &operator=(const MatrixS<A, B> &other)
             {
                 base_type::ctor_by_list(other);
                 return *this;
             }
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::array<T, L> &list)
+            SubPart &operator=(const std::array<T, L> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(std::initializer_list<T> list)
+            SubPart &operator=(std::initializer_list<T> list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::vector<T> &list)
+            SubPart &operator=(const std::vector<T> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T>
-            details::enable_expr_type_t<T, SubMatrix &>
+            details::enable_expr_type_t<T, SubPart &>
             operator=(const T &expr)
             {
                 for (size_t j = 0; j < B; j++)
@@ -293,70 +245,70 @@ namespace ppx
         };
 
         template <size_t A, size_t B>
-        class SubMatrix<A, B, false> : public SubMatrixBase<A, B>
+        class SubPart<A, B, false> : public SubPartBase<A, B>
         {
-            using base_type = SubMatrixBase<A, B>;
+            using base_type = SubPartBase<A, B>;
 
         public:
             using elem_tag = typename base_type::elem_tag;
             using cast_type = typename base_type::cast_type;
 
-            SubMatrix(MatrixS<M, N> &self, size_t r, size_t c)
-                : SubMatrixBase<A, B>(self, r, c)
+            SubPart(MatrixS<M, N> &self, size_t r, size_t c)
+                : SubPartBase<A, B>(self, r, c)
             {
             }
 
-            SubMatrix(const SubMatrix &other)
-            {
-                base_type::copy_data(other);
-            }
-
-            SubMatrix(SubMatrix &&other) noexcept : base_type::copy(std::move(other.copy))
+            SubPart(const SubPart &other)
             {
                 base_type::copy_data(other);
             }
 
-            SubMatrix &operator=(const SubMatrix &other)
+            SubPart(SubPart &&other) noexcept : base_type::copy(std::move(other.copy))
             {
                 base_type::copy_data(other);
-                return *this;
             }
 
-            SubMatrix &operator=(SubMatrix &&other) noexcept
+            SubPart &operator=(const SubPart &other)
             {
                 base_type::copy_data(other);
                 return *this;
             }
 
-            SubMatrix &operator=(const MatrixS<A, B> &other)
+            SubPart &operator=(SubPart &&other) noexcept
+            {
+                base_type::copy_data(other);
+                return *this;
+            }
+
+            SubPart &operator=(const MatrixS<A, B> &other)
             {
                 base_type::ctor_by_list(other);
                 return *this;
             }
 
             template <typename T, size_t L, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::array<T, L> &list)
+            SubPart &operator=(const std::array<T, L> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::initializer_list<T> &list)
+            SubPart &operator=(std::initializer_list<T> list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T, details::enable_arith_type_t<T> * = nullptr>
-            SubMatrix &operator=(const std::vector<T> &list)
+            SubPart &operator=(const std::vector<T> &list)
             {
                 base_type::ctor_by_list(list);
                 return *this;
             }
 
             template <typename T>
-            details::enable_expr_type_t<T, SubMatrix &>
+            details::enable_expr_type_t<T, SubPart &>
             operator=(const T &expr)
             {
                 for (size_t j = 0; j < B; j++)
@@ -515,7 +467,7 @@ namespace ppx
         }
 
         template <size_t A, size_t B, bool RefAndVal = true>
-        SubMatrix<A, B, RefAndVal> sub(size_t row_start, size_t col_start)
+        SubPart<A, B, RefAndVal> sub(size_t row_start, size_t col_start)
         {
             return {*this, row_start, col_start};
         }
@@ -553,68 +505,15 @@ namespace ppx
             return res;
         }
 
-        template <size_t A = M>
-        enable_when_squre_t<A, MatrixS> I() const
-        {
-            std::array<int, M> indx{};
-            auto even = true;
-            auto LU = ludcmp(*this, indx, even);
-            if (LU.s == StatusCode::SINGULAR)
-            {
-                return {};
-            }
-            auto result = MatrixS<M, M>::eye();
-            for (size_t j = 0; j < M; j++)
-            {
-                ludbksb(LU.x, indx, result.data() + j * M);
-            }
-            return result;
-        }
+        MatrixS I() const;
 
-        template <size_t A = M>
-        disable_when_squre_t<A, MatrixS<N, M>> I() const
-        {
-            MatrixS<N, 1> w;
-            MatrixS<N, N> V;
-            auto U = svdcmp(*this, w, V);
-            if (U.s == StatusCode::SINGULAR)
-            {
-                return {};
-            }
-            MatrixS<N, N> W;
-            for (size_t i = 0; i < N; i++)
-            {
-                if (fabs(w[i]) > EPS_SP)
-                {
-                    W(i, i) = 1.0 / w[i];
-                }
-            }
-            return V * W * U.x.T();
-        }
+        double det() const;
 
-        template <size_t A = M>
-        enable_when_squre_t<A, double> det() const
+        double trace() const
         {
-            auto even = true;
-            std::array<int, M> indx{};
-            auto LU = ludcmp(*this, indx, even);
-            if (LU.s == StatusCode::SINGULAR)
-            {
-                return {};
-            }
-            auto D = even ? 1.0 : -1.0;
+            static_assert(M == N, "only square matrix has a trace.");
+            auto res = 0.0;
             for (size_t i = 0; i < M; i++)
-            {
-                D *= LU.x(i, i);
-            }
-            return D;
-        }
-
-        template <size_t A = M>
-        enable_when_squre_t<A, double> trace() const
-        {
-            double res = 0.0;
-            for (size_t i = 0; i < A; i++)
             {
                 res += (*this)(i, i);
             }
@@ -654,18 +553,6 @@ namespace ppx
         {
             assert(row < M && col < N);
             return this->m_data.at(row + col * M);
-        }
-
-        double &operator()(const std::pair<size_t, size_t> &idx)
-        {
-            assert(idx.first < M && idx.second < N);
-            return this->m_data.at(idx.first + idx.second * M);
-        }
-
-        const double &operator()(const std::pair<size_t, size_t> &idx) const
-        {
-            assert(idx.first < M && idx.second < N);
-            return this->m_data.at(idx.first + idx.second * M);
         }
 
         double &operator[](size_t idx)
@@ -796,32 +683,9 @@ namespace ppx
 
         constexpr static auto LEN = M * N;
 
-        // Static function.
-        static MatrixS eye()
-        {
-            MatrixS<M, N> result{};
-            auto real_idx = M < N ? M : N;
-            for (size_t i = 0; i < real_idx; i++)
-            {
-                result.data()[i * (M + 1)] = 1.0;
-            }
-            return result;
-        }
+        constexpr static auto ROW = M;
 
-        static MatrixS zeros()
-        {
-            return {};
-        }
-
-        constexpr size_t rows() const
-        {
-            return M;
-        }
-
-        constexpr size_t cols() const
-        {
-            return N;
-        }
+        constexpr static auto COL = N;
 
         constexpr size_t size() const
         {

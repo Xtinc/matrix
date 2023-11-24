@@ -34,7 +34,7 @@ void test_expr()
     PRINT_SINGLE_ELEMENTS(m, "m = ");
     // elem 0
     m.sub<2, 2, false>(0, 0) = {3, 3, 3};
-    m.sub<3, 1, false>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - MatrixS<3, 1>::eye());
+    m.sub<3, 1, false>(3, 3) = Abs(m.sub<3, 1>(3, 3) * 2 - MatrixS<3, 1>{});
     PRINT_SINGLE_ELEMENTS(m, "m = ");
 }
 
@@ -42,7 +42,7 @@ void test_matrix()
 {
     MatrixS<4, 4> a = {1, 2, 3, 4, 5, 6, 7, 8};
     PRINT_SINGLE_ELEMENTS(a);
-    PRINT_SINGLE_ELEMENTS(a(maxloc(a)), "max of a : ");
+    PRINT_SINGLE_ELEMENTS(a(maxloc(a).first, maxloc(a).second), "max of a : ");
     a.sub<2, 2>(2, 2) = MatrixS<2, 2>{1, 1, 1, 1} + 1;
     a.sub<2, 2>(0, 0) = a.sub<2, 2>(1, 1);
     a *= -1;

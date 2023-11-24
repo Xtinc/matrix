@@ -25,13 +25,13 @@ TEST_F(LinEqn_TestCase, MGS)
          {0.3333, 0.2500, 0.2001}},
         Ori::Row};
     auto Q = MGS(A);
-    EXPECT_TRUE(norm1((Q.T() * Q - MatrixS<3, 3>::eye()).eval()) < EPS_SP);
+    EXPECT_TRUE(norm1(Q.T() * Q - eye<3>()) < EPS_SP);
     MatrixS<100, 100> B;
     for (size_t i = 0; i < 100; i++)
     {
         random(B);
         auto R = MGS(B);
-        EXPECT_TRUE(norm1((R.T() * R - MatrixS<100, 100>::eye()).eval()) < EPS_SP);
+        EXPECT_TRUE(norm1(R.T() * R - eye<100>()) < EPS_SP);
     }
 }
 

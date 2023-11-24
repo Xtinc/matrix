@@ -96,7 +96,7 @@ namespace ppx
         template <typename T>
         SO3(std::initializer_list<T> list) : MatrixS(list) {}
         SO3(const Rep &other) : MatrixS(other) {}
-        SO3() : MatrixS(Rep::eye()){};
+        SO3() : MatrixS(eye<3>()){};
         SO3(const MatrixS<3, 1> &xAxis, const MatrixS<3, 1> &yAxis, const MatrixS<3, 1> &zAxis)
             : MatrixS<3, 3>{xAxis[0], xAxis[1], xAxis[2], yAxis[0], yAxis[1], yAxis[2], zAxis[0], zAxis[1], zAxis[2]} {}
         SO3(double m[3][3]) : MatrixS({m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]}) {}
@@ -187,7 +187,7 @@ namespace ppx
             auto omg = hat(s);
             auto coff1 = sin(theta) / theta;
             auto coff2 = (1 - cos(theta)) / (theta * theta);
-            return SO3::eye() + coff1 * omg + coff2 * (omg * omg);
+            return eye<3>() + coff1 * omg + coff2 * (omg * omg);
         }
     }
 
@@ -198,7 +198,7 @@ namespace ppx
 
     inline MatrixS<3, 3> so3::ljac() const
     {
-        auto result = MatrixS<3, 3>::eye();
+        auto result = eye<3>();
         auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
         auto X = hat(*this);
         if (x2 < EPS_DP)
@@ -211,7 +211,7 @@ namespace ppx
 
     inline MatrixS<3, 3> so3::ljacinv() const
     {
-        auto result = MatrixS<3, 3>::eye();
+        auto result = eye<3>();
         auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
         auto X = hat(*this);
         if (x2 < EPS_DP)
@@ -240,12 +240,12 @@ namespace ppx
         template <typename T>
         SE3(std::initializer_list<T> list) : MatrixS(list) {}
         SE3(const Rep &other) : MatrixS(other) {}
-        SE3(const SO3 &Rot, const T3 &Pos) : MatrixS(Rep::eye())
+        SE3(const SO3 &Rot, const T3 &Pos) : MatrixS(eye<4>())
         {
             (*this).sub<3, 3, false>(0, 0) = Rot;
             (*this).sub<3, 1, false>(0, 3) = Pos;
         }
-        SE3() : MatrixS(Rep::eye()) {}
+        SE3() : MatrixS(eye<4>()) {}
         SE3(double m[4][4]) : MatrixS({m[0][0], m[1][0], m[2][0], 0.0, m[0][1], m[1][1], m[2][1], 0.0, m[0][2], m[1][2], m[2][2], 0.0, m[0][3], m[1][3], m[2][3], 1.0}) {}
 
         SE3 operator*(const SE3 &other) const
@@ -291,7 +291,7 @@ namespace ppx
                 auto omg = R.log();
                 auto omgmat = hat(omg);
                 auto coff1 = (1.0 / theta - 1.0 / (tan(theta / 2.0) * 2.0)) / theta;
-                MatrixS<3, 3> logExpand = SO3::eye() - omgmat / 2.0 + coff1 * (omgmat * omgmat);
+                MatrixS<3, 3> logExpand = eye<3>() - omgmat / 2.0 + coff1 * (omgmat * omgmat);
                 return {omg, logExpand * p};
             }
             else
@@ -313,7 +313,7 @@ namespace ppx
             const auto ksi = hat(*this);
             auto coff1 = (1 - cos(phi)) / (phi * phi);
             auto coff2 = (phi - sin(phi)) / (phi * phi * phi);
-            return SE3::eye() + ksi + coff1 * (ksi * ksi) + coff2 * (ksi * ksi * ksi);
+            return eye<4>() + ksi + coff1 * (ksi * ksi) + coff2 * (ksi * ksi * ksi);
         }
     }
 

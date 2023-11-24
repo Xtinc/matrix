@@ -47,7 +47,7 @@ namespace ppx
     public:
         using samples = std::vector<MatrixS<N, 1>>;
 
-        MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()), m_gen(std::random_device{}()) {}
+        MultiNormalDistribution() : m_cov(eye<N>()), m_gen(std::random_device{}()) {}
 
         MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}
