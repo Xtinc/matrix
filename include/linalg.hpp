@@ -1028,7 +1028,7 @@ namespace ppx
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
         LU<M> lu(A);
-        if (lu.s == StatusCode::CONVERGED)
+        if (lu.s != StatusCode::SINGULAR)
         {
             lu.solve(b.data());
         }
