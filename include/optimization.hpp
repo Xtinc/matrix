@@ -404,7 +404,7 @@ namespace ppx
             OptResult<N> operator()(const T1 &f, const T2 &df, const MatrixS<N, 1> &x)
             {
                 R.x = x;
-                auto Q = MatrixS<N, N>::eye();
+                auto Q = eye<N>();
                 MatrixS<N, 1> g = df(x);
                 MatrixS<N, 1> dg;
                 MatrixS<N, 1> dx;
@@ -450,7 +450,7 @@ namespace ppx
             OptResult<N> operator()(const T &f, const MatrixS<N, 1> &x0)
             {
                 R.x = x0;
-                auto U = MatrixS<N, N>::eye();
+                auto U = eye<N>();
                 auto dx = 1.0;
                 auto its = 0u;
                 while (dx > FTOLA && its < ITMAX)
@@ -483,7 +483,7 @@ namespace ppx
                         break;
                     }
                     x += lr.x * d;
-                    dx = norm2<N, 1>(x - R.x);
+                    dx = norm2(x - R.x);
                     R.x = x;
                     R.y = lr.y;
                     // printf("iters = %d, residual = %g\n", its++, dx);

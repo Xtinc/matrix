@@ -116,7 +116,7 @@ public:
         auto dtd = 4 * inner_product(err, err);
         auto iter = 0u;
 
-        while (++iter < 20 && norm2(err) > EPS_SP && sqrt(dtd) > EPS_SP)
+        while (++iter < 50 && norm2(err) > EPS_SP && sqrt(dtd) > 100 * EPS_SP)
         {
             auto err_w = norm2(err._1());
             auto err_v = norm2(err._2());

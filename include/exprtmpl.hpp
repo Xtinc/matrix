@@ -14,7 +14,7 @@ namespace ppx
     constexpr double MAX_SP = std::numeric_limits<float>::max();
     constexpr double MAX_DP = std::numeric_limits<double>::max();
     constexpr int MAJOR_VERSION = 1;
-    constexpr int MINOR_VERSION = 1;
+    constexpr int MINOR_VERSION = 2;
 
     constexpr double DEG_RAD(double deg)
     {
@@ -190,12 +190,12 @@ namespace ppx
                 return self().size_impl();
             }
 
-            auto operator[](size_t idx) const
+            decltype(auto) operator[](size_t idx) const
             {
                 return self().at_impl(idx);
             }
 
-            auto operator()() const
+            decltype(auto) operator()() const
             {
                 return self()();
             }
@@ -230,7 +230,7 @@ namespace ppx
                 return value.size();
             };
 
-            auto at_impl(size_t idx) const
+            decltype(auto) at_impl(size_t idx) const
             {
                 return value[idx];
             };
@@ -264,7 +264,7 @@ namespace ppx
                 return m_expr.size();
             }
 
-            auto at_impl(size_t idx) const
+            decltype(auto) at_impl(size_t idx) const
             {
                 return m_ops(m_expr[idx]);
             }
@@ -307,7 +307,7 @@ namespace ppx
                 return std::max(m_lxpr.size(), m_rxpr.size());
             }
 
-            auto at_impl(size_t idx) const
+            decltype(auto) at_impl(size_t idx) const
             {
                 return m_ops(m_lxpr[idx], m_rxpr[idx]);
             }

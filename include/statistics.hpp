@@ -29,13 +29,25 @@ namespace ppx
         return sum / (vec.size() - 1);
     }
 
+    template <size_t M, size_t N>
+    void random(MatrixS<M, N> &mat)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> distr(-MAX_SP, MAX_SP);
+        for (auto &i : mat)
+        {
+            i = distr(gen);
+        }
+    }
+
     template <size_t N>
     class MultiNormalDistribution
     {
     public:
         using samples = std::vector<MatrixS<N, 1>>;
 
-        MultiNormalDistribution() : m_cov(MatrixS<N, N>::eye()), m_gen(std::random_device{}()) {}
+        MultiNormalDistribution() : m_cov(eye<N>()), m_gen(std::random_device{}()) {}
 
         MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
             : m_mean(mu), m_cov(sigma) {}

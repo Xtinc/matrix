@@ -40,12 +40,12 @@ TEST_F(MatrixS_TestCase, expr)
     a.sub<4, 1, false>(0, 1) = a.sub<4, 1>(0, 1) - a.sub<4, 1>(0, 3);
     a.sub<4, 2>(0, 2) = a.sub<4, 2>(0, 2) - a.sub<4, 2>(0, 2);
     a.sub<4, 2>(0, 2) = a.sub<4, 2>(0, 2) - a.sub<4, 2>(0, 2);
-    EXPECT_EQ(a, decltype(a)::zeros());
+    EXPECT_EQ(a, decltype(a){});
     MatrixS<3, 3> x = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     MatrixS<3, 3> y = x.T();
     MatrixS<3, 3> z;
     z.sub<3, 3>(0, 0) = (x * 2 + y * 2 + x * y) / 2 - MatrixS<3, 3>{35.0, 45.0, 55.0, 45.0, 56.5, 68.0, 55.0, 68.0, 81.0};
-    EXPECT_EQ(z, decltype(z)::zeros());
+    EXPECT_EQ(z, decltype(z){});
 }
 
 TEST_F(MatrixS_TestCase, func)
