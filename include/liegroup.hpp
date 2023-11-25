@@ -5,32 +5,9 @@
 
 namespace ppx
 {
-    class SO3;
-    class SE3;
+    using so3 = MatrixS<3, 1>;
+    using se3 = MatrixS<6, 1>;
     using T3 = MatrixS<3, 1>;
-
-    class so3 : public MatrixS<3, 1>
-    {
-    public:
-        so3() = default;
-
-        template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        so3(std::initializer_list<T> list) : MatrixS<3, 1>(list) {}
-
-        so3(const MatrixS<3, 1> &mat) : MatrixS<3, 1>(mat) {}
-
-        SO3 exp() const;
-
-        MatrixS<3, 3> adt() const;
-
-        MatrixS<3, 3> ljac() const;
-
-        MatrixS<3, 3> ljacinv() const;
-
-        MatrixS<3, 3> rjac() const;
-
-        MatrixS<3, 3> rjacinv() const;
-    };
 
     inline MatrixS<3, 3> hat(const so3 &vec)
     {
@@ -41,42 +18,6 @@ namespace ppx
     {
         return {mat[5], mat[6], mat[1]};
     }
-
-    class se3 : public MatrixS<6, 1>
-    {
-    public:
-        se3() = default;
-
-        template <typename T, details::enable_arith_type_t<T> * = nullptr>
-        se3(std::initializer_list<T> list) : MatrixS<6, 1>(list) {}
-
-        se3(const MatrixS<6, 1> &mat) : MatrixS(mat) {}
-
-        se3(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
-        {
-            m_data[0] = elem1[0];
-            m_data[1] = elem1[1];
-            m_data[2] = elem1[2];
-
-            m_data[3] = elem2[0];
-            m_data[4] = elem2[1];
-            m_data[5] = elem2[2];
-        }
-
-        SE3 exp() const;
-
-        MatrixS<6, 6> adt() const;
-
-        MatrixS<3, 1> _1() const
-        {
-            return {(*this)[0], (*this)[1], (*this)[2]};
-        }
-
-        MatrixS<3, 1> _2() const
-        {
-            return {(*this)[3], (*this)[4], (*this)[5]};
-        }
-    };
 
     inline MatrixS<4, 4> hat(const se3 &vec)
     {
@@ -174,7 +115,9 @@ namespace ppx
         }
     };
 
-    inline SO3 so3::exp() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    SO3 MatrixS<M, N>::exp() const
     {
         const auto &s = *this;
         double theta = norm2(s);
@@ -191,15 +134,19 @@ namespace ppx
         }
     }
 
-    inline MatrixS<3, 3> so3::adt() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    MatrixS<3, 3> MatrixS<M, N>::adt() const
     {
         return hat(*this);
     }
 
-    inline MatrixS<3, 3> so3::ljac() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    MatrixS<3, 3> MatrixS<M, N>::ljac() const
     {
         auto result = eye<3>();
-        auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
+        auto x2 = this->m_data[0] * this->m_data[0] + this->m_data[1] * this->m_data[1] + this->m_data[2] * this->m_data[2];
         auto X = hat(*this);
         if (x2 < EPS_DP)
         {
@@ -209,10 +156,12 @@ namespace ppx
         return result + (1 - cos(x)) / x2 * X + (x - sin(x)) / (x2 * x) * X * X;
     }
 
-    inline MatrixS<3, 3> so3::ljacinv() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    MatrixS<3, 3> MatrixS<M, N>::ljacinv() const
     {
         auto result = eye<3>();
-        auto x2 = m_data[0] * m_data[0] + m_data[1] * m_data[1] + m_data[2] * m_data[2];
+        auto x2 = this->m_data[0] * this->m_data[0] + this->m_data[1] * this->m_data[1] + this->m_data[2] * this->m_data[2];
         auto X = hat(*this);
         if (x2 < EPS_DP)
         {
@@ -222,12 +171,16 @@ namespace ppx
         return result - 0.5 * X + (1 / x2 - (1 + cos(x)) / (2 * x * sin(x))) * X * X;
     }
 
-    inline MatrixS<3, 3> so3::rjac() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    MatrixS<3, 3> MatrixS<M, N>::rjac() const
     {
         return ljac().T();
     }
 
-    inline MatrixS<3, 3> so3::rjacinv() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 3 && B == 1> *>
+    MatrixS<3, 3> MatrixS<M, N>::rjacinv() const
     {
         return ljacinv().T();
     }
@@ -301,7 +254,9 @@ namespace ppx
         }
     };
 
-    inline SE3 se3::exp() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 6 && B == 1> *>
+    SE3 MatrixS<M, N>::exp() const
     {
         auto phi = norm2(_1());
         if (details::is_same(phi, 0))
@@ -317,7 +272,9 @@ namespace ppx
         }
     }
 
-    inline MatrixS<6, 6> se3::adt() const
+    template <size_t M, size_t N>
+    template <size_t A, size_t B, std::enable_if_t<A == 6 && B == 1> *>
+    MatrixS<6, 6> MatrixS<M, N>::adt() const
     {
         MatrixS<6, 6> result;
         result.sub<3, 3, false>(0, 0) = hat(_1());

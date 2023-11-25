@@ -25,13 +25,15 @@ TEST_F(LinEqn_TestCase, MGS)
          {0.3333, 0.2500, 0.2001}},
         Ori::Row};
     auto Q = MGS(A);
-    EXPECT_TRUE(norm1(Q.T() * Q - eye<3>()) < EPS_SP);
+    auto residual = norm1<3, 3>(Q.T() * Q - eye<3>());
+    EXPECT_TRUE(residual < EPS_SP);
     MatrixS<100, 100> B;
     for (size_t i = 0; i < 100; i++)
     {
         random(B);
         auto R = MGS(B);
-        EXPECT_TRUE(norm1(R.T() * R - eye<100>()) < EPS_SP);
+        residual = norm1<3, 3>(R.T() * R - eye<100>());
+        EXPECT_TRUE(residual < EPS_SP);
     }
 }
 

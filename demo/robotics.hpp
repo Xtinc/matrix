@@ -127,7 +127,7 @@ public:
             auto result = linsolve<Factorization::LU>(Js.T() * Js, g);
 
             Q dq{};
-            if (result.s == StatusCode::CONVERGED)
+            if (result.s == StatusCode::NORMAL)
             {
                 Q pU = alpha * g;
                 const auto &pB = result.x;

@@ -188,13 +188,6 @@ namespace ppx
         return res;
     }
 
-    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
-    double norm1(T &&expr)
-    {
-        U mat = expr;
-        return norm1(mat);
-    }
-
     template <size_t M, size_t N>
     double norminf(const MatrixS<M, N> &mat)
     {
@@ -209,13 +202,6 @@ namespace ppx
             res = std::max(res, norm_inf_rowi);
         }
         return res;
-    }
-
-    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
-    double norminf(T &&expr)
-    {
-        U mat = expr;
-        return norminf(mat);
     }
 
     template <size_t M, size_t N>
@@ -1067,7 +1053,6 @@ namespace ppx
     {
         MatrixS<N, 1> w{};
         MatrixS<N, N> V{};
-        bool sing = false;
         auto U = svdcmp(mat, w, V);
         if (U.s == StatusCode::SINGULAR)
         {

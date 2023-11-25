@@ -16,6 +16,9 @@ namespace ppx
     template <size_t M, size_t N>
     class MatrixS;
 
+    class SO3;
+    class SE3;
+
     enum class Ori : char
     {
         Row,
@@ -33,7 +36,7 @@ namespace ppx
 
         inline bool near_zero(double a)
         {
-            return fabs(a) < 1.0e-5;
+            return fabs(a) < 1.0e-6;
         }
 
         constexpr size_t is_small_matrix_v(size_t A, size_t B)
@@ -75,11 +78,6 @@ namespace ppx
     template <std::size_t M, std::size_t N>
     class MatrixS : public details::MatrixBase<M, N>
     {
-        template <size_t A, typename RT = void>
-        using enable_when_squre_t = std::enable_if_t<A == N, RT>;
-        template <size_t A, typename RT = void>
-        using disable_when_squre_t = std::enable_if_t<A != N, RT>;
-
         template <size_t A, size_t B>
         class SubPartBase
         {
@@ -97,6 +95,11 @@ namespace ppx
             const cast_type &snap() const
             {
                 return *copy;
+            }
+
+            cast_type eval() const
+            {
+                return data;
             }
 
         protected:
@@ -216,9 +219,8 @@ namespace ppx
                 return *this;
             }
 
-            template <typename T>
-            details::enable_expr_type_t<T, SubPart &>
-            operator=(const T &expr)
+            template <typename T, details::enable_expr_type_t<T> * = nullptr>
+            SubPart &operator=(const T &expr)
             {
                 for (size_t j = 0; j < B; j++)
                 {
@@ -307,9 +309,8 @@ namespace ppx
                 return *this;
             }
 
-            template <typename T>
-            details::enable_expr_type_t<T, SubPart &>
-            operator=(const T &expr)
+            template <typename T, details::enable_expr_type_t<T> * = nullptr>
+            SubPart &operator=(const T &expr)
             {
                 for (size_t j = 0; j < B; j++)
                 {
@@ -654,6 +655,54 @@ namespace ppx
             return *this;
         }
 
+        // for so3 && se3, se3 and so3 is not subtyping of GL(n), but GL(n) itself.
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        SO3 exp() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        MatrixS<3, 3> adt() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        MatrixS<3, 3> ljac() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        MatrixS<3, 3> ljacinv() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        MatrixS<3, 3> rjac() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 3 && B == 1> * = nullptr>
+        MatrixS<3, 3> rjacinv() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        SE3 exp() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        MatrixS<6, 6> adt() const;
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        MatrixS<3, 1> _1() const
+        {
+            return {(*this)[0], (*this)[1], (*this)[2]};
+        }
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        MatrixS<3, 1> _2() const
+        {
+            return {(*this)[3], (*this)[4], (*this)[5]};
+        }
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 6 && B == 1> * = nullptr>
+        MatrixS(const MatrixS<3, 1> &elem1, const MatrixS<3, 1> &elem2)
+        {
+            this->m_data[0] = elem1[0];
+            this->m_data[1] = elem1[1];
+            this->m_data[2] = elem1[2];
+
+            this->m_data[3] = elem2[0];
+            this->m_data[4] = elem2[1];
+            this->m_data[5] = elem2[2];
+        }
         // Generate function.
         template <size_t A = M>
         friend enable_when_matrix_t<A, N, std::ostream &> operator<<(std::ostream &os, const MatrixS &self)
