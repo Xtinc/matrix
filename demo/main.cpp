@@ -1,7 +1,5 @@
 #include "robotics.hpp"
-#include "signals.hpp"
 #include <random>
-#include <future>
 #include <fstream>
 
 using namespace ppx;
@@ -54,8 +52,8 @@ void test_matrix()
     PRINT_SINGLE_ELEMENTS(determinant(a), "determinant(a) = ");
     PRINT_SINGLE_ELEMENTS(inverse(a), "inverse(a) = ");
     MatrixS<4, 4> A(std::move(a));
-    PRINT_LISTED_ELEMENTS(a, "Move Sementics, a = ");
-    PRINT_SINGLE_ELEMENTS(A, "Move Sementics, A = ");
+    PRINT_LISTED_ELEMENTS(a, "Move Semantics, a = ");
+    PRINT_SINGLE_ELEMENTS(A, "Move Semantics, A = ");
     MatrixS<2, 2> b = {1, 2, 4, 3};
     PRINT_SINGLE_ELEMENTS(inverse(b), "inverse(b) = ");
     MatrixS<1, 1> c = {3};
