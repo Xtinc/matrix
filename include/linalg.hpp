@@ -1032,13 +1032,6 @@ namespace ppx
         {
             qr.solve(b.data());
         }
-
-        // MatrixS<N, 1> c, d;
-        // auto R = qrdcmp(A, c, d);
-        // if (R.s != StatusCode::SINGULAR)
-        // {
-        //     qrsolv(R.x, c, d, b.data());
-        // }
         return {b.template sub<N, 1>(0, 0), qr.s};
     }
 
