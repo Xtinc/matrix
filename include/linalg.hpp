@@ -516,6 +516,104 @@ namespace ppx
     };
 
     template <size_t M, size_t N>
+    class QR
+    {
+    private:
+        static constexpr int m = M;
+        static constexpr int n = N;
+
+    public:
+        QR(const MatrixS<M, N> &mat) : A(mat), s(StatusCode::NORMAL)
+        {
+            for (int k = 0; k < std::min(m, n); k++)
+            {
+                auto sum = 0.0;
+                for (int i = k; i < m; i++)
+                {
+                    sum += A(i, k) * A(i, k);
+                }
+                if (fabs(sum) < EPS_DP)
+                {
+                    s = StatusCode::SINGULAR;
+                }
+                auto sigma = SIGN(sqrt(sum), A(k, k));
+                A(k, k) += sigma;
+                c[k] = sigma * A(k, k);
+                d[k] = -sigma;
+                for (int j = k + 1; j < n; j++)
+                {
+                    auto tau = 0.0;
+                    for (int i = k; i < m; i++)
+                    {
+                        tau += A(i, k) * A(i, j);
+                    }
+                    tau = fabs(c[k]) > EPS_DP ? tau / c[k] : 0.0;
+                    for (int i = k; i < m; i++)
+                    {
+                        A(i, j) -= tau * A(i, k);
+                    }
+                }
+            }
+        }
+
+        void solve(double *b) const
+        {
+            for (int j = 0; j < n; j++)
+            {
+                auto sum = 0.0;
+                for (int i = j; i < m; i++)
+                {
+                    sum += A(i, j) * b[i];
+                }
+                sum /= c[j];
+                for (int i = j; i < m; i++)
+                {
+                    b[i] -= sum * A(i, j);
+                }
+            }
+            for (int i = n - 1; i >= 0; i--)
+            {
+                double sum = 0.0;
+                for (int j = i + 1; j < n; j++)
+                {
+                    sum += A(i, j) * b[j];
+                }
+                b[i] = (b[i] - sum) / d[i];
+            }
+        }
+
+        MatrixS<M, M> Q() const
+        {
+            auto qt = eye<M>();
+            for (int k = 0; k < n - 1; k++)
+            {
+                if (fabs(c[k]) > EPS_DP)
+                {
+                    for (int j = 0; j < n; j++)
+                    {
+                        auto sum = 0.0;
+                        for (int i = k; i < n; i++)
+                        {
+                            sum += a(i, k) * qt(i, j);
+                        }
+                        sum /= c[k];
+                        for (int i = k; i < n; i++)
+                        {
+                            qt(i, j) -= sum * a(i, k);
+                        }
+                    }
+                }
+            }
+            return qt.T();
+        }
+
+        MatrixS<M, N> A;
+        MatrixS<N, 1> c;
+        MatrixS<N, 1> d;
+        StatusCode s;
+    };
+
+    template <size_t M, size_t N>
     MatrixS<M, N> MatrixS<M, N>::I() const
     {
         static_assert(M == N, "only square matrix has an inverse. For rectangular matrix ,query for pinv.");
@@ -596,102 +694,6 @@ namespace ppx
         MatrixS<M, N> x;
         StatusCode s = StatusCode::NORMAL;
     };
-
-    template <size_t M, size_t N>
-    FacResult<M, N> qrdcmp(MatrixS<M, N> a, MatrixS<N, 1> &c, MatrixS<N, 1> &d)
-    {
-        constexpr int m = M;
-        constexpr int n = N;
-        StatusCode sing = StatusCode::NORMAL;
-        for (int k = 0; k < std::min(m, n); k++)
-        {
-            auto sum = 0.0;
-            for (int i = k; i < m; i++)
-            {
-                sum += a(i, k) * a(i, k);
-            }
-            if (fabs(sum) < EPS_DP)
-            {
-                sing = StatusCode::SINGULAR;
-            }
-            auto sigma = SIGN(sqrt(sum), a(k, k));
-            a(k, k) += sigma;
-            c[k] = sigma * a(k, k);
-            d[k] = -sigma;
-            for (int j = k + 1; j < n; j++)
-            {
-                auto tau = 0.0;
-                for (int i = k; i < m; i++)
-                {
-                    tau += a(i, k) * a(i, j);
-                }
-                tau = fabs(c[k]) > EPS_DP ? tau / c[k] : 0.0;
-                for (int i = k; i < m; i++)
-                {
-                    a(i, j) -= tau * a(i, k);
-                }
-            }
-        }
-        return {a, sing};
-    }
-
-    template <size_t M, size_t N>
-    MatrixS<M, N> qrctor(const MatrixS<M, N> &a, const MatrixS<N, 1> &c)
-    {
-        auto qt = MatrixS<M, M>::eye();
-        constexpr int m = M;
-        constexpr int n = N;
-
-        for (int k = 0; k < n - 1; k++)
-        {
-            if (fabs(c[k]) > EPS_DP)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    auto sum = 0.0;
-                    for (int i = k; i < n; i++)
-                    {
-                        sum += a(i, k) * qt(i, j);
-                    }
-                    sum /= c[k];
-                    for (int i = k; i < n; i++)
-                    {
-                        qt(i, j) -= sum * a(i, k);
-                    }
-                }
-            }
-        }
-        return qt;
-    }
-
-    template <size_t M, size_t N>
-    void qrsolv(const MatrixS<M, N> &a, const MatrixS<N, 1> &c, const MatrixS<N, 1> &d, double *b)
-    {
-        constexpr int m = M;
-        constexpr int n = N;
-        for (int j = 0; j < n; j++)
-        {
-            auto sum = 0.0;
-            for (int i = j; i < m; i++)
-            {
-                sum += a(i, j) * b[i];
-            }
-            sum /= c[j];
-            for (int i = j; i < m; i++)
-            {
-                b[i] -= sum * a(i, j);
-            }
-        }
-        for (int i = n - 1; i >= 0; i--)
-        {
-            double sum = 0.0;
-            for (int j = i + 1; j < n; j++)
-            {
-                sum += a(i, j) * b[j];
-            }
-            b[i] = (b[i] - sum) / d[i];
-        }
-    }
 
     template <size_t M, size_t N>
     FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v)
@@ -1025,13 +1027,19 @@ namespace ppx
     std::enable_if_t<type == Factorization::QR, EqnResult<N>>
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        MatrixS<N, 1> c, d;
-        auto R = qrdcmp(A, c, d);
-        if (R.s != StatusCode::SINGULAR)
+        QR<M, N> qr(A);
+        if (qr.s != StatusCode::SINGULAR)
         {
-            qrsolv(R.x, c, d, b.data());
+            qr.solve(b.data());
         }
-        return {b.template sub<N, 1>(0, 0), R.s};
+
+        // MatrixS<N, 1> c, d;
+        // auto R = qrdcmp(A, c, d);
+        // if (R.s != StatusCode::SINGULAR)
+        // {
+        //     qrsolv(R.x, c, d, b.data());
+        // }
+        return {b.template sub<N, 1>(0, 0), qr.s};
     }
 
     template <Factorization type, size_t M, size_t N>
