@@ -1,6 +1,7 @@
 \chapter[short]{线性方程组}
 
 \section{矩阵正交化}
+\subsection{正交化原理}
 对于矩阵 $A=\{v_1,v_2,\dots,v_n\}$ 找出构成该矩阵列空间极大无关组的过程叫正交化。常用的正交化手段有格拉姆-施密特（Gram-Schmidt）
 正交化方法：它在选定主方向向量以后，通过不断减去其余方向在该方向上的投影得到正交基。
 给出正交非归一化的传统格拉姆施密特方法：
@@ -125,6 +126,7 @@ std::cout << norm1(Q.T() * Q - eye<100>()) << std::endl;
 得到残差为 2.1554e-11，而使用 CGS 方法得到残差为 2.9912。
 
 \section{QR 分解}
+\subsection{分解原理}
 
 在格拉姆-施密特正交化过程中，每次由公式 $q_j=v_1-\sum_k^{j-1}(q_j^Tv_k)v_k$ 得到列向量，写出该过程变换表达式，发现变换矩阵形成
 上三角格式，系数与正交投影系数相关：
@@ -157,7 +159,6 @@ std::cout << norm1(Q.T() * Q - eye<100>()) << std::endl;
 变换，吉文斯（Givens）变换等多种方法实现。其分解本身是解超定方程组、矩阵极大无关组，奇异值分解的基础。总的来说，QR 分解是矩阵
 正交分解中最重要内容之一。
 
-\subsection{分解原理}
 对于矩阵 $A$，QR 分解目标是将其转化为上三角型与正交矩阵的乘积：
 \begin{equation}
     \begin{bmatrix}
@@ -184,18 +185,135 @@ std::cout << norm1(Q.T() * Q - eye<100>()) << std::endl;
 \end{equation}
 回想 MGS 中形成矩阵 R 过程，它等价于对原矩阵 A 每列叠加初等变换矩阵：这些初等变换矩阵首先是正交矩阵，并且作用于另一矩阵后能操作其行列，
 这种作用还能相互叠加。这引出了 QR 分解的另一种思路：如果存在某正交矩阵能消去矩阵的特定行列，那么累计这种矩阵作用，最终就能得到 QR 分解
-中的上三角矩阵 R，而这种累计作用合成来的矩阵正是 Q 矩阵。豪斯霍尔德变换与吉文斯变换正是这种正交变换，它们能消去矩阵某列指定位置以下的元素，或交换矩阵指定位置的元素。
+中的上三角矩阵 R，而这种累计作用合成来的矩阵正是 Q 矩阵。豪斯霍尔德变换与吉文斯变换正是这种正交变换，它们能消去矩阵某列指定位置以下的元
+素，或交换矩阵指定位置的元素。
 
 \subsection{Householder 变换}
 豪斯霍尔德（Householder）变换，又称镜射变换，由如下公式定义：
 \begin{equation}
     H_ux=(I-2uu^{T})x
 \end{equation}
-其中的 $H_u$ 是由 $u$（householder 因子）决定的镜射变换矩阵。如图 \ref{householder_transform} 如果把矢量 $x$ 看作光线，
-那么 $u$ 就是镜面的方向，$H_ux$ 就是反射的方向。选择待变换矩阵第 $i$ 列向量作为原始向量，选择 $e_i$ 作为反射的目标向量，记录
+其中的 $H_u$ 是由 $u$（householder 因子）决定的镜射变换矩阵。如图 \ref{householder_transform} 如把矢量 $x$ 看作光线，
+那么 $u$ 就是镜面方向，$H_ux$ 就是反射方向。选择待变换矩阵第 $i$ 列向量作为原始向量，选择 $e_i$ 作为反射的目标向量，记录
 豪斯霍尔德变换因子 $u_i$。重复该过程于每一列中，最后记录变换矩阵的乘积为 $Q^T$，残余矩阵为上三角矩阵 $R$。
 \begin{figure}[htbp]
     \centering\label{householder_transform}
     \includegraphics[width=\textwidth]{HouseHolder.png}
     \caption{镜射变换示意图}
 \end{figure}
+
+利用镜射变换方法，可以将非奇异矩阵 $A={v_1,v_2,\dots,v_n}$ 逐步转化为上三角矩阵，具体步骤如下：
+\begin{itemize}
+    \item 令 $x=a_1$，求出可以使 $H_u x=\Vert a_1\Vert_2 e_1$ 的变换因子 $u_1$，且令 $a_{11}^{(1)}=\Vert a_1\Vert_2$，则有：
+          \begin{equation*}
+              H_{1}A=\begin{bmatrix}
+                  a_{11}^{(1)} & \mathbf{a}^{(1)} \\
+                  0            & A_1
+              \end{bmatrix}
+          \end{equation*}
+    \item 对低一阶矩阵 $A_1$ 执行变换，有：
+          \begin{equation*}
+              H_{2}A_1=\begin{bmatrix}
+                  a_{22}^{(2)} & \mathbf{a}^{(2)} \\
+                  0            & A_2
+              \end{bmatrix}
+          \end{equation*}
+    \item 重复以上过程，直到 $n-1$ 步，得到：
+          \begin{equation}
+              H_{n-1}A_{n-2}=\begin{bmatrix}
+                  a_{(n-1)(n-1)}^{(n-1)} & a_{(n-1)n}^{(n-1)} \\
+                  0                      & a_{nn}^{(n-1)}
+              \end{bmatrix}
+          \end{equation}
+          令：
+          \begin{equation*}
+              Q=\begin{bmatrix}
+                  \mathrm{I_{n-2}} & 0                \\
+                  0                & \mathrm{H_{n-1}}
+              \end{bmatrix}\cdots
+              \begin{bmatrix}
+                  \mathrm{I_{2}} & 0              \\
+                  0              & \mathrm{H_{1}}
+              \end{bmatrix}
+              \begin{bmatrix}
+                  1 & 0              \\
+                  0 & \mathrm{H_{2}}
+              \end{bmatrix}\mathrm{H_{1}}
+          \end{equation*}
+          它是正交矩阵，且有：
+          \begin{equation*}
+              QA=\begin{bmatrix}
+                  a_{11}^{(1)} & *            & \cdots       & *      \\
+                               & a_{22}^{(2)} & \cdots       & *      \\
+                               &              & \ddots       & \vdots \\
+                               &
+                               &              & a_{nn}^{(n)}
+              \end{bmatrix}
+          \end{equation*}
+          这样，就得到了矩阵的 QR 分解 $A=Q^TR$。
+\end{itemize}
+
+下面给出基于 MGS 与 Householder 变换完成 QR 分解的算法：
+\begin{center}
+    \begin{minipage}{.7\linewidth}
+        \begin{algorithm}[H]
+            \caption{\text{QR factorization with MGS}}
+            \KwIn{$A=\{x_1,x_2,\dots,x_n\}$}
+            \KwOut{$Q=\{q_1,q_2,\dots,q_n\}$}
+            \For{$j=1\colon n$}
+            {
+            $v_j=x_j$\;
+            \For{$k=j+1\colon n$}
+            {
+            $r_{jj}=\Vert v_j\Vert_2$\;
+            $q_j=v_j/r_{jj}$\;
+            \For{$k=j+1:n$}
+            {
+                $r_{jk}=q_j^T v_k$\;
+                $v_k\leftarrow v_k - r_{jk}q_j$\;
+            }
+            }
+            }
+        \end{algorithm}
+    \end{minipage}
+\end{center}
+给出基于 Householder 变换的的 QR 分解算法：
+\begin{center}
+    \begin{minipage}{.7\linewidth}
+        \begin{algorithm}[H]
+            \caption{\text{QR factorization with Householder}}
+            \KwIn{$A=\{x_1,x_2,\dots,x_n\}$}
+            \KwOut{$Q=\{q_1,q_2,\dots,q_n\}$}
+            $m, n \leftarrow \operatorname{shape}(A)$\;
+            $R \leftarrow \operatorname{copy}(A)$\;
+            $Q \leftarrow I_{m}$\;
+            \For{$k=0\colon n-1$}{
+                $\mathbf{u} \leftarrow \operatorname{copy}\left(R_{k:, k}\right)$\;
+                $u_{0} \leftarrow u_{0}+\operatorname{sgn}\left(u_{0}\right)\vert\mathbf{u}\vert$\;
+                $\mathbf{u} \leftarrow \mathbf{u} /\Vert\mathbf{u}\Vert_2$\;
+                $R_{k:, k:} \leftarrow R_{k:, k:}-2 \mathbf{u}\left(\mathbf{u}^{\top} R_{k:, k:}\right)$\;
+                $Q_{k:,:} \leftarrow Q_{k:,:}-2 \mathbf{u}\left(\mathbf{u}^{\top} Q_{k:,:}\right)$\;
+            }
+        \end{algorithm}
+    \end{minipage}
+\end{center}
+这种 QR 分解的实现方式简单易懂，但会生成大量中间变量。事实 Lapack 中的QR分解将返回：
+\begin{equation*}
+    \left[\begin{array}{lllll} u_{11} & r_{11} & r_{21} & ... \\
+             u_{12}         & u_{21} & r_{22} & ... \\
+             u_{13}         & u_{22} & u_{31} & ... \\
+             u_{14}         & u_{23} & u_{32} & ... \\
+             ...            & ...    & ...    & ...\end{array}\right]
+\end{equation*}
+即上三角矩阵 R 存储于返回矩阵的上三角部分，镜射变换因子 $u_i$ 储存于下三角中，而 R 的对角线单独返回。对于需要 Q 的情形，
+使用变换因子生成：
+\begin{equation*}
+    Q_i=I-c_iu_i u_i^{T}
+\end{equation*}
+如不显式需要 Q，则分解中每次镜射变换因子生成变换矩阵作用在 A 上过程变为：
+\begin{equation*}
+    Q_{i}x=(I-c_iu_{i}u_{i}^{T})x=x-c_iu_{i}u_{i}^Tx=x-c_iu_{i}(u_{i}^Tx)
+\end{equation*}
+这种方法也称为隐式 QR 分解。
+
+\subsection{程序实现}
