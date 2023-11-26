@@ -594,12 +594,12 @@ namespace ppx
                         auto sum = 0.0;
                         for (int i = k; i < n; i++)
                         {
-                            sum += a(i, k) * qt(i, j);
+                            sum += A(i, k) * qt(i, j);
                         }
                         sum /= c[k];
                         for (int i = k; i < n; i++)
                         {
-                            qt(i, j) -= sum * a(i, k);
+                            qt(i, j) -= sum * A(i, k);
                         }
                     }
                 }
