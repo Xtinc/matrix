@@ -204,16 +204,22 @@ namespace ppx
         return res;
     }
 
-    template <size_t M, size_t N>
+    template <size_t M, size_t N, enable_when_array_t<M, N> * = nullptr>
     double norm2(const MatrixS<M, N> &mat)
     {
-        static_assert(M == 1 || N == 1, "2-norm only supports vector now.");
         auto res = 0.0;
         for (auto ele : mat)
         {
             res += ele * ele;
         }
         return sqrt(res);
+    }
+
+    template <size_t M, size_t N, enable_when_matrix_t<M, N> * = nullptr>
+    double norm2(const MatrixS<M, N> &mat)
+    {
+        SVD<M, N> svd(mat);
+        return svd.norm();
     }
 
     template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
@@ -916,6 +922,11 @@ namespace ppx
                 }
                 b[j] = s;
             }
+        }
+
+        double norm() const
+        {
+            return *std::max_element(w.cbegin(), w.cend());
         }
 
         MatrixS<m, n> u;
