@@ -215,13 +215,6 @@ namespace ppx
         return sqrt(res);
     }
 
-    template <size_t M, size_t N, enable_when_matrix_t<M, N> * = nullptr>
-    double norm2(const MatrixS<M, N> &mat)
-    {
-        SVD<M, N> svd(mat);
-        return svd.norm();
-    }
-
     template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
     double norm2(T &&expr)
     {
@@ -934,6 +927,13 @@ namespace ppx
         MatrixS<n, n> v;
         // StatusCode state;
     };
+
+    template <size_t M, size_t N, enable_when_matrix_t<M, N> * = nullptr>
+    double norm2(const MatrixS<M, N> &mat)
+    {
+        SVD<M, N> svd(mat);
+        return svd.norm();
+    }
 
     template <size_t M, size_t N>
     MatrixS<M, N> MatrixS<M, N>::I() const
