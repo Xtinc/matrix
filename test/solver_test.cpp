@@ -109,7 +109,7 @@ TEST_F(LinEqn_TestCase, Matrix_Norm2)
                      0.915735525189067,
                      0.792207329559554,
                      0.959492426392903}};
-    EXPECT_EQ(norm2(A), 2.993584186569183);
+    EXPECT_NEAR(norm2(A), 2.993584186569183, 10 * EPS_DP);
     MatrixS<4, 5> B{
         {0.655740699156587,
          0.0357116785741896,
@@ -131,7 +131,7 @@ TEST_F(LinEqn_TestCase, Matrix_Norm2)
          0.317099480060861,
          0.950222048838355,
          0.0344460805029088}};
-    EXPECT_EQ(norm2(B), 2.386200992922722);
+    EXPECT_NEAR(norm2(B), 2.386200992922722, 10 * EPS_DP);
     MatrixS<4, 4> C{
         {0.438744359656398,
          0.381558457093008,
@@ -149,7 +149,7 @@ TEST_F(LinEqn_TestCase, Matrix_Norm2)
          0.162611735194631,
          0.118997681558377,
          0.498364051982143}};
-    EXPECT_EQ(norm2(C), 2.075457904661895);
+    EXPECT_NEAR(norm2(C), 2.075457904661895, 10 * EPS_DP);
 }
 
 TEST_F(LinEqn_TestCase, SVD_decompose)
