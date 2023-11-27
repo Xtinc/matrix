@@ -426,16 +426,14 @@ namespace ppx
         return A;
     }
 
-    template <size_t N>
+    template <int n>
     class LU
     {
-    private:
-        static constexpr int n = N;
-
     public:
-        LU(const MatrixS<N, N> &mat)
+        LU(const MatrixS<n, n> &mat)
             : A(mat), even(true), s(StatusCode::NORMAL)
         {
+            static_assert(n > 0, "dimension must be positive!");
             for (int i = 0; i < n; i++)
             {
                 indx[i] = i;
@@ -485,7 +483,7 @@ namespace ppx
 
         void solve(double *b) const
         {
-            std::array<double, N> y{};
+            std::array<double, n> y{};
             y[0] = b[indx[0]];
             for (int row = 1; row < n; row++)
             {
@@ -509,22 +507,19 @@ namespace ppx
             }
         }
 
-        MatrixS<N, N> A;
-        std::array<int, N> indx{};
+        MatrixS<n, n> A;
+        std::array<int, n> indx{};
         bool even;
         StatusCode s;
     };
 
-    template <size_t M, size_t N>
+    template <int m, int n>
     class QR
     {
-    private:
-        static constexpr int m = M;
-        static constexpr int n = N;
-
     public:
-        QR(const MatrixS<M, N> &mat) : A(mat), s(StatusCode::NORMAL)
+        QR(const MatrixS<m, n> &mat) : A(mat), s(StatusCode::NORMAL)
         {
+            static_assert(m > 0 && n > 0, "dimension must be a positive number!");
             for (int k = 0; k < std::min(m, n); k++)
             {
                 auto sum = 0.0;
@@ -582,9 +577,9 @@ namespace ppx
             }
         }
 
-        MatrixS<M, M> Q() const
+        MatrixS<m, m> Q() const
         {
-            auto qt = eye<M>();
+            auto qt = eye<m>();
             for (int k = 0; k < n - 1; k++)
             {
                 if (fabs(c[k]) > EPS_DP)
@@ -607,10 +602,326 @@ namespace ppx
             return qt.T();
         }
 
-        MatrixS<M, N> A;
-        MatrixS<N, 1> c;
-        MatrixS<N, 1> d;
+        MatrixS<m, n> A;
+        MatrixS<n, 1> c;
+        MatrixS<n, 1> d;
         StatusCode s;
+    };
+
+    template <int m, int n>
+    class SVD
+    {
+    public:
+        SVD(const MatrixS<m, n> &mat) : u(mat)
+        {
+            static_assert(m > 0 && n > 0, "dimension must be a positive number!");
+            int i, its, j, jj, k, nm;
+            double c, f, h, s, x, y, z;
+            std::array<double, n> rv1{};
+            double g = 0.0;
+            double scale = 0.0;
+            double anorm = 0.0;
+            int l = 0;
+            for (i = 0; i < n; i++)
+            {
+                l = i + 2;
+                rv1[i] = scale * g;
+                g = 0.0;
+                s = 0.0;
+                scale = 0.0;
+                if (i < m)
+                {
+                    for (k = i; k < m; k++)
+                    {
+                        scale += fabs(u(k, i));
+                    }
+                    if (scale != 0.0)
+                    {
+                        for (k = i; k < m; k++)
+                        {
+                            u(k, i) /= scale;
+                            s += u(k, i) * u(k, i);
+                        }
+                        f = u(i, i);
+                        g = -SIGN(sqrt(s), f);
+                        h = f * g - s;
+                        u(i, i) = f - g;
+                        for (j = l - 1; j < n; j++)
+                        {
+                            for (s = 0.0, k = i; k < m; k++)
+                            {
+                                s += u(k, i) * u(k, j);
+                            }
+                            f = s / h;
+                            for (k = i; k < m; k++)
+                            {
+                                u(k, j) += f * u(k, i);
+                            }
+                        }
+                        for (k = i; k < m; k++)
+                        {
+                            u(k, i) *= scale;
+                        }
+                    }
+                }
+                w[i] = scale * g;
+                g = s = scale = 0.0;
+                if (i + 1 <= m && i + 1 != n)
+                {
+                    for (k = l - 1; k < n; k++)
+                    {
+                        scale += fabs(u(i, k));
+                    }
+                    if (scale != 0.0)
+                    {
+                        for (k = l - 1; k < n; k++)
+                        {
+                            u(i, k) /= scale;
+                            s += u(i, k) * u(i, k);
+                        }
+                        f = u(i, l - 1);
+                        g = -SIGN(sqrt(s), f);
+                        h = f * g - s;
+                        u(i, l - 1) = f - g;
+                        for (k = l - 1; k < n; k++)
+                        {
+                            rv1[k] = u(i, k) / h;
+                        }
+                        for (j = l - 1; j < m; j++)
+                        {
+                            for (s = 0.0, k = l - 1; k < n; k++)
+                            {
+                                s += u(j, k) * u(i, k);
+                            }
+                            for (k = l - 1; k < n; k++)
+                            {
+                                u(j, k) += s * rv1[k];
+                            }
+                        }
+                        for (k = l - 1; k < n; k++)
+                        {
+                            u(i, k) *= scale;
+                        }
+                    }
+                }
+                anorm = std::max(anorm, fabs(w[i]) + fabs(rv1[i]));
+            }
+            for (i = n - 1; i >= 0; i--)
+            {
+                if (i < n - 1)
+                {
+                    if (g != 0.0)
+                    {
+                        for (j = l; j < n; j++)
+                        {
+                            v(j, i) = (u(i, j) / u(i, l)) / g;
+                        }
+                        for (j = l; j < n; j++)
+                        {
+                            for (s = 0.0, k = l; k < n; k++)
+                            {
+                                s += u(i, k) * v(k, j);
+                            }
+                            for (k = l; k < n; k++)
+                            {
+                                v(k, j) += s * v(k, i);
+                            }
+                        }
+                    }
+                    for (j = l; j < n; j++)
+                    {
+                        v(i, j) = 0.0;
+                        v(j, i) = 0.0;
+                    }
+                }
+                v(i, i) = 1.0;
+                g = rv1[i];
+                l = i;
+            }
+            for (i = std::min(m, n) - 1; i >= 0; i--)
+            {
+                l = i + 1;
+                g = w[i];
+                for (j = l; j < n; j++)
+                {
+                    u(i, j) = 0.0;
+                }
+                if (g != 0.0)
+                {
+                    g = 1.0 / g;
+                    for (j = l; j < n; j++)
+                    {
+                        for (s = 0.0, k = l; k < m; k++)
+                        {
+                            s += u(k, i) * u(k, j);
+                        }
+                        f = (s / u(i, i)) * g;
+                        for (k = i; k < m; k++)
+                        {
+                            u(k, j) += f * u(k, i);
+                        }
+                    }
+                    for (j = i; j < m; j++)
+                    {
+                        u(j, i) *= g;
+                    }
+                }
+                else
+                {
+                    for (j = i; j < m; j++)
+                    {
+                        u(j, i) = 0.0;
+                    }
+                }
+                u(i, i) += 1.0;
+            }
+            for (k = n - 1; k >= 0; k--)
+            {
+                for (its = 0; its < 30; its++)
+                {
+                    auto flag = true;
+                    for (l = k; l >= 0; l--)
+                    {
+                        nm = l - 1;
+                        if (l == 0 || fabs(rv1[l]) < EPS_DP * anorm)
+                        {
+                            flag = false;
+                            break;
+                        }
+                        if (fabs(w[nm]) < EPS_DP * anorm)
+                        {
+                            break;
+                        }
+                    }
+                    if (flag)
+                    {
+                        c = 0.0;
+                        s = 1.0;
+                        for (i = l; i < k + 1; i++)
+                        {
+                            f = s * rv1[i];
+                            rv1[i] = c * rv1[i];
+                            if (fabs(f) < EPS_DP * anorm)
+                            {
+                                break;
+                            }
+                            g = w[i];
+                            h = sqrt(f * f + g * g);
+                            w[i] = h;
+                            h = 1.0 / h;
+                            c = g * h;
+                            s = -f * h;
+                            for (j = 0; j < m; j++)
+                            {
+                                y = u(j, nm);
+                                z = u(j, i);
+                                u(j, nm) = y * c + z * s;
+                                u(j, i) = z * c - y * s;
+                            }
+                        }
+                    }
+                    z = w[k];
+                    if (l == k)
+                    {
+                        if (z < 0.0)
+                        {
+                            w[k] = -z;
+                            for (j = 0; j < n; j++)
+                            {
+                                v(j, k) *= -1;
+                            }
+                        }
+                        break;
+                    }
+                    x = w[l];
+                    nm = k - 1;
+                    y = w[nm];
+                    g = rv1[nm];
+                    h = rv1[k];
+                    f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
+                    g = sqrt(f * f + 1.0);
+                    f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
+                    c = s = 1.0;
+                    for (j = l; j <= nm; j++)
+                    {
+                        i = j + 1;
+                        g = rv1[i];
+                        y = w[i];
+                        h = s * g;
+                        g = c * g;
+                        z = sqrt(f * f + h * h);
+                        rv1[j] = z;
+                        c = f / z;
+                        s = h / z;
+                        f = x * c + g * s;
+                        g = g * c - x * s;
+                        h = y * s;
+                        y *= c;
+                        for (jj = 0; jj < n; jj++)
+                        {
+                            x = v(jj, j);
+                            z = v(jj, i);
+                            v(jj, j) = x * c + z * s;
+                            v(jj, i) = z * c - x * s;
+                        }
+                        z = sqrt(f * f + h * h);
+                        w[j] = z;
+                        if (fabs(z) > EPS_DP)
+                        {
+                            z = 1.0 / z;
+                            c = f * z;
+                            s = h * z;
+                        }
+                        f = c * g + s * y;
+                        x = c * y - s * g;
+                        for (jj = 0; jj < m; jj++)
+                        {
+                            y = u(jj, j);
+                            z = u(jj, i);
+                            u(jj, j) = y * c + z * s;
+                            u(jj, i) = z * c - y * s;
+                        }
+                    }
+                    rv1[l] = 0.0;
+                    rv1[k] = f;
+                    w[k] = x;
+                }
+            }
+        }
+
+        void solve(double *b) const
+        {
+            std::array<double, n> tmp{};
+            auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+            auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_DP;
+            for (int j = 0; j < n; j++)
+            {
+                auto s = 0.0;
+                if (w[j] > tsh)
+                {
+                    for (int i = 0; i < m; i++)
+                    {
+                        s += u(i, j) * b[i];
+                    }
+                    s /= w[j];
+                }
+                tmp[j] = s;
+            }
+            for (int j = 0; j < n; j++)
+            {
+                auto s = 0.0;
+                for (int jj = 0; jj < n; jj++)
+                {
+                    s += v(j, jj) * tmp[jj];
+                }
+                b[j] = s;
+            }
+        }
+
+        MatrixS<m, n> u;
+        MatrixS<n, 1> w;
+        MatrixS<n, n> v;
+        // StatusCode state;
     };
 
     template <size_t M, size_t N>
@@ -695,321 +1006,42 @@ namespace ppx
         StatusCode s = StatusCode::NORMAL;
     };
 
-    template <size_t M, size_t N>
-    FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v)
-    {
-        constexpr int m = M;
-        constexpr int n = N;
-        int i, its, j, jj, k, nm;
-        double c, f, h, s, x, y, z;
-        std::array<double, N> rv1{};
-        double g = 0.0;
-        double scale = 0.0;
-        double anorm = 0.0;
-        int l = 0;
-        for (i = 0; i < n; i++)
-        {
-            l = i + 2;
-            rv1[i] = scale * g;
-            g = 0.0;
-            s = 0.0;
-            scale = 0.0;
-            if (i < m)
-            {
-                for (k = i; k < m; k++)
-                {
-                    scale += fabs(u(k, i));
-                }
-                if (scale != 0.0)
-                {
-                    for (k = i; k < m; k++)
-                    {
-                        u(k, i) /= scale;
-                        s += u(k, i) * u(k, i);
-                    }
-                    f = u(i, i);
-                    g = -SIGN(sqrt(s), f);
-                    h = f * g - s;
-                    u(i, i) = f - g;
-                    for (j = l - 1; j < n; j++)
-                    {
-                        for (s = 0.0, k = i; k < m; k++)
-                        {
-                            s += u(k, i) * u(k, j);
-                        }
-                        f = s / h;
-                        for (k = i; k < m; k++)
-                        {
-                            u(k, j) += f * u(k, i);
-                        }
-                    }
-                    for (k = i; k < m; k++)
-                    {
-                        u(k, i) *= scale;
-                    }
-                }
-            }
-            w[i] = scale * g;
-            g = s = scale = 0.0;
-            if (i + 1 <= m && i + 1 != n)
-            {
-                for (k = l - 1; k < n; k++)
-                {
-                    scale += fabs(u(i, k));
-                }
-                if (scale != 0.0)
-                {
-                    for (k = l - 1; k < n; k++)
-                    {
-                        u(i, k) /= scale;
-                        s += u(i, k) * u(i, k);
-                    }
-                    f = u(i, l - 1);
-                    g = -SIGN(sqrt(s), f);
-                    h = f * g - s;
-                    u(i, l - 1) = f - g;
-                    for (k = l - 1; k < n; k++)
-                    {
-                        rv1[k] = u(i, k) / h;
-                    }
-                    for (j = l - 1; j < m; j++)
-                    {
-                        for (s = 0.0, k = l - 1; k < n; k++)
-                        {
-                            s += u(j, k) * u(i, k);
-                        }
-                        for (k = l - 1; k < n; k++)
-                        {
-                            u(j, k) += s * rv1[k];
-                        }
-                    }
-                    for (k = l - 1; k < n; k++)
-                    {
-                        u(i, k) *= scale;
-                    }
-                }
-            }
-            anorm = std::max(anorm, fabs(w[i]) + fabs(rv1[i]));
-        }
-        for (i = n - 1; i >= 0; i--)
-        {
-            if (i < n - 1)
-            {
-                if (g != 0.0)
-                {
-                    for (j = l; j < n; j++)
-                    {
-                        v(j, i) = (u(i, j) / u(i, l)) / g;
-                    }
-                    for (j = l; j < n; j++)
-                    {
-                        for (s = 0.0, k = l; k < n; k++)
-                        {
-                            s += u(i, k) * v(k, j);
-                        }
-                        for (k = l; k < n; k++)
-                        {
-                            v(k, j) += s * v(k, i);
-                        }
-                    }
-                }
-                for (j = l; j < n; j++)
-                {
-                    v(i, j) = 0.0;
-                    v(j, i) = 0.0;
-                }
-            }
-            v(i, i) = 1.0;
-            g = rv1[i];
-            l = i;
-        }
-        for (i = std::min(m, n) - 1; i >= 0; i--)
-        {
-            l = i + 1;
-            g = w[i];
-            for (j = l; j < n; j++)
-            {
-                u(i, j) = 0.0;
-            }
-            if (g != 0.0)
-            {
-                g = 1.0 / g;
-                for (j = l; j < n; j++)
-                {
-                    for (s = 0.0, k = l; k < m; k++)
-                    {
-                        s += u(k, i) * u(k, j);
-                    }
-                    f = (s / u(i, i)) * g;
-                    for (k = i; k < m; k++)
-                    {
-                        u(k, j) += f * u(k, i);
-                    }
-                }
-                for (j = i; j < m; j++)
-                {
-                    u(j, i) *= g;
-                }
-            }
-            else
-            {
-                for (j = i; j < m; j++)
-                {
-                    u(j, i) = 0.0;
-                }
-            }
-            u(i, i) += 1.0;
-        }
-        for (k = n - 1; k >= 0; k--)
-        {
-            for (its = 0; its < 30; its++)
-            {
-                auto flag = true;
-                for (l = k; l >= 0; l--)
-                {
-                    nm = l - 1;
-                    if (l == 0 || fabs(rv1[l]) < EPS_DP * anorm)
-                    {
-                        flag = false;
-                        break;
-                    }
-                    if (fabs(w[nm]) < EPS_DP * anorm)
-                    {
-                        break;
-                    }
-                }
-                if (flag)
-                {
-                    c = 0.0;
-                    s = 1.0;
-                    for (i = l; i < k + 1; i++)
-                    {
-                        f = s * rv1[i];
-                        rv1[i] = c * rv1[i];
-                        if (fabs(f) < EPS_DP * anorm)
-                        {
-                            break;
-                        }
-                        g = w[i];
-                        h = sqrt(f * f + g * g);
-                        w[i] = h;
-                        h = 1.0 / h;
-                        c = g * h;
-                        s = -f * h;
-                        for (j = 0; j < m; j++)
-                        {
-                            y = u(j, nm);
-                            z = u(j, i);
-                            u(j, nm) = y * c + z * s;
-                            u(j, i) = z * c - y * s;
-                        }
-                    }
-                }
-                z = w[k];
-                if (l == k)
-                {
-                    if (z < 0.0)
-                    {
-                        w[k] = -z;
-                        for (j = 0; j < n; j++)
-                        {
-                            v(j, k) *= -1;
-                        }
-                    }
-                    break;
-                }
-                if (its == 29)
-                {
-                    return {{}, StatusCode::SINGULAR};
-                }
-                x = w[l];
-                nm = k - 1;
-                y = w[nm];
-                g = rv1[nm];
-                h = rv1[k];
-                f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-                g = sqrt(f * f + 1.0);
-                f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
-                c = s = 1.0;
-                for (j = l; j <= nm; j++)
-                {
-                    i = j + 1;
-                    g = rv1[i];
-                    y = w[i];
-                    h = s * g;
-                    g = c * g;
-                    z = sqrt(f * f + h * h);
-                    rv1[j] = z;
-                    c = f / z;
-                    s = h / z;
-                    f = x * c + g * s;
-                    g = g * c - x * s;
-                    h = y * s;
-                    y *= c;
-                    for (jj = 0; jj < n; jj++)
-                    {
-                        x = v(jj, j);
-                        z = v(jj, i);
-                        v(jj, j) = x * c + z * s;
-                        v(jj, i) = z * c - x * s;
-                    }
-                    z = sqrt(f * f + h * h);
-                    w[j] = z;
-                    if (fabs(z) > EPS_DP)
-                    {
-                        z = 1.0 / z;
-                        c = f * z;
-                        s = h * z;
-                    }
-                    f = c * g + s * y;
-                    x = c * y - s * g;
-                    for (jj = 0; jj < m; jj++)
-                    {
-                        y = u(jj, j);
-                        z = u(jj, i);
-                        u(jj, j) = y * c + z * s;
-                        u(jj, i) = z * c - y * s;
-                    }
-                }
-                rv1[l] = 0.0;
-                rv1[k] = f;
-                w[k] = x;
-            }
-        }
-        return {u, StatusCode::CONVERGED};
-    }
+    // template <size_t M, size_t N>
+    // FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v)
+    // {
+    // }
 
-    template <size_t M, size_t N>
-    void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b)
-    {
-        const int m = M;
-        const int n = N;
-        std::array<double, N> tmp{};
-        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_DP;
-        for (int j = 0; j < n; j++)
-        {
-            auto s = 0.0;
-            if (w[j] > tsh)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    s += u(i, j) * b[i];
-                }
-                s /= w[j];
-            }
-            tmp[j] = s;
-        }
-        for (int j = 0; j < n; j++)
-        {
-            auto s = 0.0;
-            for (int jj = 0; jj < n; jj++)
-            {
-                s += v(j, jj) * tmp[jj];
-            }
-            b[j] = s;
-        }
-    }
+    // template <size_t M, size_t N>
+    // void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b)
+    // {
+    //     const int m = M;
+    //     const int n = N;
+    //     std::array<double, N> tmp{};
+    //     auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+    //     auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_DP;
+    //     for (int j = 0; j < n; j++)
+    //     {
+    //         auto s = 0.0;
+    //         if (w[j] > tsh)
+    //         {
+    //             for (int i = 0; i < m; i++)
+    //             {
+    //                 s += u(i, j) * b[i];
+    //             }
+    //             s /= w[j];
+    //         }
+    //         tmp[j] = s;
+    //     }
+    //     for (int j = 0; j < n; j++)
+    //     {
+    //         auto s = 0.0;
+    //         for (int jj = 0; jj < n; jj++)
+    //         {
+    //             s += v(j, jj) * tmp[jj];
+    //         }
+    //         b[j] = s;
+    //     }
+    // }
 
     template <Factorization type, size_t M, size_t N>
     std::enable_if_t<type == Factorization::LU, EqnResult<N>>
@@ -1039,26 +1071,17 @@ namespace ppx
     std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        MatrixS<N, 1> w{};
-        MatrixS<N, N> V{};
-        auto U = svdcmp(A, w, V);
-        if (U.s == StatusCode::CONVERGED)
-        {
-            svbksb(U.x, w, V, b.data());
-        }
-        return {b.template sub<N, 1>(0, 0), U.s};
+        SVD<M, N> svd(A);
+        svd.solve(b.data());
+        return {b.template sub<N, 1>(0, 0), StatusCode::NORMAL};
     }
 
     template <size_t M, size_t N>
     MatrixS<N, M> pinv(const MatrixS<M, N> &mat)
     {
-        MatrixS<N, 1> w{};
-        MatrixS<N, N> V{};
-        auto U = svdcmp(mat, w, V);
-        if (U.s == StatusCode::SINGULAR)
-        {
-            return {};
-        }
+        SVD<M, N> svd(mat);
+        const auto &U = svd.u;
+        const auto &w = svd.w;
         MatrixS<N, N> W{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());
         auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_DP;
@@ -1069,7 +1092,7 @@ namespace ppx
                 W(i, i) = 1.0 / w[i];
             }
         }
-        return V * W * U.x.T();
+        return svd.v * W * svd.u.T();
     }
 
     inline EqnResult<2> quadsolve(double a, double b, double c)

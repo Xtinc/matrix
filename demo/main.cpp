@@ -93,13 +93,11 @@ void test_matrix()
     MatrixS<4, 3> u{1, 4, 7, 11,
                     2, 5, 8, 1,
                     3, 6, 9, 5};
-    MatrixS<3, 1> v{};
-    MatrixS<3, 3> w{};
-    auto ru = svdcmp(u, v, w);
-    PRINT_SINGLE_ELEMENTS(ru.x, "U = ");
-    PRINT_SINGLE_ELEMENTS(v, "S = ");
-    PRINT_SINGLE_ELEMENTS(w, "V = ");
-    PRINT_SINGLE_ELEMENTS(ru.x * v.diag() * w.T(), "U*S*V = ");
+    SVD<4, 3> ru(u);
+    PRINT_SINGLE_ELEMENTS(ru.u, "U = ");
+    PRINT_SINGLE_ELEMENTS(ru.w, "S = ");
+    PRINT_SINGLE_ELEMENTS(ru.v, "V = ");
+    PRINT_SINGLE_ELEMENTS(ru.u * ru.w.diag() * ru.v.T(), "U*S*V = ");
 
     MatrixS<4, 4> g{2, -1, 1, 4,
                     -1, 2, -1, 1,

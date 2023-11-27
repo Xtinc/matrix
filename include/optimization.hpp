@@ -583,9 +583,10 @@ namespace ppx
     template <size_t M, size_t N>
     OptResult<N> regress(MatrixS<M, 1> y, const MatrixS<M, N> &X, double lambda = 0.0)
     {
-        MatrixS<N, 1> w;
-        MatrixS<N, N> v;
-        const auto &u = svdcmp(X, w, v).x;
+        SVD<M, N> svd(X);
+        const auto &u = svd.u;
+        const auto &w = svd.w;
+        const auto &v = svd.v;
 
         const int m = M;
         const int n = N;

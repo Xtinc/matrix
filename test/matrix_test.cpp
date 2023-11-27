@@ -73,10 +73,8 @@ TEST_F(MatrixS_TestCase, fac)
     MatrixS<4, 3> u{1, 4, 7, 11,
                     2, 5, 8, 1,
                     3, 6, 9, 5};
-    MatrixS<3, 1> v{};
-    MatrixS<3, 3> w{};
-    auto ru = svdcmp(u, v, w);
-    EXPECT_EQ(ru.x * v.diag() * w.T(), u);
+    SVD<4, 3> ru(u);
+    EXPECT_EQ(ru.u * ru.w.diag() * ru.v.T(), u);
 
     MatrixS<4, 4> g{2, -1, 1, 4,
                     -1, 2, -1, 1,
