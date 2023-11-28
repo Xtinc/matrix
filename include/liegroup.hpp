@@ -46,11 +46,7 @@ namespace ppx
         {
             return MatrixS::operator*(other);
         }
-//        template <size_t L>
-//        MatrixS<3, L> operator*(const MatrixS<3, L> &other) const
-//        {
-//            return MatrixS::operator*(other);
-//        }
+
         MatrixS<3, 3> Adt() const
         {
             return *this;
@@ -205,11 +201,7 @@ namespace ppx
         {
             return MatrixS::operator*(other);
         }
-//        template <size_t L>
-//        MatrixS<4, L> operator*(const MatrixS<4, L> &other) const
-//        {
-//            return MatrixS::operator*(other);
-//        }
+
         SO3 Rot() const
         {
             return (*this).sub<3, 3>(0, 0);
