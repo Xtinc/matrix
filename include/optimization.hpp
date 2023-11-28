@@ -483,7 +483,7 @@ namespace ppx
                         break;
                     }
                     x += lr.x * d;
-                    dx = norm2(x - R.x);
+                    dx = norm2<N, 1>(x - R.x);
                     R.x = x;
                     R.y = lr.y;
                     // printf("iters = %d, residual = %g\n", its++, dx);

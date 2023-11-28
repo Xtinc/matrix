@@ -30,11 +30,11 @@ namespace ppx
     }
 
     template <size_t M, size_t N>
-    void random(MatrixS<M, N> &mat)
+    void random(MatrixS<M, N> &mat, double lo = -MAX_SP, double hi = MAX_SP)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<> distr(-MAX_SP, MAX_SP);
+        std::uniform_real_distribution<> distr(lo, hi);
         for (auto &i : mat)
         {
             i = distr(gen);

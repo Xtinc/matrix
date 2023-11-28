@@ -215,13 +215,6 @@ namespace ppx
         return sqrt(res);
     }
 
-    template <typename T, typename U = typename T::elem_type, size_t M = U::ROW, size_t N = U::COL>
-    double norm2(T &&expr)
-    {
-        U mat = expr;
-        return norm2(mat);
-    }
-
     template <size_t M, size_t N>
     double trace(const MatrixS<M, N> &mat)
     {
@@ -1003,7 +996,7 @@ namespace ppx
                     {
                         scale += fabs(z(i, k));
                     }
-                    if (fabs(scale) < EPS_SP)
+                    if (fabs(scale) < EPS_DP)
                     {
                         e[i] = z(i, l);
                     }
@@ -1057,7 +1050,7 @@ namespace ppx
             e[0] = 0.0;
             for (int i = 0; i < n; i++)
             {
-                if (fabs(d[i]) > EPS_SP)
+                if (fabs(d[i]) > EPS_DP)
                 {
                     for (int j = 0; j < i; j++)
                     {
@@ -1122,7 +1115,7 @@ namespace ppx
                             double b = c * e[i];
                             r = sqrt(f * f + g * g);
                             e[i + 1] = r;
-                            if (fabs(r) < EPS_SP)
+                            if (fabs(r) < EPS_DP)
                             {
                                 d[i + 1] -= p;
                                 e[m] = 0.0;
@@ -1142,7 +1135,7 @@ namespace ppx
                                 z(k, i) = c * z(k, i) - s * f;
                             }
                         }
-                        if (fabs(r) < EPS_SP && i >= l)
+                        if (fabs(r) < EPS_DP && i >= l)
                         {
                             continue;
                         }
@@ -1197,6 +1190,7 @@ namespace ppx
     std::enable_if_t<type == Factorization::LU, EqnResult<N>>
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
+        static_assert(M == N, "LU decomposation only supports square matrix.");
         LU<M> lu(A);
         if (lu.s != StatusCode::SINGULAR)
         {
@@ -1209,6 +1203,7 @@ namespace ppx
     std::enable_if_t<type == Factorization::QR, EqnResult<N>>
     linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
+        static_assert(M >= N, "QR decomposation only supports column full-rank matrix.");
         QR<M, N> qr(A);
         if (qr.s != StatusCode::SINGULAR)
         {

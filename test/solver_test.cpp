@@ -3,6 +3,8 @@
 
 using namespace ppx;
 
+constexpr auto EQ_THS = EPS_SP * 10;
+
 class LinEqn_TestCase : public ::testing::Test
 {
 public:
@@ -34,56 +36,6 @@ TEST_F(LinEqn_TestCase, MGS)
         auto R = MGS(B);
         residual = norm1<3, 3>(R.T() * R - eye<100>());
         EXPECT_TRUE(residual < EPS_SP);
-    }
-}
-
-TEST_F(LinEqn_TestCase, LU_decompose)
-{
-    std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
-    for (size_t i = 0; i < 100; i++)
-    {
-        MatrixS<100, 100> A;
-        for (auto &ele : A)
-        {
-            ele = uf(eni);
-        }
-        MatrixS<100, 1> x;
-        for (auto &ele : x)
-        {
-            ele = uf(eni);
-        }
-        auto b = A * x;
-        auto result = linsolve<Factorization::LU>(A, b);
-        if (result.s != StatusCode::SINGULAR)
-        {
-            auto residual = norm2(result.x - x);
-            EXPECT_LE(residual, ppx::EPS_SP * 1e3);
-        }
-    }
-}
-
-TEST_F(LinEqn_TestCase, QR_decompose)
-{
-    std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
-    for (size_t i = 0; i < 100; i++)
-    {
-        MatrixS<100, 100> A;
-        for (auto &ele : A)
-        {
-            ele = uf(eni);
-        }
-        MatrixS<100, 1> x;
-        for (auto &ele : x)
-        {
-            ele = uf(eni);
-        }
-        auto b = A * x;
-        auto result = linsolve<Factorization::QR>(A, b);
-        if (result.s != StatusCode::SINGULAR)
-        {
-            auto residual = norm2(result.x - x);
-            EXPECT_LE(residual, ppx::EPS_SP * 1e3);
-        }
     }
 }
 
@@ -152,27 +104,58 @@ TEST_F(LinEqn_TestCase, Matrix_Norm2)
     EXPECT_NEAR(norm2(C), 2.075457904661895, 10 * EPS_DP);
 }
 
-TEST_F(LinEqn_TestCase, SVD_decompose)
+TEST_F(LinEqn_TestCase, LU_decompose)
 {
-    std::uniform_real_distribution<> uf(-1.0e5, 1.0e5);
+    MatrixS<100, 100> A;
+    MatrixS<100, 1> x;
     for (size_t i = 0; i < 100; i++)
     {
-        MatrixS<100, 100> A;
-        for (auto &ele : A)
+        random(A, -1e5, 1e5);
+        random(x, -1e5, 1e5);
+        auto b = A * x;
+        auto result = linsolve<Factorization::LU>(A, b);
+        if (result.s != StatusCode::SINGULAR)
         {
-            ele = uf(eni);
+            auto residual = norm2<100, 1>(result.x - x);
+            EXPECT_LE(residual, EQ_THS);
         }
-        MatrixS<100, 1> x;
-        for (auto &ele : x)
+    }
+}
+
+TEST_F(LinEqn_TestCase, QR_decompose)
+{
+    MatrixS<100, 100> A;
+    MatrixS<100, 1> x;
+
+    for (size_t i = 0; i < 100; i++)
+    {
+        random(A, -1e5, 1e5);
+        random(x, -1e5, 1e5);
+        auto b = A * x;
+        auto result = linsolve<Factorization::QR>(A, b);
+        if (result.s != StatusCode::SINGULAR)
         {
-            ele = uf(eni);
+            auto residual = norm2<100, 1>(result.x - x);
+            EXPECT_LE(residual, EQ_THS);
         }
+    }
+}
+
+TEST_F(LinEqn_TestCase, SVD_decompose)
+{
+    MatrixS<100, 100> A;
+    MatrixS<100, 1> x;
+
+    for (size_t i = 0; i < 100; i++)
+    {
+        random(A, -1e5, 1e5);
+        random(x, -1e5, 1e5);
         auto b = A * x;
         auto result = linsolve<Factorization::SVD>(A, b);
         if (result.s != StatusCode::SINGULAR)
         {
-            auto residual = norm2(result.x - x);
-            EXPECT_LE(residual, ppx::EPS_SP * 1e3);
+            auto residual = norm2<100, 1>(result.x - x);
+            EXPECT_LE(residual, EQ_THS);
         }
     }
 }
