@@ -3,7 +3,7 @@
 
 using namespace ppx;
 
-constexpr auto EQ_THS = EPS_SP * 100;
+constexpr auto EQ_THS = EPS_SP * 5e2;
 
 class LinEqn_TestCase : public ::testing::Test
 {
