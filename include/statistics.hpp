@@ -216,7 +216,8 @@ namespace ppx
             size_t idx = 0;
             while (sample > sum && idx < K)
             {
-                sum += m_prior[++idx];
+                sum += m_prior[idx];
+                ++idx;
             }
             return m_guassian[idx]();
         }
