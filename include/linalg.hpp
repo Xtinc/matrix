@@ -353,7 +353,6 @@ namespace ppx
     }
 
     // solver linear system
-
     enum class StatusCode : char
     {
         NORMAL,
@@ -382,6 +381,21 @@ namespace ppx
         }
         return os;
     }
+
+    template <size_t N>
+    struct EqnResult
+    {
+        MatrixS<N, 1> x;
+        StatusCode s = StatusCode::NORMAL;
+
+        friend std::ostream &operator<<(std::ostream &os, const EqnResult &self)
+        {
+            os << "EqnResult<" << N << ">:\n"
+               << "Status:\t" << self.s << "\n"
+               << "x     =\t" << self.x << std::endl;
+            return os;
+        }
+    };
 
     template <size_t M, size_t N>
     MatrixS<M, N> MGS(MatrixS<M, N> A)
@@ -969,161 +983,15 @@ namespace ppx
         return D;
     }
 
-    template <size_t N>
-    struct EqnResult
+    template <int n>
+    class EigenValue
     {
-        MatrixS<N, 1> x;
-        StatusCode s = StatusCode::NORMAL;
-    };
+        bool m_sym;
+        bool m_srt;
+        MatrixS<n, 1> e;
 
-    template <size_t N>
-    std::ostream &operator<<(std::ostream &os, const EqnResult<N> &self)
-    {
-        os << "EqnResult<" << N << ">:\n"
-           << "Status:\t" << self.s << "\n"
-           << "x     =\t" << self.x << std::endl;
-        return os;
-    }
-
-    enum class Factorization : char
-    {
-        LU,
-        QR,
-        SVD
-    };
-
-    enum class EigenSystem : char
-    {
-        SymOnlyVal,
-        SymValAndVec,
-        SymValAndVecSorted,
-        // GemOnlyVal,
-        // GemValAndVec,
-        // GemValAndVecSorted
-        // todo
-    };
-
-    template <size_t N>
-    struct EigResult
-    {
-        MatrixS<N, N> vec;
-        MatrixS<N, 1> val;
-    };
-
-    template <size_t M, size_t N>
-    struct FacResult
-    {
-        MatrixS<M, N> x;
-        StatusCode s = StatusCode::NORMAL;
-    };
-
-    // template <size_t M, size_t N>
-    // FacResult<M, N> svdcmp(MatrixS<M, N> u, MatrixS<N, 1> &w, MatrixS<N, N> &v)
-    // {
-    // }
-
-    // template <size_t M, size_t N>
-    // void svbksb(const MatrixS<M, N> &u, const MatrixS<N, 1> &w, const MatrixS<N, N> &v, double *b)
-    // {
-    //     const int m = M;
-    //     const int n = N;
-    //     std::array<double, N> tmp{};
-    //     auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-    //     auto tsh = 0.5 * sqrt(m + n + 1) * eigen_max * EPS_DP;
-    //     for (int j = 0; j < n; j++)
-    //     {
-    //         auto s = 0.0;
-    //         if (w[j] > tsh)
-    //         {
-    //             for (int i = 0; i < m; i++)
-    //             {
-    //                 s += u(i, j) * b[i];
-    //             }
-    //             s /= w[j];
-    //         }
-    //         tmp[j] = s;
-    //     }
-    //     for (int j = 0; j < n; j++)
-    //     {
-    //         auto s = 0.0;
-    //         for (int jj = 0; jj < n; jj++)
-    //         {
-    //             s += v(j, jj) * tmp[jj];
-    //         }
-    //         b[j] = s;
-    //     }
-    // }
-
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::LU, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
-    {
-        LU<M> lu(A);
-        if (lu.s != StatusCode::SINGULAR)
+        void tred2()
         {
-            lu.solve(b.data());
-        }
-        return {b, lu.s};
-    }
-
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::QR, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
-    {
-        QR<M, N> qr(A);
-        if (qr.s != StatusCode::SINGULAR)
-        {
-            qr.solve(b.data());
-        }
-        return {b.template sub<N, 1>(0, 0), qr.s};
-    }
-
-    template <Factorization type, size_t M, size_t N>
-    std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
-    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
-    {
-        SVD<M, N> svd(A);
-        svd.solve(b.data());
-        return {b.template sub<N, 1>(0, 0), StatusCode::NORMAL};
-    }
-
-    template <size_t M, size_t N>
-    MatrixS<N, M> pinv(const MatrixS<M, N> &mat)
-    {
-        SVD<M, N> svd(mat);
-        const auto &U = svd.u;
-        const auto &w = svd.w;
-        MatrixS<N, N> W{};
-        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
-        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_DP;
-        for (size_t i = 0; i < N; i++)
-        {
-            if (fabs(w[i]) > tsh)
-            {
-                W(i, i) = 1.0 / w[i];
-            }
-        }
-        return svd.v * W * svd.u.T();
-    }
-
-    inline EqnResult<2> quadsolve(double a, double b, double c)
-    {
-        auto det = b * b - 4 * a * c;
-        if (det < 0.0 || fabs(a) < EPS_DP)
-        {
-            return {{}, StatusCode::SINGULAR};
-        }
-        auto q = -0.5 * (b + SIGN(sqrt(det), b));
-        return {{q / a, c / q}, StatusCode::NORMAL};
-    }
-
-    // eigen system
-    namespace details
-    {
-        template <size_t N>
-        MatrixS<N, N> tred2(MatrixS<N, N> z, MatrixS<N, 1> &d, MatrixS<N, 1> &e)
-        {
-            constexpr int n = N;
             for (int i = n - 1; i > 0; i--)
             {
                 int l = i - 1;
@@ -1212,13 +1080,10 @@ namespace ppx
                     z(i, j) = 0.0;
                 }
             }
-            return z;
         }
 
-        template <size_t N>
-        void tliq(MatrixS<N, N> &z, MatrixS<N, 1> &d, MatrixS<N, 1> &e)
+        void tliq()
         {
-            constexpr int n = N;
             for (int i = 1; i < n; i++)
             {
                 e[i - 1] = e[i];
@@ -1289,56 +1154,106 @@ namespace ppx
             }
         }
 
-        template <size_t N>
-        void eigsrt(MatrixS<N, N> &mat, MatrixS<N, 1> &vec)
+        void eigsrt()
         {
-            constexpr int n = N;
             for (auto i = 0; i < n - 1; i++)
             {
-                auto j = std::distance(vec.begin() + i, std::min_element(vec.begin() + i, vec.end())) + i;
+                auto j = std::distance(d.begin() + i, std::min_element(d.begin() + i, d.end())) + i;
                 if (j != i)
                 {
-                    std::swap(vec[i], vec[j]);
+                    std::swap(d[i], d[j]);
                     for (auto k = 0; k < n; k++)
                     {
-                        std::swap(mat(k, i), mat(k, j));
+                        std::swap(z(k, i), z(k, j));
                     }
                 }
             }
         }
-    }
 
-    template <EigenSystem type, size_t N>
-    std::enable_if_t<type == EigenSystem::SymValAndVec, EigResult<N>>
-    eig(const MatrixS<N, N> &mat)
+    public:
+        EigenValue(const MatrixS<n, n> &mat, bool sorted = false)
+            : m_sym(true), m_srt(sorted), z(mat)
+        {
+            tred2();
+            tliq();
+            if (m_srt)
+            {
+                eigsrt();
+            }
+        }
+
+        MatrixS<n, n> z;
+        MatrixS<n, 1> d;
+    };
+
+    enum class Factorization : char
     {
-        MatrixS<N, 1> e, eig_value;
-        auto result = details::tred2(mat, eig_value, e);
-        details::tliq(result, eig_value, e);
-        return {result, eig_value};
-    }
+        LU,
+        QR,
+        SVD
+    };
 
-    template <EigenSystem type, size_t N>
-    std::enable_if_t<type == EigenSystem::SymValAndVecSorted, EigResult<N>>
-    eig(const MatrixS<N, N> &mat)
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::LU, EqnResult<N>>
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        MatrixS<N, 1> e, eig_value;
-        auto result = details::tred2(mat, eig_value, e);
-        details::tliq(result, eig_value, e);
-        details::eigsrt(result, eig_value);
-        return {result, eig_value};
+        LU<M> lu(A);
+        if (lu.s != StatusCode::SINGULAR)
+        {
+            lu.solve(b.data());
+        }
+        return {b, lu.s};
     }
 
-    template <EigenSystem type, size_t N>
-    std::enable_if_t<type == EigenSystem::SymOnlyVal, MatrixS<N, 1>>
-    eig(const MatrixS<N, N> &mat)
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::QR, EqnResult<N>>
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
     {
-        MatrixS<N, 1> e, eig_value;
-        auto result = details::tred2(mat, eig_value, e);
-        details::tliq(result, eig_value, e);
-        std::sort(eig_value.begin(), eig_value.end());
-        return eig_value;
+        QR<M, N> qr(A);
+        if (qr.s != StatusCode::SINGULAR)
+        {
+            qr.solve(b.data());
+        }
+        return {b.template sub<N, 1>(0, 0), qr.s};
     }
 
+    template <Factorization type, size_t M, size_t N>
+    std::enable_if_t<type == Factorization::SVD, EqnResult<N>>
+    linsolve(const MatrixS<M, N> &A, MatrixS<M, 1> b)
+    {
+        SVD<M, N> svd(A);
+        svd.solve(b.data());
+        return {b.template sub<N, 1>(0, 0), StatusCode::NORMAL};
+    }
+
+    template <size_t M, size_t N>
+    MatrixS<N, M> pinv(const MatrixS<M, N> &mat)
+    {
+        SVD<M, N> svd(mat);
+        const auto &U = svd.u;
+        const auto &w = svd.w;
+        MatrixS<N, N> W{};
+        auto eigen_max = *std::max_element(w.cbegin(), w.cend());
+        auto tsh = 0.5 * sqrt(M + N + 1) * eigen_max * EPS_DP;
+        for (size_t i = 0; i < N; i++)
+        {
+            if (fabs(w[i]) > tsh)
+            {
+                W(i, i) = 1.0 / w[i];
+            }
+        }
+        return svd.v * W * svd.u.T();
+    }
+
+    inline EqnResult<2> quadsolve(double a, double b, double c)
+    {
+        auto det = b * b - 4 * a * c;
+        if (det < 0.0 || fabs(a) < EPS_DP)
+        {
+            return {{}, StatusCode::SINGULAR};
+        }
+        auto q = -0.5 * (b + SIGN(sqrt(det), b));
+        return {{q / a, c / q}, StatusCode::NORMAL};
+    }
 }
 #endif

@@ -56,14 +56,14 @@ namespace ppx
         {
             MatrixS<N, 1> x;
             std::normal_distribution<> d{0, 1};
-            auto eigsys = eig<EigenSystem::SymValAndVec>(m_cov);
+            EigenValue<N> eigsys(m_cov);
             MatrixS<N, N> diag;
             for (size_t i = 0; i < N; i++)
             {
                 x[i] = d(m_gen);
-                diag(i, i) = sqrt(eigsys.val[i]);
+                diag(i, i) = sqrt(eigsys.d[i]);
             }
-            return eigsys.vec * diag * x + m_mean;
+            return eigsys.z * diag * x + m_mean;
         }
 
         double pdf(const MatrixS<N, 1> &x) const

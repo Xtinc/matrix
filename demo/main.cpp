@@ -104,8 +104,9 @@ void test_matrix()
                     1, -1, 2, -2,
                     4, 1, -2, 3};
     PRINT_SINGLE_ELEMENTS(g, "g = ");
-    PRINT_SINGLE_ELEMENTS(eig<EigenSystem::SymValAndVecSorted>(g).vec, "eigen vector of g : ");
-    PRINT_SINGLE_ELEMENTS(eig<EigenSystem::SymOnlyVal>(g), "eigen value of g : ");
+    EigenValue<4> eig(g);
+    PRINT_SINGLE_ELEMENTS(eig.z, "eigen vector of g : ");
+    PRINT_SINGLE_ELEMENTS(eig.d, "eigen value of g : ");
     // Matrix<3, 3> TA{1, 2, 3, 9, 8, 7, 5, 6, 4};
     // Unsymmeig<3> eigsolver;
     // eigsolver(TA);
