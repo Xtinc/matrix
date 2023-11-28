@@ -583,31 +583,6 @@ namespace ppx
             }
         }
 
-        MatrixS<m, m> Q() const
-        {
-            auto qt = eye<m>();
-            for (int k = 0; k < n - 1; k++)
-            {
-                if (fabs(c[k]) > EPS_DP)
-                {
-                    for (int j = 0; j < n; j++)
-                    {
-                        auto sum = 0.0;
-                        for (int i = k; i < n; i++)
-                        {
-                            sum += A(i, k) * qt(i, j);
-                        }
-                        sum /= c[k];
-                        for (int i = k; i < n; i++)
-                        {
-                            qt(i, j) -= sum * A(i, k);
-                        }
-                    }
-                }
-            }
-            return qt.T();
-        }
-
         MatrixS<m, n> A;
         MatrixS<n, 1> c;
         MatrixS<n, 1> d;

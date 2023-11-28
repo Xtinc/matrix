@@ -118,7 +118,7 @@ auto MGS(A:mat)->mat;
 auto A = eye<100>();
 A += hlib(A);
 auto Q = MGS(A);
-std::cout << norm1(Q.T() * Q - eye<100>()) << std::endl;
+std::cout << norm1<100, 1>(Q.T() * Q - eye<100>()) << std::endl;
 \end{lstlisting}
         \end{minipage}
     \end{center}
@@ -316,4 +316,86 @@ std::cout << norm1(Q.T() * Q - eye<100>()) << std::endl;
 \end{equation*}
 这种方法也称为隐式 QR 分解。
 
-\subsection{程序实现}
+\subsection{使用实例}
+以上讨论的 QR 分解方法是在矩阵 A 可逆情况下得出的。但同样适用于列满秩情形，以矩阵：
+\begin{equation*}
+    A=\begin{bmatrix}
+        1 & -4 \\
+        2 & 3  \\
+        2 & 2
+    \end{bmatrix}
+\end{equation*}
+为例，它是一个 $3\times 2$ 的列满秩矩阵，它将被分解为 Q（3 阶正交矩阵）与 R（2阶上三角矩阵），代码如下：
+\begin{tcolorbox}
+    \begin{center}
+        \begin{minipage}{.92\linewidth}
+            \begin{lstlisting}[language=C++]
+MatrixS<3, 2> A{{1, 2, 2}, {-4, 3, 2}};
+QR<3, 2> qrdcmp(A);
+std::cout << qrdcmp.A<< "\n";
+std::cout << qrdcmp.d << "\n";
+std::cout << qrdcmp.c << "\n";
+\end{lstlisting}
+        \end{minipage}
+    \end{center}
+\end{tcolorbox}
+其中 A 以紧凑形式返回了 QR 分解结果，d 代表对角线元素，c 代表 Householder 变换因子系数倒数，运行结果如下：
+\begin{tcolorbox}
+    \begin{center}
+        \begin{minipage}{.92\linewidth}
+            \begin{lstlisting}[language=C++]
+MAT<3,2>:
+        4              -2
+        2               9
+        2               3
+ARR<2>:          -3               -5
+ARR<2>:          12               45
+\end{lstlisting}
+        \end{minipage}
+    \end{center}
+\end{tcolorbox}
+现在从其中还原 QR 分解矩阵：紧凑形式 A 中的上三角部分与对角线矩阵 d 组合得到 R，下三角部分每一列是变换向量，配合变换因子
+可以还原出每次作用的 Householder 矩阵，累乘这些矩阵得到 $Q^T$：
+\begin{equation*}
+    R=\begin{bmatrix}
+        -3 & -2 \\
+        0  & -5 \\
+        0  & 0
+    \end{bmatrix}
+\end{equation*}
+变换因子为：$u_1=(4,2,2)^T,u_2=(9,3)^T$，其对应系数为 $c=(\frac{1}{12},\frac{1}{45})^T$，由公式 $H_u=I-cuu^T$ 求出其 Householder 矩阵为：
+\begin{equation*}
+    H_1=\frac{1}{3} \begin{bmatrix}
+        -1 & -2 & -2 \\
+        -2 & 2  & -1 \\
+        -2 & -1 & 2
+    \end{bmatrix},
+    H_2=\frac{1}{5} \begin{bmatrix}
+        -4 & -3 \\
+        -3 & 4
+    \end{bmatrix}
+\end{equation*}
+验证 Householder 矩阵正确性，将其左作用于矩阵 A：
+\begin{equation*}
+    H_1A=\begin{bmatrix}
+        -3 & -2 \\
+        0  & 4  \\
+        0  & 3
+    \end{bmatrix},H_2^{'}H_1A=\begin{bmatrix}
+        1 & 0   \\
+        0 & H_2
+    \end{bmatrix}H_1A=\begin{bmatrix}
+        -3 & -2 \\
+        0  & -5 \\
+        0  & 0
+    \end{bmatrix}
+\end{equation*}
+得到正确的上三角形式 R，故由 $Q^T=H_2H_1$可知：
+\begin{equation*}
+    Q=(Q^T)^T=(H_2H_1)^T=\begin{bmatrix}
+        -\frac{1}{3} & \frac{14}{15} & \frac{2}{15}  \\
+        -\frac{2}{3} & -\frac{1}{3}  & -\frac{2}{3}  \\
+        -\frac{2}{3} & -\frac{1}{3}  & \frac{11}{15}
+    \end{bmatrix}
+\end{equation*}
+与 Matlab 计算结果相比，QR 分解相差了 $\pm$ 符号，这是由于正交化方向选择不同引起的，本质并无区别。在之后的 SVD 分解与特征值计算中，依然会出现该现象。
