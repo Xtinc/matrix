@@ -34,13 +34,15 @@ namespace ppx
         using Rep = MatrixS<3, 3>;
 
     public:
-        template <typename T>
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
         SO3(std::initializer_list<T> list) : MatrixS(list) {}
         SO3(const Rep &other) : MatrixS(other) {}
         SO3() : MatrixS(eye<3>()){};
         SO3(const MatrixS<3, 1> &xAxis, const MatrixS<3, 1> &yAxis, const MatrixS<3, 1> &zAxis)
             : MatrixS<3, 3>{xAxis[0], xAxis[1], xAxis[2], yAxis[0], yAxis[1], yAxis[2], zAxis[0], zAxis[1], zAxis[2]} {}
         SO3(double m[3][3]) : MatrixS({m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]}) {}
+
+        using MatrixS::operator*;
 
         SO3 operator*(const SO3 &other) const
         {
@@ -186,7 +188,7 @@ namespace ppx
         using Rep = MatrixS<4, 4>;
 
     public:
-        template <typename T>
+        template <typename T, details::enable_arith_type_t<T> * = nullptr>
         SE3(std::initializer_list<T> list) : MatrixS(list) {}
         SE3(const Rep &other) : MatrixS(other) {}
         SE3(const SO3 &Rot, const T3 &Pos) : MatrixS(eye<4>())
@@ -196,6 +198,8 @@ namespace ppx
         }
         SE3() : MatrixS(eye<4>()) {}
         SE3(double m[4][4]) : MatrixS({m[0][0], m[1][0], m[2][0], 0.0, m[0][1], m[1][1], m[2][1], 0.0, m[0][2], m[1][2], m[2][2], 0.0, m[0][3], m[1][3], m[2][3], 1.0}) {}
+
+        using MatrixS::operator*;
 
         SE3 operator*(const SE3 &other) const
         {
