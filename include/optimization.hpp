@@ -503,7 +503,7 @@ namespace ppx
             using vec = MatrixS<N, 1>;
 
             CoDo(const F &f, const vec &lower, const vec &upper)
-                : func(f), lo(lower), hi(upper), scal(1)
+                : func(f), lo(lower), hi(upper)
             {
                 // Check up > lo.
             }
@@ -528,7 +528,7 @@ namespace ppx
                     vec p;
 
                     // calculation of the scaling matrices d (d), d^1/2 (dsqr), and inv(d^1/2) (dmsqr)
-                    if (scal == 1 && itc == 1)
+                    if (itc == 1)
                     {
                         if (itc == 1)
                         {
@@ -602,7 +602,7 @@ namespace ppx
                         }
                         else if (grad[i] > 0.0 && lo[i] >= -MAX_SP)
                         {
-                            d[i] = x[i] - l[i];
+                            d[i] = x[i] - lo[i];
                         }
                         else if (fabs(grad[i]) < EPS_SP) // todo
                         {
