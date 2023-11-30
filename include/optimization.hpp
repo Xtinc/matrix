@@ -492,6 +492,133 @@ namespace ppx
                 return R;
             }
         };
+
+        template <typename F, size_t N = F::ROW>
+        struct CoDo
+        {
+            size_t SCMTX = 0;
+            size_t ITMAX = 100;
+            double FTOLA = EPS_SP;
+
+            using vec = MatrixS<N, 1>;
+
+            CoDo(const F &f, const vec &lower, const vec &upper)
+                : func(f), lo(lower), hi(upper), scal(1)
+            {
+                // Check up > lo.
+            }
+
+            OptResult<N> operator()(const vec &init0)
+            {
+                auto fx = f(init0);
+                auto fnrm = norm2(fx);
+
+                // iteration
+                auto itc = 0;
+                auto lambda = 0.0;
+                vec grad;
+                grad.fill(1);
+                while (fnrm > FTOLA && ++itc < ITMAX)
+                {
+                    auto fnrm0 = fnrm;
+                    auto jac = f.jacobi();
+                    auto grad_old = grad;
+                    grad = jac.T() * fx;
+
+                    vec p;
+
+                    // calculation of the scaling matrices d (d), d^1/2 (dsqr), and inv(d^1/2) (dmsqr)
+                    if (scal == 1 && itc == 1)
+                    {
+                        if (itc == 1)
+                        {
+                            lambda = std::max(1e-2, norm2(grad));
+                        }
+                        else
+                        {
+                            lambda = std::max(1e-2, (p.T() * (grad - grad_old))[0] / inner_product(p, p));
+                        }
+                    }
+                }
+
+                return {};
+            }
+
+        private:
+            const F &func;
+            const vec &lo;
+            const vec &hi;
+
+            vec DMatrixCi(const vec &x, const vec &grad, double lambda)
+            {
+                constexpr auto gamma = 1;
+                vec d;
+                switch (SCMTX)
+                {
+                default:
+                case 1:
+                    // Hager Scaling.
+                    for (size_t i = 0; i < N; i++)
+                    {
+                        if (grad[i] < 0.0 && hi[i] <= MAX_SP)
+                        {
+                            auto diff = hi[i] - x[i];
+                            d[i] = 1.0 / (lambda - grad[i] / diff);
+                        }
+                        else if (grad[i] > 0 && lo[i] >= -MAX_SP)
+                        {
+                            auto diff = x[i] - lo[i];
+                            d[i] = 1.0 / (lambda + grad[i] / diff);
+                        }
+                        else
+                        {
+                            d[i] = 1.0 / lambda;
+                        }
+                    }
+                    break;
+                case 2:
+                    // Kanzow-Klug Scaling.
+                    for (size_t i = 0; i < N; i++)
+                    {
+                        if (lo[i] <= -MAX_SP && hi[i] >= MAX_SP)
+                        {
+                            d[i] = 1.0;
+                        }
+                        else
+                        {
+                            auto a = x[i] - lo[i] + gamma * std::max(0, -grad[i]);
+                            auto b = hi[i] - x[i] + gamma * std::max(0, grad[i]);
+                            d[i] = std::min(a, b);
+                        }
+                    }
+                    break;
+                case 3:
+                    // Coleman-Li Scaling.
+                    for (size_t i = 0; i < N; i++)
+                    {
+                        if (grad[i] < 0.0 && hi[i] <= MAX_SP)
+                        {
+                            d[i] = hi[i] - x[i];
+                        }
+                        else if (grad[i] > 0.0 && lo[i] >= -MAX_SP)
+                        {
+                            d[i] = x[i] - l[i];
+                        }
+                        else if (fabs(grad[i]) < EPS_SP) // todo
+                        {
+                            d[i] = std::min(x[i] - lo[i], hi[i] - x[i]);
+                        }
+                        else
+                        {
+                            d[i] = 1.0;
+                        }
+                    }
+                    break;
+                }
+                // Check d[i] gt 0.0
+                return d;
+            }
+        };
     }
 
     template <Optimization etype, typename T>
