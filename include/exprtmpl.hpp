@@ -99,11 +99,23 @@ namespace ppx
             }
         };
 
+        struct expr_sqrt_t
+        {
+            constexpr explicit expr_sqrt_t() = default;
+
+            template <typename Type>
+            auto operator()(const Type &ele) const
+            {
+                return std::sqrt(ele);
+            }
+        };
+
         constexpr expr_plus_t expr_plus{};
         constexpr expr_minus_t expr_minus{};
         constexpr expr_mul_t expr_mul{};
         constexpr expr_div_t expr_div{};
         constexpr expr_abs_t expr_abs{};
+        constexpr expr_sqrt_t expr_sqrt{};
 
         struct ElemTags
         {
@@ -406,6 +418,20 @@ namespace ppx
                               details::result_t<T>>(details::expr_abs, details::result_t<T>(t));
     }
 
+    // Ops sqrt
+    template <typename T, details::enable_expr_type_t<T> * = nullptr>
+    auto Sqrt(const T &t)
+    {
+        return details::unops<details::expr_sqrt_t, T>(details::expr_sqrt, t);
+    }
+
+    template <typename T, details::enable_matrix_type_t<T> * = nullptr>
+    auto Sqrt(const T &t)
+    {
+        return details::unops<details::expr_sqrt_t,
+                              details::result_t<T>>(details::expr_sqrt, details::result_t<T>(t));
+    }
+
     // Ops +
     template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
     auto operator+(const T1 &t1, const T2 &t2)
@@ -525,6 +551,12 @@ namespace ppx
         return t1.eval() * t2.eval();
     }
 
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto pwmul(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, T1, T2>(details::expr_mul, t1, t2);
+    }
+
     template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
     auto operator*(const T1 &t1, const T2 &t2)
     {
@@ -536,6 +568,13 @@ namespace ppx
     auto operator*(const T1 &t1, const T2 &t2)
     {
         return t1.eval() * t2;
+    }
+
+    template <typename T1, typename T2, details::enable_expr_mat_t<T1, T2> * = nullptr>
+    auto pwmul(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, T1,
+                              details::result_t<T2>>(details::expr_mul, t1, details::result_t<T2>(t2));
     }
 
     template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
@@ -565,10 +604,24 @@ namespace ppx
         return t1 * t2.eval();
     }
 
+    template <typename T1, typename T2, details::enable_mat_expr_t<T1, T2> * = nullptr>
+    auto pwmul(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, details::result_t<T1>,
+                              T2>(details::expr_mul, details::result_t<T1>(t1), t2);
+    }
+
     template <typename T1, typename T2, details::enable_mat_block_t<T1, T2> * = nullptr>
     auto operator*(const T1 &t1, const T2 &t2)
     {
         return t1 * t2.snap();
+    }
+
+    template <typename T1, typename T2, details::enable_mat_mat_t<T1, T2> * = nullptr>
+    auto pwmul(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_mul_t, details::result_t<T1>,
+                              details::result_t<T2>>(details::expr_mul, details::result_t<T1>(t1), details::result_t<T2>(t2));
     }
 
     template <typename T1, typename T2, details::enable_block_mat_t<T1, T2> * = nullptr>

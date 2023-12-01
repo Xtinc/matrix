@@ -46,6 +46,8 @@ TEST_F(MatrixS_TestCase, expr)
     MatrixS<3, 3> z;
     z.sub<3, 3>(0, 0) = (x * 2 + y * 2 + x * y) / 2 - MatrixS<3, 3>{35.0, 45.0, 55.0, 45.0, 56.5, 68.0, 55.0, 68.0, 81.0};
     EXPECT_EQ(z, decltype(z){});
+    MatrixS<3, 3> w = Sqrt(pwmul(x, x));
+    EXPECT_EQ(w, x);
 }
 
 TEST_F(MatrixS_TestCase, func)
