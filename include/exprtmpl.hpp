@@ -637,6 +637,12 @@ namespace ppx
     }
 
     // Ops /
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto pwdiv(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, T1, T2>(details::expr_div, t1, t2);
+    }
+
     template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
     auto operator/(const T1 &t1, const T2 &t2)
     {
@@ -651,6 +657,13 @@ namespace ppx
                               details::result_s<T1>, T2>(details::expr_div, details::result_s<T1>(t1), t2);
     }
 
+    template <typename T1, typename T2, details::enable_expr_mat_t<T1, T2> * = nullptr>
+    auto pwdiv(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, T1,
+                              details::result_t<T2>>(details::expr_div, t1, details::result_t<T2>(t2));
+    }
+
     template <typename T1, typename T2, details::enable_num_mat_t<T1, T2> * = nullptr>
     auto operator/(const T1 &t1, const T2 &t2)
     {
@@ -663,6 +676,13 @@ namespace ppx
     {
         return details::biops<details::expr_div_t, details::result_t<T1>,
                               details::result_s<T2>>(details::expr_div, details::result_t<T1>(t1), details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_mat_t<T1, T2> * = nullptr>
+    auto pwdiv(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_div_t, details::result_t<T1>,
+                              details::result_t<T2>>(details::expr_div, details::result_t<T1>(t1), details::result_t<T2>(t2));
     }
 
 }

@@ -48,6 +48,8 @@ TEST_F(MatrixS_TestCase, expr)
     EXPECT_EQ(z, decltype(z){});
     MatrixS<3, 3> w = Sqrt(pwmul(x, x));
     EXPECT_EQ(w, x);
+    MatrixS<3, 3> v = Abs(pwdiv(pwmul(x, x.sub<3, 3>(0, 0)), 1 + x.sub<3, 3>(0, 0) - 1));
+    EXPECT_EQ(w, v);
 }
 
 TEST_F(MatrixS_TestCase, func)
