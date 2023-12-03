@@ -724,10 +724,9 @@ namespace ppx
                         delta0 = delta1;
                         delta1 = std::min(0.25 * delta0, 0.5 * norm2<N, 1>(pwmul(G, p)));
                     }
-                    std::cout << "itc:\t" << itc << "\t" << rho << "\n";
 
                     // the trust region radius Delta has become too small
-                    if (rho < 0.25 && delta0 < sqrt(EPS_DP))
+                    if (rho < 0.25 && delta1 < sqrt(EPS_DP))
                     {
                         stat = StatusCode::DIVERGED;
                         break;
@@ -763,6 +762,8 @@ namespace ppx
                         fx = fxp;
                         fnrm = fxpnrm;
                     }
+
+                    std::cout << "itc:\t" << itc << "\trho:\t " << rho << "\tres:\t " << fnrm << "\t delta:\t" << delta0 << "\n";
 
                     // no improvement for the nonlinear residual could be obtained
                     if (std::abs(fnrm - fnrm_old) < 1e2 * EPS_DP * fnrm && fnrm > FTOLA)

@@ -123,7 +123,11 @@ public:
         {
             return this->jacobiSpace(q);
         };
-        details::CoDo<Q::LEN, 6> codo(fx);
+
+        Q lower, upper;
+        lower.fill(-PI);
+        upper.fill(PI);
+        details::CoDo<Q::LEN, 6> codo(fx, lower, upper);
 
         auto result = codo(init);
         // auto dtd = 4 * inner_product(err, err);
