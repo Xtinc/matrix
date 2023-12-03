@@ -621,7 +621,6 @@ namespace ppx
                     double fxpnrm;
                     while (rho < 0.25 && delta1 > sqrt(EPS_DP))
                     {
-                        std::cout << "inner iteration!\n";
                         auto pciv = pc;
                         // Cauchy Point
                         if (vert * nGdgrad > delta1)
@@ -672,7 +671,7 @@ namespace ppx
                                     {
                                         for (size_t i = 0; i < vecx::LEN; i++)
                                         {
-                                            if (fabs(seg[i]) > EPS_DP)
+                                            if (seg[i] != 0)
                                             {
                                                 alp[i] = std::max((lo[i] - x[i] - pciv[i]) / seg[i],
                                                                   (hi[i] - x[i] - pciv[i]) / seg[i]);
@@ -694,10 +693,10 @@ namespace ppx
                                     {
                                         for (size_t i = 0; i < vecx::LEN; i++)
                                         {
-                                            if (fabs(seg[i]) > EPS_DP)
+                                            if (seg[i] != 0)
                                             {
-                                                alp[i] = std::max((lo[i] - x[i] - pciv[i]) / seg[i],
-                                                                  (hi[i] - x[i] - pciv[i]) / seg[i]);
+                                                alp[i] = std::max((x[i] + pciv[i] - lo[i]) / seg[i],
+                                                                  (x[i] + pciv[i] - hi[i]) / seg[i]);
                                             }
                                             else
                                             {
@@ -709,6 +708,7 @@ namespace ppx
                                     }
                                 }
                             }
+                            // assert gamma in [0,1]
                             p = (1 - gamma) * pciv + gamma * pn;
                         }
                         else
@@ -722,7 +722,7 @@ namespace ppx
                         fxpnrm = norm2(fxp);
                         rho = (fnrm - fxpnrm) / (fnrm - norm2<N, 1>(fx + jac * p));
                         delta0 = delta1;
-                        delta1 = std::min(0.25 * delta0, 0.5 * norm2<N, 1>(pwmul(G, p)));
+                        delta1 = std::min(0.25 * delta0, 0.707 * norm2<N, 1>(pwmul(G, p)));
                     }
 
                     // the trust region radius Delta has become too small
@@ -738,17 +738,18 @@ namespace ppx
                     }
 
                     x = xp;
+                    // usually x must be in [lo,hi], but when x = lo || hi, d get zeros. manually made it to eps.
                     bool need_update{false};
                     for (size_t i = 0; i < vecx::LEN; i++)
                     {
-                        if (x[i] < lo[i] + 1e2 * EPS_DP)
+                        if (x[i] < lo[i] + 1e3 * EPS_DP)
                         {
-                            x[i] = lo[i] + 1e2 * EPS_DP;
+                            x[i] = lo[i] + 1e3 * EPS_DP;
                             need_update = true;
                         }
-                        if (x[i] > hi[i] - 1e2 * EPS_DP)
+                        if (x[i] > hi[i] - 1e3 * EPS_DP)
                         {
-                            x[i] = hi[i] - 1e2 * EPS_DP;
+                            x[i] = hi[i] - 1e3 * EPS_DP;
                             need_update = true;
                         }
                     }
@@ -763,19 +764,17 @@ namespace ppx
                         fnrm = fxpnrm;
                     }
 
-                    std::cout << "itc:\t" << itc << "\trho:\t " << rho << "\tres:\t " << fnrm << "\t delta:\t" << delta0 << "\n";
+                    std::cout << "itc:\t" << itc << "\t rho:\t " << rho << "\t res:\t " << fnrm
+                              << "\t delta:\t" << delta0 << "\t ratio:\t" << std::abs(fnrm - fnrm_old) / fnrm << "\n";
 
                     // no improvement for the nonlinear residual could be obtained
-                    if (std::abs(fnrm - fnrm_old) < 1e2 * EPS_DP * fnrm && fnrm > FTOLA)
+                    if (std::abs(fnrm - fnrm_old) < FTOLA * fnrm && fnrm > FTOLA)
                     {
                         break;
                     }
                 }
 
-                return {x, 0.5 * fnrm,
-                        stat == StatusCode::CONVERGED && itc < ITMAX
-                            ? StatusCode::CONVERGED
-                            : StatusCode::DIVERGED};
+                return {x, 0.5 * fnrm, stat};
             }
 
         private:
