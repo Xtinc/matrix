@@ -107,82 +107,95 @@ public:
         }
         return Js;
     }
-    Q inverseSpace(const SE3 &pose, Q init)
+    Q inverseSpace(const SE3 &pose, const Q &init)
     {
-        auto Tsb = forwardSpace(init);
-        auto Js = jacobiSpace(init);
-        auto err = (pose * Tsb.I()).log();
-
-        auto dtd = 4 * inner_product(err, err);
-        auto iter = 0u;
-
-        while (++iter < 50 && norm2(err) > EPS_SP && sqrt(dtd) > 100 * EPS_SP)
+        // auto Tsb = forwardSpace(init);
+        // auto Js = jacobiSpace(init);
+        // auto err = (pose * Tsb.I()).log();
+        auto fx = [this, &pose](const Q &q)
         {
-            auto err_w = norm2(err._1());
-            auto err_v = norm2(err._2());
-            printf("iter=%d, w_error=%15.8f, v_error=%15.8f, err=%15.8f\n", iter, err_w, err_v, norm2(err));
+            auto Tsb = this->forwardSpace(q);
+            // return se3{(pose.Rot() * Tsb.Rot().I()).log(), pose.Pos() - Tsb.Pos()};
+            return (pose * Tsb.I()).log();
+        };
 
-            auto g = Js.T() * err;
-            auto alpha = inner_product(err, Js * g) / SQR(norm2(Js * g));
-            auto result = linsolve<Factorization::LU>(Js.T() * Js, g);
+        auto dfx = [this](const Q &q, const se3 &)
+        {
+            return this->jacobiSpace(q);
+        };
+        details::CoDo<Q::LEN, 6> codo(fx);
 
-            Q dq{};
-            if (result.s == StatusCode::NORMAL)
-            {
-                Q pU = alpha * g;
-                const auto &pB = result.x;
-                auto npB = norm2(pB);
-                auto npU = norm2(pU);
-                if (npB < dtd)
-                {
-                    std::cout << "use GN ";
-                    dq = result.x;
-                }
-                else if (npU > dtd)
-                {
-                    std::cout << "use GD1 ";
-                    dq = sqrt(dtd) / norm2(g) * g;
-                }
-                else
-                {
-                    std::cout << "use MX ";
-                    Q pBU = pB - pU;
-                    auto tau = sqrt(SQR(inner_product(pU, pBU)) - inner_product(pBU, pBU) * (npU - dtd));
-                    tau = (tau - inner_product(pU, pBU)) / inner_product(pBU, pBU);
-                    dq = pU + tau * pBU;
-                }
-            }
-            else
-            {
-                std::cout << "use GD2 ";
-                dq = sqrt(dtd) / norm2(g) * g;
-                // should use GD in trust region ?
-            }
+        auto result = codo(init);
+        // auto dtd = 4 * inner_product(err, err);
+        // auto iter = 0u;
 
-            auto pseudo_init = init + dq;
-            auto pseudo_Tsb = forwardSpace(pseudo_init);
-            auto pseudo_Js = jacobiSpace(pseudo_init);
-            auto pseudo_err = (pose * pseudo_Tsb.I()).log();
-            auto rho = inner_product(err, err) - inner_product(pseudo_err, pseudo_err);
-            rho /= inner_product(dq, Js.T() * err);
-            std::cout << "rho: " << rho << " dtd: " << dtd << "\n";
-            if (rho > 1e-5)
-            {
-                init = pseudo_init;
-                Tsb = pseudo_Tsb;
-                Js = pseudo_Js;
-                err = pseudo_err;
-            }
-            if (rho > 0.75)
-            {
-                dtd = std::max(dtd, 9 * norm2(dq));
-            }
-            else if (rho < 0.25)
-            {
-                dtd /= 9;
-            }
-        }
-        return init;
+        // while (++iter < 50 && norm2(err) > EPS_SP && sqrt(dtd) > 100 * EPS_SP)
+        // {
+        //     auto err_w = norm2(err._1());
+        //     auto err_v = norm2(err._2());
+        //     printf("iter=%d, w_error=%15.8f, v_error=%15.8f, err=%15.8f\n", iter, err_w, err_v, norm2(err));
+
+        //     auto g = Js.T() * err;
+        //     auto alpha = inner_product(err, Js * g) / SQR(norm2(Js * g));
+        //     auto result = linsolve<Factorization::LU>(Js.T() * Js, g);
+
+        //     Q dq{};
+        //     if (result.s == StatusCode::NORMAL)
+        //     {
+        //         Q pU = alpha * g;
+        //         const auto &pB = result.x;
+        //         auto npB = norm2(pB);
+        //         auto npU = norm2(pU);
+        //         if (npB < dtd)
+        //         {
+        //             std::cout << "use GN ";
+        //             dq = result.x;
+        //         }
+        //         else if (npU > dtd)
+        //         {
+        //             std::cout << "use GD1 ";
+        //             dq = sqrt(dtd) / norm2(g) * g;
+        //         }
+        //         else
+        //         {
+        //             std::cout << "use MX ";
+        //             Q pBU = pB - pU;
+        //             auto tau = sqrt(SQR(inner_product(pU, pBU)) - inner_product(pBU, pBU) * (npU - dtd));
+        //             tau = (tau - inner_product(pU, pBU)) / inner_product(pBU, pBU);
+        //             dq = pU + tau * pBU;
+        //         }
+        //     }
+        //     else
+        //     {
+        //         std::cout << "use GD2 ";
+        //         dq = sqrt(dtd) / norm2(g) * g;
+        //         // should use GD in trust region ?
+        //     }
+
+        //     auto pseudo_init = init + dq;
+        //     auto pseudo_Tsb = forwardSpace(pseudo_init);
+        //     auto pseudo_Js = jacobiSpace(pseudo_init);
+        //     auto pseudo_err = (pose * pseudo_Tsb.I()).log();
+        //     auto rho = inner_product(err, err) - inner_product(pseudo_err, pseudo_err);
+        //     rho /= inner_product(dq, Js.T() * err);
+        //     std::cout << "rho: " << rho << " dtd: " << dtd << "\n";
+        //     if (rho > 1e-5)
+        //     {
+        //         init = pseudo_init;
+        //         Tsb = pseudo_Tsb;
+        //         Js = pseudo_Js;
+        //         err = pseudo_err;
+        //     }
+        //     if (rho > 0.75)
+        //     {
+        //         dtd = std::max(dtd, 9 * norm2(dq));
+        //     }
+        //     else if (rho < 0.25)
+        //     {
+        //         dtd /= 9;
+        //     }
+        // }
+        return result.s == StatusCode::CONVERGED ? result.x : init;
     }
 };
 

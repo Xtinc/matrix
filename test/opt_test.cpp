@@ -154,6 +154,7 @@ TEST_F(NonLinOpt_TestCase, CodoTest)
     lower.fill(0);
     upper.fill(MAX_SP);
     details::CoDo<11, 11> codo(chem11, lower, upper);
-
-    std::cout << codo(init_x) << "\n";
+    auto result = codo(init_x);
+    //2.91573         3.96094         19.9863       0.0842748       0.0220957     0.000722779       0.0332022     0.000421098       0.0274166       0.0311465         27.0622
+    EXPECT_TRUE(result.y < EPS_SP);
 }

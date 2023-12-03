@@ -374,17 +374,18 @@ void test_robotics()
     // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
     SE3 TargetPose = UR5.forwardSpace({-0.3, 0.0, 0.0, 2.1, 1.66, -1.84});
 
-    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {0.3, 0.0, 0.0, 0.4, 1.5, -0.6}), "IKSpace = ");
+    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, {1.3, 0.0, 0.0, 2.4, 1.5, 0.6}), "IKSpace = ");
 }
 
 int main(int, char **)
 {
-    test_expr();
-    test_matrix();
-    test_linear();
-    test_statics();
-    test_lieGroup();
+    // test_expr();
+    // test_matrix();
+    // test_linear();
+    // test_statics();
+    // test_lieGroup();
+    // test_nonlinear();
+
     test_robotics();
-    test_nonlinear();
     return EXIT_SUCCESS;
 }

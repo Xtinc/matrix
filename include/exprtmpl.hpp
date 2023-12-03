@@ -34,7 +34,7 @@ namespace ppx
     namespace details
     {
         // void_t
-        template <typename... Ts>
+        template <typename...>
         struct make_void
         {
             typedef void type;

@@ -497,147 +497,177 @@ namespace ppx
         template <size_t M, size_t N>
         struct CoDo
         {
-            size_t ITMAX = 10000;
-            double FTOLA = 1e-6;
+            size_t ITMAX = 300;
+            double FTOLA = EPS_SP;
 
             using vecx = MatrixS<M, 1>;
             using vecy = MatrixS<N, 1>;
             using matyx = MatrixS<N, M>;
             using func = std::function<vecy(const vecx &)>;
+            using dfunc = std::function<matyx(const vecx &, const vecy &)>;
 
-            CoDo(const func &_f) : f(_f)
+            explicit CoDo(const func &_f) : f(_f)
             {
                 lo.fill(-MAX_SP);
                 hi.fill(MAX_SP);
             }
 
+            CoDo(const func &_f, const dfunc &_df)
+                : CoDo(_f)
+            {
+                df = _df;
+            }
+
             CoDo(const func &_f, const vecx &lower, const vecx &upper)
                 : f(_f), lo(lower), hi(upper)
             {
-                // Check up > lo.
+                bool legal{true};
+                for (size_t i = 0; i < vecx::LEN; i++)
+                {
+                    legal = legal && lower[i] < upper[i];
+                }
+                assert(legal);
+                if (!legal)
+                {
+                    lo.fill(-MAX_SP);
+                    hi.fill(MAX_SP);
+                }
+            }
+
+            CoDo(const func &_f, const func &_df, const vecx &lower, const vecx &upper)
+                : CoDo(_f, lower, upper)
+
+            {
+                df = _df;
             }
 
             OptResult<M> operator()(vecx x)
             {
-                auto sigma = 0.99995;
-                auto thetal = 0.99995;
+                constexpr auto sigma = 0.99995;
+                constexpr auto theta = 0.99995;
+
+                bool legal{true};
+                for (size_t i = 0; i < vecx::LEN; i++)
+                {
+                    legal = legal && lo[i] <= x[i] && x[i] <= hi[i];
+                }
+                if (!legal)
+                {
+                    // illegal input.
+                    return {x, MAX_SP, StatusCode::DIVERGED};
+                }
 
                 auto fx = f(x);
                 auto fnrm = norm2(fx);
 
-                // iteration
-                auto itc = 0;
-                auto lambda = 0.0;
-                auto delta = 1.0;
+                // first iteration
+                auto itc = 0u;
+                auto delta0 = 1.0;
+                auto stat = StatusCode::CONVERGED;
                 vecx grad, p;
                 while (fnrm > FTOLA && itc++ < ITMAX)
                 {
-                    std::cout << "itc:\t" << itc << "\t" << fnrm << "\n";
-                    auto fnrm0 = fnrm;
-                    auto jac = NumericaJacobi(x, fx);
+                    auto fnrm_old = fnrm;
                     auto grad_old = grad;
+                    auto jac = df ? df(x, fx) : NumericalJacobi(x, fx);
+                    // std::cout << jac << "\n";
                     grad = jac.T() * fx;
+                    auto lambda =
+                        itc == 1 ? std::max(1e-2, norm2(grad))
+                                 : std::max(1e-2, inner_product<vecx::LEN>(p, grad - grad_old) / inner_product(p, p));
 
-                    // calculation of the scaling matrices d (d), d^1/2 (dsqr), and inv(d^1/2) (dmsqr)
-
-                    if (itc == 1)
-                    {
-                        lambda = std::max(1e-2, norm2(grad));
-                    }
-                    else
-                    {
-                        lambda = std::max(1e-2, (p.T() * (grad - grad_old))[0] / inner_product(p, p));
-                    }
-
+                    // calculation of the scaling matrices d (d), d^1/2 (dsqrt)
                     auto d = DMatrixCi(x, grad, lambda);
+                    if (*std::min_element(d.cbegin(), d.cend()) < EPS_DP)
+                    {
+                        stat = StatusCode::DIVERGED;
+                        break;
+                    }
+
                     vecx dsqrt = Sqrt(d);
-                    vecx dsqrtgrad = pwmul(dsqrt, grad);
                     vecx G = 1.0 / dsqrt;
                     vecx dgrad = pwmul(d, grad);
-                    vecx Gdgrad = pwmul(G, dgrad);
-                    vecx Gmgrad = pwdiv(grad, G);
+                    auto nGdgrad = norm2<M, 1>(pwmul(G, dgrad));
 
+                    // the sequence has approached a minumum of f in the box
                     if (norm2(dgrad) < FTOLA)
                     {
-                        // the sequence has approached a minumum of f in the box
                         break;
                     }
 
                     // gradient descent Step
-                    auto vert = SQR(norm2(dsqrtgrad) / norm2(jac * dgrad));
+                    auto vert = SQR(norm2<M, 1>(pwmul(dsqrt, grad)) / norm2(jac * dgrad));
                     vecx pc = -vert * dgrad;
-                    // if (itc != 1)
-                    // {
-                    //     delta = norm2(Gmgrad);
-                    // }
+                    if (itc == 1)
+                    {
+                        delta0 = norm2<M, 1>(pwdiv(grad, G));
+                    }
 
                     // Projected Newton Step
                     auto result = linsolve<Factorization::LU>(jac, fx);
-                    vecx sn = -1 * result.x;
+                    vecx pn = -1 * result.x;
                     if (result.s != StatusCode::SINGULAR)
                     {
-                        sn = Max(x + sn, lo) - x;
-                        sn = Min(x + sn, hi) - x;
-                        sn = std::max(sigma, 1 - norm2(sn)) * sn;
+                        pn = Max(x + pn, lo) - x;
+                        pn = Min(x + pn, hi) - x;
+                        pn = std::max(sigma, 1 - norm2(pn)) * pn;
                     }
 
                     // trust-region strategy
-                    auto rhof = 0.0;
-                    auto delta_tmp = delta;
+                    auto rho = 0.0;
+                    auto delta1 = delta0;
                     vecx xp;
                     vecy fxp;
                     double fxpnrm;
-                    while (rhof < 0.25 && delta > sqrt(EPS_DP))
+                    while (rho < 0.25 && delta1 > sqrt(EPS_DP))
                     {
-                        auto pcv = pc;
+                        std::cout << "inner iteration!\n";
+                        auto pciv = pc;
                         // Cauchy Point
-                        if (vert * norm2(Gdgrad) > delta)
+                        if (vert * nGdgrad > delta1)
                         {
-                            pcv = -delta / norm2(Gdgrad) * dgrad;
+                            pciv = -delta1 / nGdgrad * dgrad;
                         }
 
-                        auto npcv = norm2(pcv);
                         vecx alp;
                         for (size_t i = 0; i < vecx::LEN; i++)
                         {
-                            if (std::abs(pcv[i]) < EPS_DP)
+                            if (std::abs(pciv[i]) < EPS_DP)
                             {
                                 alp[i] = MAX_SP;
                             }
                             else
                             {
-                                alp[i] = std::max((lo[i] - x[i]) / pcv[i], (hi[i] - x[i]) / pcv[i]);
+                                alp[i] = std::max((lo[i] - x[i]) / pciv[i], (hi[i] - x[i]) / pciv[i]);
                             }
                         }
                         auto alpha1 = *std::min_element(alp.cbegin(), alp.cend());
-                        auto pciv = pcv;
                         if (alpha1 <= 1)
                         {
-                            pciv = std::max(thetal, 1 - npcv) * alpha1 * pcv;
+                            pciv *= std::max(theta, 1 - norm2(pciv)) * alpha1;
                         }
-
                         // path computation
                         if (result.s != StatusCode::SINGULAR)
                         {
                             vecy aa = fx + jac * pciv;
-                            vecx seg = sn - pciv;
+                            vecx seg = pn - pciv;
                             vecy bb = jac * seg;
 
                             auto gamma = 0.0;
-                            if (std::abs(norm2(bb)) > 0)
+                            if (norm2(bb) != 0)
                             {
-                                auto gammamin = -inner_product(aa, bb) / inner_product(bb, bb);
+                                auto gamma_min = -inner_product(aa, bb) / inner_product(bb, bb);
                                 vecx Gseg = pwmul(G, seg);
                                 vecx Gpciv = pwmul(G, pciv);
                                 auto a = SQR(norm2(Gseg));
                                 auto b = inner_product(Gpciv, Gseg);
-                                auto c = SQR(norm2(Gpciv)) - SQR(delta);
+                                auto c = SQR(norm2(Gpciv)) - SQR(delta1);
                                 auto l1 = (-b + SIGN(std::sqrt(b * b - a * c), -b)) / a;
                                 auto l2 = c / (l1 * a);
-                                if (gammamin > 0)
+                                if (gamma_min > 0)
                                 {
-                                    auto gammaend = std::max(l1, l2);
-                                    gamma = std::min(gammamin, gammaend);
+                                    auto gamma_end = std::max(l1, l2);
+                                    gamma = std::min(gamma_min, gamma_end);
                                     if (gamma > 1)
                                     {
                                         for (size_t i = 0; i < vecx::LEN; i++)
@@ -653,13 +683,13 @@ namespace ppx
                                             }
                                         }
                                         alpha1 = *std::min_element(alp.cbegin(), alp.cend());
-                                        gamma = std::min(thetal * alpha1, gamma);
+                                        gamma = std::min(theta * alpha1, gamma);
                                     }
                                 }
                                 else
                                 {
-                                    auto gammaend = std::min(l1, l2);
-                                    gamma = std::max(gammamin, gammaend);
+                                    auto gamma_end = std::min(l1, l2);
+                                    gamma = std::max(gamma_min, gamma_end);
                                     if (gamma < 0)
                                     {
                                         for (size_t i = 0; i < vecx::LEN; i++)
@@ -675,11 +705,11 @@ namespace ppx
                                             }
                                         }
                                         alpha1 = *std::min_element(alp.cbegin(), alp.cend());
-                                        gamma = std::max(-thetal * alpha1, gamma);
+                                        gamma = std::max(-theta * alpha1, gamma);
                                     }
                                 }
                             }
-                            p = (1 - gamma) * pciv + gamma * sn;
+                            p = (1 - gamma) * pciv + gamma * pn;
                         }
                         else
                         {
@@ -690,66 +720,73 @@ namespace ppx
                         xp = x + p;
                         fxp = f(xp);
                         fxpnrm = norm2(fxp);
-                        rhof = (fnrm - fxpnrm) / (fnrm - norm2<N, 1>(fx + jac * p));
-                        delta_tmp = delta;
-                        delta = std::min(0.25 * delta, 0.5 * norm2<N, 1>(pwmul(G, p)));
+                        rho = (fnrm - fxpnrm) / (fnrm - norm2<N, 1>(fx + jac * p));
+                        delta0 = delta1;
+                        delta1 = std::min(0.25 * delta0, 0.5 * norm2<N, 1>(pwmul(G, p)));
                     }
+                    std::cout << "itc:\t" << itc << "\t" << rho << "\n";
 
-                    if (delta < sqrt(EPS_DP) && rhof < 0.25)
+                    // the trust region radius Delta has become too small
+                    if (rho < 0.25 && delta0 < sqrt(EPS_DP))
                     {
-                        // the trust region radius Delta has become too small
+                        stat = StatusCode::DIVERGED;
                         break;
                     }
-                    delta = delta_tmp;
 
-                    // update
+                    if (rho > 0.75)
+                    {
+                        delta0 = std::max(delta0, 3 * norm2<M, 1>(pwmul(G, p)));
+                    }
+
                     x = xp;
-                    bool inddel{false};
+                    bool need_update{false};
                     for (size_t i = 0; i < vecx::LEN; i++)
                     {
                         if (x[i] < lo[i] + 1e2 * EPS_DP)
                         {
                             x[i] = lo[i] + 1e2 * EPS_DP;
-                            inddel = true;
+                            need_update = true;
                         }
                         if (x[i] > hi[i] - 1e2 * EPS_DP)
                         {
                             x[i] = hi[i] - 1e2 * EPS_DP;
-                            inddel = true;
+                            need_update = true;
                         }
                     }
-                    if (inddel)
+                    if (need_update)
                     {
                         fx = f(x);
+                        fnrm = norm2(fx);
                     }
                     else
                     {
                         fx = fxp;
+                        fnrm = fxpnrm;
                     }
-                    fnrm = fxpnrm;
-                    if (std::abs(fnrm - fnrm0) < 1e2 * EPS_DP * fnrm && fnrm > FTOLA)
+
+                    // no improvement for the nonlinear residual could be obtained
+                    if (std::abs(fnrm - fnrm_old) < 1e2 * EPS_DP * fnrm && fnrm > FTOLA)
                     {
-                        // no improvement for the nonlinear reasidual could be obtained
                         break;
                     }
-                    if (rhof > 0.75)
-                    {
-                        delta = std::max(delta, 2 * norm2<M, 1>(pwmul(G, p)));
-                    }
                 }
-                return {x, 0.5 * norm2(fx), StatusCode::CONVERGED};
+
+                return {x, 0.5 * fnrm,
+                        stat == StatusCode::CONVERGED && itc < ITMAX
+                            ? StatusCode::CONVERGED
+                            : StatusCode::DIVERGED};
             }
 
         private:
             func f;
+            dfunc df;
             vecx lo;
             vecx hi;
 
             auto DMatrixCi(const vecx &x, const vecx &grad, double lambda)
             {
-                constexpr auto gamma = 1;
-                vecx d;
                 // Hager Scaling.
+                vecx d;
                 for (size_t i = 0; i < vecx::LEN; i++)
                 {
                     if (grad[i] < 0.0 && hi[i] <= MAX_SP)
@@ -767,11 +804,10 @@ namespace ppx
                         d[i] = 1.0 / lambda;
                     }
                 }
-                // Check d[i] gt 0.0
                 return d;
             }
 
-            auto NumericaJacobi(const vecx &x, const vecy &fx)
+            auto NumericalJacobi(const vecx &x, const vecy &fx)
             {
                 auto EPS_DIFF = std::sqrt(EPS_DP);
                 matyx result;
@@ -786,7 +822,7 @@ namespace ppx
                         h *= -1;
                         xh[j] = x[j] + h;
                     }
-                    result.sub<vecy::LEN, 1, false>(0, j) = (f(xh) - fx) / h;
+                    result.template sub<vecy::LEN, 1, false>(0, j) = (f(xh) - fx) / h;
                 }
                 return result;
             }
