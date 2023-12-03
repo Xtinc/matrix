@@ -110,12 +110,36 @@ namespace ppx
             }
         };
 
+        struct expr_max_t
+        {
+            constexpr explicit expr_max_t() = default;
+
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return std::max(lhs, rhs);
+            }
+        };
+
+        struct expr_min_t
+        {
+            constexpr explicit expr_min_t() = default;
+
+            template <typename LType, typename RType>
+            auto operator()(const LType &lhs, const RType &rhs) const
+            {
+                return std::min(lhs, rhs);
+            }
+        };
+
         constexpr expr_plus_t expr_plus{};
         constexpr expr_minus_t expr_minus{};
         constexpr expr_mul_t expr_mul{};
         constexpr expr_div_t expr_div{};
         constexpr expr_abs_t expr_abs{};
         constexpr expr_sqrt_t expr_sqrt{};
+        constexpr expr_max_t expr_max{};
+        constexpr expr_min_t expr_min{};
 
         struct ElemTags
         {
@@ -430,6 +454,118 @@ namespace ppx
     {
         return details::unops<details::expr_sqrt_t,
                               details::result_t<T>>(details::expr_sqrt, details::result_t<T>(t));
+    }
+
+    // Ops max
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, T1, T2>(details::expr_max, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, T1,
+                              details::result_s<T2>>(details::expr_max, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_expr_mat_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, T1,
+                              details::result_t<T2>>(details::expr_max, t1, details::result_t<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t,
+                              details::result_s<T1>, T2>(details::expr_max, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, typename T2, details::enable_num_mat_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, details::result_s<T1>,
+                              details::result_t<T2>>(details::expr_max, details::result_s<T1>(t1), details::result_t<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_expr_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t,
+                              details::result_t<T1>, T2>(details::expr_max, details::result_t<T1>(t1), t2);
+    }
+
+    template <typename T1, typename T2, details::enable_mat_num_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, details::result_t<T1>,
+                              details::result_s<T2>>(details::expr_max, details::result_t<T1>(t1), details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_mat_t<T1, T2> * = nullptr>
+    auto Max(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_max_t, details::result_t<T1>,
+                              details::result_t<T2>>(details::expr_max, details::result_t<T1>(t1), details::result_t<T2>(t2));
+    }
+
+    // Ops min
+    template <typename T1, typename T2, details::enable_expr_expr_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, T1, T2>(details::expr_min, t1, t2);
+    }
+
+    template <typename T1, typename T2, details::enable_expr_num_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, T1,
+                              details::result_s<T2>>(details::expr_min, t1, details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_expr_mat_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, T1,
+                              details::result_t<T2>>(details::expr_min, t1, details::result_t<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_num_expr_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t,
+                              details::result_s<T1>, T2>(details::expr_min, details::result_s<T1>(t1), t2);
+    }
+
+    template <typename T1, typename T2, details::enable_num_mat_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, details::result_s<T1>,
+                              details::result_t<T2>>(details::expr_min, details::result_s<T1>(t1), details::result_t<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_expr_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t,
+                              details::result_t<T1>, T2>(details::expr_min, details::result_t<T1>(t1), t2);
+    }
+
+    template <typename T1, typename T2, details::enable_mat_num_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, details::result_t<T1>,
+                              details::result_s<T2>>(details::expr_min, details::result_t<T1>(t1), details::result_s<T2>(t2));
+    }
+
+    template <typename T1, typename T2, details::enable_mat_mat_t<T1, T2> * = nullptr>
+    auto Min(const T1 &t1, const T2 &t2)
+    {
+        return details::biops<details::expr_min_t, details::result_t<T1>,
+                              details::result_t<T2>>(details::expr_min, details::result_t<T1>(t1), details::result_t<T2>(t2));
     }
 
     // Ops +

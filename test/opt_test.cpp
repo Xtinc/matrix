@@ -118,3 +118,42 @@ TEST_F(NonLinOpt_TestCase, MultiDimension_OPT)
     EXPECT_EQ(x2.x, x3.x);
     EXPECT_EQ(x3.x, x4.x);
 }
+
+TEST_F(NonLinOpt_TestCase, CodoTest)
+{
+    auto chem11 = [](const MatrixS<11, 1> &n)
+    {
+        // Chemical equilibrium system
+        constexpr auto p = 40;
+        constexpr auto R = 10;
+        constexpr auto K5 = 1.930e-1;
+        constexpr auto K6 = 2.597e-3;
+        constexpr auto K7 = 3.448e-3;
+        constexpr auto K8 = 1.799e-5;
+        constexpr auto K9 = 2.155e-4;
+        constexpr auto K10 = 3.846e-5;
+
+        MatrixS<11, 1> f;
+        auto rap = p / n[10];
+        f[0] = n[0] + n[3] - 3.;
+        f[1] = 2 * n[0] + n[1] + n[3] + n[6] + n[7] + n[8] + 2 * n[9] - R;
+        f[2] = 2 * n[1] + 2 * n[4] + n[5] + n[6] - 8;
+        f[3] = 2 * n[2] + n[8] - 4 * R;
+        f[4] = K5 * n[1] * n[3] - n[0] * n[4];
+        f[5] = K6 * K6 * n[1] * n[3] - n[0] * n[5] * n[5] * rap;
+        f[6] = K7 * K7 * n[0] * n[1] - n[3] * n[6] * n[6] * rap;
+        f[7] = K8 * n[0] - n[3] * n[7] * rap;
+        f[8] = K9 * K9 * n[0] * n[0] * n[2] - n[3] * n[3] * n[8] * n[8] * rap;
+        f[9] = K10 * n[0] * n[0] - n[3] * n[3] * n[9] * rap;
+        f[10] = n[10] - std::accumulate(n.data(), n.data() + 10, 0.0);
+        return f;
+    };
+
+    MatrixS<11, 1> init_x, lower, upper;
+    init_x.fill(1);
+    lower.fill(0);
+    upper.fill(MAX_SP);
+    details::CoDo<11, 11> codo(chem11, lower, upper);
+
+    std::cout << codo(init_x) << "\n";
+}
