@@ -619,7 +619,8 @@ namespace ppx
                     vecx xp;
                     vecy fxp;
                     double fxpnrm;
-                    while (rho < 0.25 && delta1 > sqrt(EPS_DP))
+
+                    do
                     {
                         auto pciv = pc;
                         // Cauchy Point
@@ -721,9 +722,7 @@ namespace ppx
                         fxp = f(xp);
                         fxpnrm = norm2(fxp);
                         rho = (fnrm - fxpnrm) / (fnrm - norm2<N, 1>(fx + jac * p));
-                        delta0 = delta1;
-                        delta1 = std::min(0.25 * delta0, 0.707 * norm2<N, 1>(pwmul(G, p)));
-                    }
+                    } while (rho < 0.25 && (delta1 = std::min(0.25 * delta0, 0.5 * norm2<M, 1>(pwmul(G, p))), delta1 > sqrt(EPS_DP)));
 
                     // the trust region radius Delta has become too small
                     if (rho < 0.25 && delta1 < sqrt(EPS_DP))
@@ -734,7 +733,7 @@ namespace ppx
 
                     if (rho > 0.75)
                     {
-                        delta0 = std::max(delta0, 3 * norm2<M, 1>(pwmul(G, p)));
+                        delta0 = std::max(delta1, 2 * norm2<M, 1>(pwmul(G, p)));
                     }
 
                     x = xp;
