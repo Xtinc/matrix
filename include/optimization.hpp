@@ -534,7 +534,7 @@ namespace ppx
                 }
             }
 
-            CoDo(const func &_f, const func &_df, const vecx &lower, const vecx &upper)
+            CoDo(const func &_f, const dfunc &_df, const vecx &lower, const vecx &upper)
                 : CoDo(_f, lower, upper)
 
             {
@@ -570,7 +570,8 @@ namespace ppx
                     auto fnrm_old = fnrm;
                     auto grad_old = grad;
                     auto jac = df ? df(x, fx) : NumericalJacobi(x, fx);
-                    // std::cout << jac << "\n";
+                    // std::cout << "dfx1:" << jac << "\n";
+                    // std::cout << "dfx2:" << NumericalJacobi(x, fx) << "\n";
                     grad = jac.T() * fx;
                     auto lambda =
                         itc == 1 ? std::max(1e-2, norm2(grad))

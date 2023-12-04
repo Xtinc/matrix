@@ -363,18 +363,18 @@ void test_robotics()
            0.0, 0.0, 1.0, 0.0,
            0.0, 1.0, 0.0, 0.0,
            0.817, 0.191, -0.006, 1.0};
-    UR5.Joint<0>() = {"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3()};
-    UR5.Joint<1>() = {"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}};
-    UR5.Joint<2>() = {"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}};
-    UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}};
-    UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}};
-    UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6};
+    UR5.Joint<0>() = {"R1", se3{0, 0, 1, 0, 0, 0, 0}, SE3(), -PI, PI};
+    UR5.Joint<1>() = {"R2", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.0}, SE3{}, -PI, PI};
+    UR5.Joint<2>() = {"R3", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.425}, SE3{}, -PI, PI};
+    UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}, -PI, PI};
+    UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}, -PI, PI};
+    UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6, -PI, PI};
     // PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
     // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
     // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
-    auto s = StatusCode::NORMAL;
+    auto s = StatusCode::SINGULAR;
     kinematics<6>::Q q;
-    while (s == StatusCode::NORMAL)
+    while (s == StatusCode::SINGULAR)
     {
         random(q, -PI + 1e-3, PI - 1e-3);
         auto J = UR5.jacobiSpace(q);
@@ -383,7 +383,7 @@ void test_robotics()
     }
 
     SE3 TargetPose = UR5.forwardSpace(q);
-    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, q - 0.1), "IKSpace = ");
+    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, q - 0.05), "IKSpace = ");
     std::cout << "singualr q:" << q << "\n";
 }
 
