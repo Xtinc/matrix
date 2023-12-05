@@ -372,16 +372,16 @@ void test_robotics()
     // PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
     // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
     // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
-    auto s = StatusCode::SINGULAR;
+    auto s = StatusCode::NORMAL;
     kinematics<6>::Q q;
-    while (s == StatusCode::SINGULAR)
+    while (s == StatusCode::NORMAL)
     {
         random(q, -PI + 1e-3, PI - 1e-3);
         auto J = UR5.jacobiSpace(q);
         LU<6> lu(J);
         s = lu.s;
     }
-
+    q = {-1.89406, 0.205429, 2.17377, -2.37914, 0.022822, 1.95129};
     SE3 TargetPose = UR5.forwardSpace(q);
     PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, q - 0.05), "IKSpace = ");
     std::cout << "singualr q:" << q << "\n";

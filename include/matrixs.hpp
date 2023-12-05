@@ -10,6 +10,10 @@
 #include <numeric>
 #include <cassert>
 
+#ifdef PPX_USE_AVX
+#include <immintrin.h>
+#endif
+
 namespace ppx
 {
     // forward declare
@@ -17,6 +21,7 @@ namespace ppx
     class MatrixS;
 
     class SO3;
+
     class SE3;
 
     enum class Ori : char
@@ -568,6 +573,51 @@ namespace ppx
             return this->m_data.at(idx);
         }
 
+#ifdef PPX_USE_AVX
+
+        template <size_t L>
+        std::enable_if_t<M % 4 != 0, MatrixS<M, L>>
+        operator*(const MatrixS<N, L> &other) const
+        {
+            MatrixS<M, L> result;
+            for (size_t k = 0; k < N; k++)
+            {
+                for (size_t j = 0; j < L; j++)
+                {
+                    for (size_t i = 0; i < M; i++)
+                    {
+                        result(i, j) += (*this)(i, k) * other(k, j);
+                    }
+                }
+            }
+            return result;
+        }
+
+        template <size_t L>
+        std::enable_if_t<M % 4 == 0, MatrixS<M, L>>
+        operator*(const MatrixS<N, L> &other) const
+        {
+            MatrixS<M, L> result;
+            const auto *a = this->data();
+            const auto *b = other.data();
+            auto *c = result.data();
+            for (size_t i = 0; i < M; i += 4)
+            {
+                for (size_t j = 0; j < L; j++)
+                {
+                    auto c0 = _mm256_loadu_pd(c + i + j * M);
+                    for (size_t k = 0; k < N; k++)
+                    {
+                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_loadu_pd(a + i + k * M),
+                                                             _mm256_broadcast_sd(b + k + j * N)));
+                    }
+                    _mm256_storeu_pd(c + i + j * M, c0);
+                }
+            }
+            return result;
+        }
+
+#else
         template <size_t L>
         MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
         {
@@ -584,6 +634,7 @@ namespace ppx
             }
             return result;
         }
+#endif
 
         MatrixS &operator+=(const MatrixS &other)
         {
@@ -703,6 +754,7 @@ namespace ppx
             this->m_data[4] = elem2[1];
             this->m_data[5] = elem2[2];
         }
+
         // Generate function.
         template <size_t A = M>
         friend enable_when_matrix_t<A, N, std::ostream &> operator<<(std::ostream &os, const MatrixS &self)

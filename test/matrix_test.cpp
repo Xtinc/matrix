@@ -22,11 +22,13 @@ TEST_F(MatrixS_TestCase, ctor)
     EXPECT_EQ(sizeof(MatrixS<2, 2>), (sizeof(double)) * 4);
     EXPECT_EQ(sizeof(MatrixS<20, 20>), sizeof(std::vector<double>));
     MatrixS<3, 2> E{1, 2, 3, 4, 5, 6};
-    MatrixS<3, 2> F{{1, 2, 3}, {4, 5, 6}};
+    MatrixS<3, 2> F{{1, 2, 3},
+                    {4, 5, 6}};
     MatrixS<3, 2> G{{{1, 4}, {2, 5}, {3, 6}}, Ori::Row};
     EXPECT_EQ(E, F);
     EXPECT_EQ(F, G);
-    MatrixS<3, 2> H{{1, 2, 3, 4}, {4, 5, 6}};
+    MatrixS<3, 2> H{{1, 2, 3, 4},
+                    {4, 5, 6}};
     EXPECT_EQ(G, H);
 }
 
@@ -44,7 +46,8 @@ TEST_F(MatrixS_TestCase, expr)
     MatrixS<3, 3> x = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     MatrixS<3, 3> y = x.T();
     MatrixS<3, 3> z;
-    z.sub<3, 3>(0, 0) = (x * 2 + y * 2 + x * y) / 2 - MatrixS<3, 3>{35.0, 45.0, 55.0, 45.0, 56.5, 68.0, 55.0, 68.0, 81.0};
+    z.sub<3, 3>(0, 0) =
+        (x * 2 + y * 2 + x * y) / 2 - MatrixS<3, 3>{35.0, 45.0, 55.0, 45.0, 56.5, 68.0, 55.0, 68.0, 81.0};
     EXPECT_EQ(z, decltype(z){});
     MatrixS<3, 3> w = Sqrt(pwmul(x, x));
     EXPECT_EQ(w, x);
@@ -118,6 +121,72 @@ TEST_F(MatrixS_TestCase, cat)
     EXPECT_EQ(expect6, concat(1, b));
     EXPECT_EQ(expect7, concat(c, 3));
 }
+
+#ifdef PPX_USE_AVX
+
+template <size_t M, size_t N, size_t L>
+MatrixS<M, L> matmul(const MatrixS<M, N> &self, const MatrixS<N, L> &other)
+{
+    MatrixS<M, L> result;
+    for (size_t k = 0; k < N; k++)
+    {
+        for (size_t j = 0; j < L; j++)
+        {
+            for (size_t i = 0; i < M; i++)
+            {
+                result(i, j) += self(i, k) * other(k, j);
+            }
+        }
+    }
+    return result;
+}
+
+TEST_F(MatrixS_TestCase, avx_mul)
+{
+
+    MatrixS<4, 4> A, B;
+    random(A, -1e3, 1e3);
+    random(B, -1e3, 1e3);
+    EXPECT_EQ(A * B, matmul(A, B));
+
+    MatrixS<4, 3> C;
+    MatrixS<3, 4> D;
+    random(C, -1e3, 1e3);
+    random(D, -1e3, 1e3);
+    EXPECT_EQ(C * D, matmul(C, D));
+
+    MatrixS<4, 2> E;
+    MatrixS<2, 4> F;
+    random(E, -1e3, 1e3);
+    random(F, -1e3, 1e3);
+    EXPECT_EQ(E * F, matmul(E, F));
+
+    MatrixS<4, 1> G;
+    MatrixS<1, 4> H;
+    random(G, -1e3, 1e3);
+    random(H, -1e3, 1e3);
+    EXPECT_EQ(G * H, matmul(G, H));
+
+    MatrixS<16, 7> I;
+    MatrixS<7, 16> J;
+    random(I, -1e3, 1e3);
+    random(J, -1e3, 1e3);
+    EXPECT_EQ(I * J, matmul(I, J));
+
+    MatrixS<80, 33> K;
+    MatrixS<33, 20> L;
+    random(K, -1e3, 1e3);
+    random(L, -1e3, 1e3);
+    EXPECT_EQ(K * L, matmul(K, L));
+
+    MatrixS<100, 104> M;
+    MatrixS<104, 100> N;
+    random(M, -1e3, 1e3);
+    random(N, -1e3, 1e3);
+    EXPECT_EQ(M * N, matmul(M, N));
+}
+
+#endif
 
 int main(int argc, char **argv)
 {

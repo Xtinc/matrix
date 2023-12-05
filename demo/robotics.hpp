@@ -100,7 +100,7 @@ public:
         {
             se3 screw = JList[i - 1].screw * jointAngle[i - 1];
             T = T * screw.exp();
-            Js.template sub<6, 1>(0, i) = T.Adt() * JList[i].screw;
+            Js.template sub<6, 1, false>(0, i) = T.Adt() * JList[i].screw;
         }
         return Js;
     }
@@ -117,7 +117,7 @@ public:
             if (iter != JList.end())
             {
                 auto col_idx = std::distance(JList.begin(), iter);
-                Js.template sub<6, 1>(0, i) = JsAll.template sub<6, 1>(0, col_idx);
+                Js.template sub<6, 1, false>(0, i) = JsAll.template sub<6, 1>(0, col_idx);
             }
         }
         return Js;
@@ -133,10 +133,10 @@ public:
 
         auto dfx = [this, &pose](const Q &q, const se3 &)
         {
-            auto Jp = eye<6>();
             auto Tsb = this->forwardSpace(q) * pose.I();
-            Jp.sub<3, 3, false>(3, 0) = hat(Tsb.Pos());
-            return Jp.I() * this->jacobiSpace(q);
+            auto JpI = eye<6>();
+            JpI.sub<3, 3, false>(3, 0) = -1 * hat(Tsb.Pos());
+            return JpI * this->jacobiSpace(q);
         };
 
         Q lower, upper;
@@ -146,8 +146,6 @@ public:
             upper[i] = JList[i].range.second;
         }
 
-        lower.fill(-PI);
-        upper.fill(PI);
         details::CoDo<Q::LEN, 6> codo(fx, dfx, lower, upper);
 
         auto result = codo(init);

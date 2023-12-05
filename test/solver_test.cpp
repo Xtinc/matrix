@@ -8,8 +8,7 @@ constexpr auto EQ_THS = EPS_SP * 5e2;
 class LinEqn_TestCase : public ::testing::Test
 {
 public:
-    LinEqn_TestCase() : eni(std::random_device()()){};
-    std::default_random_engine eni;
+    LinEqn_TestCase() = default;
 };
 
 TEST_F(LinEqn_TestCase, Quadtratic)

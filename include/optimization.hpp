@@ -764,8 +764,8 @@ namespace ppx
                         fnrm = fxpnrm;
                     }
 
-                    std::cout << "itc:\t" << itc << "\t rho:\t " << rho << "\t res:\t " << fnrm
-                              << "\t delta:\t" << delta0 << "\t ratio:\t" << std::abs(fnrm - fnrm_old) / fnrm << "\n";
+                    // std::cout << "itc:\t" << itc << "\t rho:\t " << rho << "\t res:\t " << fnrm
+                    //           << "\t delta:\t" << delta0 << "\t ratio:\t" << std::abs(fnrm - fnrm_old) / fnrm << "\n";
 
                     // no improvement for the nonlinear residual could be obtained
                     if (std::abs(fnrm - fnrm_old) < FTOLA * fnrm && fnrm > FTOLA)
