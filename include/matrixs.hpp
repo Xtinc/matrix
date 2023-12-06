@@ -145,13 +145,13 @@ namespace ppx
                 {
                     for (auto i = 0u; i < A; i++)
                     {
-                        auto value = iter == list.end() ? typename T::value_type{} : *(iter++);
-                        data(i + row_idx, j + col_idx) = value;
+                        // auto value = iter == list.end() ? typename T::value_type{} : *(iter++);
+                        // data(i + row_idx, j + col_idx) = value;
                         // which one is better?
-                        // if (iter != list.end())
-                        // {
-                        //     data(i + row_idx, j + col_idx) = *(iter++);
-                        // }
+                        if (iter != list.end())
+                        {
+                            data(i + row_idx, j + col_idx) = *(iter++);
+                        }
                     }
                 }
             }
@@ -587,13 +587,13 @@ namespace ppx
 
                 for (size_t j = 0; j < L; j++)
                 {
-                    auto c0 = _mm256_maskz_loadu_pd(0x07, c + j * M);
+                    auto c0 = _mm256_maskz_loadu_pd((__mmask8)0x07, c + j * M);
                     for (size_t k = 0; k < N; k++)
                     {
-                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_maskz_loadu_pd(0x07, a + k * M),
+                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_maskz_loadu_pd((__mmask8)0x07, a + k * M),
                                                              _mm256_broadcast_sd(b + k + j * N)));
                     }
-                    _mm256_mask_storeu_pd(c + j * M, 0x07, c0);
+                    _mm256_mask_storeu_pd(c + j * M, (__mmask8)0x07, c0);
                 }
             }
             else
