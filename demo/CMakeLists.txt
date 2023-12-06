@@ -13,3 +13,8 @@ if(MSVC)
 else()
   target_compile_options(demo PRIVATE -Wall -Wextra -pedantic)
 endif()
+
+if(ENABLE_BENCHMARK)
+  add_executable(ppx_bench benchmark.cpp)
+  target_link_libraries(ppx_bench benchmark::benchmark ppx)
+endif()

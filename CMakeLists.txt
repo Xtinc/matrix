@@ -5,6 +5,7 @@ option(ENABLE_AVX "Enable AVX intrinsic" ON)
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
+
 if(COMPILER_SUPPORTS_MARCH_NATIVE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
   set(ENABLE_AVX ON)
@@ -17,16 +18,18 @@ if(MSVC)
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3")
   endif()
+
   if(ENABLE_AVX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
-  add_definitions(-DPPX_USE_AVX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
+    add_definitions(-DPPX_USE_AVX)
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
   if(ENABLE_AVX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mfma")
-  add_definitions(-DPPX_USE_AVX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mfma")
+    add_definitions(-DPPX_USE_AVX)
   endif()
 endif()
 
@@ -39,28 +42,28 @@ target_include_directories(ppx INTERFACE include)
 add_subdirectory(demo)
 
 option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
+option(ENABLE_BENCHMARK "Enable benchmark" ON)
 option(ENABLE_LCOV "Enable code coverage tests" OFF)
 message(STATUS "---------------------------")
 message(STATUS "Current : ${PROJECT_NAME}")
 message(STATUS "Enable AVX-INS  : ${ENABLE_AVX}")
 message(STATUS "Enable gtesting : ${ENABLE_UNIT_TESTS}")
+message(STATUS "Enable benchmark: ${ENABLE_BENCHMARK}")
 message(STATUS "Enable coverage : ${ENABLE_LCOV}")
+
 if(ENABLE_UNIT_TESTS)
   enable_testing()
   add_subdirectory(test)
 endif()
 
-# set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
-# include(FetchContent)
+if(ENABLE_BENCHMARK)
+  set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
+  include(FetchContent)
 
-# FetchContent_Declare(
-#     benchmark
-#     GIT_REPOSITORY https://github.com/google/benchmark.git
-#     GIT_TAG v1.7.1
-# )
-# FetchContent_MakeAvailable(benchmark)
-
-# find_package(benchmark REQUIRED)
-# add_executable(ppx_bench misc/benchmark.cpp)
-# target_include_directories(ppx_bench PRIVATE include Eigen)
-# target_link_libraries(ppx_bench benchmark::benchmark)
+  FetchContent_Declare(
+    benchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG v1.7.1
+  )
+  FetchContent_MakeAvailable(benchmark)
+endif()

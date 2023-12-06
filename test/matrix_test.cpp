@@ -143,7 +143,6 @@ MatrixS<M, L> matmul(const MatrixS<M, N> &self, const MatrixS<N, L> &other)
 
 TEST_F(MatrixS_TestCase, avx_mul)
 {
-
     MatrixS<4, 4> A, B;
     random(A, -1e3, 1e3);
     random(B, -1e3, 1e3);
