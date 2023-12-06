@@ -44,12 +44,6 @@ add_subdirectory(demo)
 option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
 option(ENABLE_BENCHMARK "Enable benchmark" ON)
 option(ENABLE_LCOV "Enable code coverage tests" OFF)
-message(STATUS "---------------------------")
-message(STATUS "Current : ${PROJECT_NAME}")
-message(STATUS "Enable AVX-INS  : ${ENABLE_AVX}")
-message(STATUS "Enable gtesting : ${ENABLE_UNIT_TESTS}")
-message(STATUS "Enable benchmark: ${ENABLE_BENCHMARK}")
-message(STATUS "Enable coverage : ${ENABLE_LCOV}")
 
 if(ENABLE_UNIT_TESTS)
   enable_testing()
@@ -59,11 +53,19 @@ endif()
 if(ENABLE_BENCHMARK)
   set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
   include(FetchContent)
-
   FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
     GIT_TAG v1.7.1
   )
   FetchContent_MakeAvailable(benchmark)
+  add_subdirectory(benchmark)
 endif()
+
+message(STATUS "---------------------------")
+message(STATUS "Current : ${PROJECT_NAME}")
+message(STATUS "Enable AVX-INS  : ${ENABLE_AVX}")
+message(STATUS "Enable gtesting : ${ENABLE_UNIT_TESTS}")
+message(STATUS "Enable benchmark: ${ENABLE_BENCHMARK}")
+message(STATUS "Enable coverage : ${ENABLE_LCOV}")
+message(STATUS "---------------------------")

@@ -369,19 +369,15 @@ void test_robotics()
     UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}, -PI, PI};
     UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}, -PI, PI};
     UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6, -PI, PI};
-    // PRINT_SINGLE_ELEMENTS(UR5.forwardSpace("R6", {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Forward(R6) = ");
-    // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace({0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi = ");
-    // PRINT_SINGLE_ELEMENTS(UR5.jacobiSpace(std::array<std::string, 3>{"R1", "R2", "R3"}, {0.0, -0.5 * PI, 0.0, 0.0, 0.5 * PI, 0.0}), "Jacobi(3) = ");
-    auto s = StatusCode::NORMAL;
+    auto s = StatusCode::SINGULAR;
     kinematics<6>::Q q;
-    while (s == StatusCode::NORMAL)
+    while (s == StatusCode::SINGULAR)
     {
         random(q, -PI + 1e-3, PI - 1e-3);
         auto J = UR5.jacobiSpace(q);
         LU<6> lu(J);
         s = lu.s;
     }
-    q = {-1.89406, 0.205429, 2.17377, -2.37914, 0.022822, 1.95129};
     SE3 TargetPose = UR5.forwardSpace(q);
     PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, q - 0.05), "IKSpace = ");
     std::cout << "singualr q:" << q << "\n";

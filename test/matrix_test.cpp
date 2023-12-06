@@ -141,7 +141,7 @@ MatrixS<M, L> matmul(const MatrixS<M, N> &self, const MatrixS<N, L> &other)
     return result;
 }
 
-TEST_F(MatrixS_TestCase, avx_mul)
+TEST_F(MatrixS_TestCase, avx_full_mul)
 {
     MatrixS<4, 4> A, B;
     random(A, -1e3, 1e3);
@@ -180,6 +180,50 @@ TEST_F(MatrixS_TestCase, avx_mul)
 
     MatrixS<100, 104> M;
     MatrixS<104, 100> N;
+    random(M, -1e3, 1e3);
+    random(N, -1e3, 1e3);
+    EXPECT_EQ(M * N, matmul(M, N));
+}
+
+TEST_F(MatrixS_TestCase, avx_mask_mul)
+{
+    MatrixS<3, 3> A, B;
+    random(A, -1e3, 1e3);
+    random(B, -1e3, 1e3);
+    EXPECT_EQ(A * B, matmul(A, B));
+
+    MatrixS<3, 4> C;
+    MatrixS<4, 3> D;
+    random(C, -1e3, 1e3);
+    random(D, -1e3, 1e3);
+    EXPECT_EQ(C * D, matmul(C, D));
+
+    MatrixS<3, 2> E;
+    MatrixS<2, 3> F;
+    random(E, -1e3, 1e3);
+    random(F, -1e3, 1e3);
+    EXPECT_EQ(E * F, matmul(E, F));
+
+    MatrixS<3, 1> G;
+    MatrixS<1, 3> H;
+    random(G, -1e3, 1e3);
+    random(H, -1e3, 1e3);
+    EXPECT_EQ(G * H, matmul(G, H));
+
+    MatrixS<3, 7> I;
+    MatrixS<7, 3> J;
+    random(I, -1e3, 1e3);
+    random(J, -1e3, 1e3);
+    EXPECT_EQ(I * J, matmul(I, J));
+
+    MatrixS<3, 33> K;
+    MatrixS<33, 3> L;
+    random(K, -1e3, 1e3);
+    random(L, -1e3, 1e3);
+    EXPECT_EQ(K * L, matmul(K, L));
+
+    MatrixS<3, 104> M;
+    MatrixS<104, 3> N;
     random(M, -1e3, 1e3);
     random(N, -1e3, 1e3);
     EXPECT_EQ(M * N, matmul(M, N));

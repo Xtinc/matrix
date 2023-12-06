@@ -574,22 +574,42 @@ namespace ppx
         }
 
 #ifdef PPX_USE_AVX
-
         template <size_t L>
         std::enable_if_t<M % 4 != 0, MatrixS<M, L>>
         operator*(const MatrixS<N, L> &other) const
         {
             MatrixS<M, L> result;
-            for (size_t k = 0; k < N; k++)
+            if (M == 3)
             {
+                const auto *a = this->data();
+                const auto *b = other.data();
+                auto *c = result.data();
+
                 for (size_t j = 0; j < L; j++)
                 {
-                    for (size_t i = 0; i < M; i++)
+                    auto c0 = _mm256_maskz_loadu_pd(0x07, c + j * M);
+                    for (size_t k = 0; k < N; k++)
                     {
-                        result(i, j) += (*this)(i, k) * other(k, j);
+                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_maskz_loadu_pd(0x07, a + k * M),
+                                                             _mm256_broadcast_sd(b + k + j * N)));
+                    }
+                    _mm256_mask_storeu_pd(c + j * M, 0x07, c0);
+                }
+            }
+            else
+            {
+                for (size_t k = 0; k < N; k++)
+                {
+                    for (size_t j = 0; j < L; j++)
+                    {
+                        for (size_t i = 0; i < M; i++)
+                        {
+                            result(i, j) += (*this)(i, k) * other(k, j);
+                        }
                     }
                 }
             }
+
             return result;
         }
 
