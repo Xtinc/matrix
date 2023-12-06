@@ -579,24 +579,24 @@ namespace ppx
         operator*(const MatrixS<N, L> &other) const
         {
             MatrixS<M, L> result;
-            if (M == 3)
-            {
-                const auto *a = this->data();
-                const auto *b = other.data();
-                auto *c = result.data();
+            // if (M == 3)
+            // {
+            //     const auto *a = this->data();
+            //     const auto *b = other.data();
+            //     auto *c = result.data();
 
-                for (size_t j = 0; j < L; j++)
-                {
-                    auto c0 = _mm256_maskz_loadu_pd((__mmask8)0x07, c + j * M);
-                    for (size_t k = 0; k < N; k++)
-                    {
-                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_maskz_loadu_pd((__mmask8)0x07, a + k * M),
-                                                             _mm256_broadcast_sd(b + k + j * N)));
-                    }
-                    _mm256_mask_storeu_pd(c + j * M, (__mmask8)0x07, c0);
-                }
-            }
-            else
+            //     for (size_t j = 0; j < L; j++)
+            //     {
+            //         auto c0 = _mm256_maskz_loadu_pd((__mmask8)0x07, c + j * M);
+            //         for (size_t k = 0; k < N; k++)
+            //         {
+            //             c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_maskz_loadu_pd((__mmask8)0x07, a + k * M),
+            //                                                  _mm256_broadcast_sd(b + k + j * N)));
+            //         }
+            //         _mm256_mask_storeu_pd(c + j * M, (__mmask8)0x07, c0);
+            //     }
+            // }
+            // else
             {
                 for (size_t k = 0; k < N; k++)
                 {
