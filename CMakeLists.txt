@@ -28,7 +28,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
   if(ENABLE_AVX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mfma")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f -mfma")
     add_definitions(-DPPX_USE_AVX)
   endif()
 endif()
@@ -42,7 +42,7 @@ target_include_directories(ppx INTERFACE include)
 add_subdirectory(demo)
 
 option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
-option(ENABLE_BENCHMARK "Enable benchmark" OFF)
+option(ENABLE_BENCHMARK "Enable benchmark" ON)
 option(ENABLE_LCOV "Enable code coverage tests" OFF)
 
 if(ENABLE_UNIT_TESTS)
