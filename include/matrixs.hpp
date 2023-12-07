@@ -574,7 +574,8 @@ namespace ppx
 
 #ifdef PPX_USE_AVX
         template <size_t L>
-        MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
+        std::enable_if_t<(M >= 4), MatrixS<M, L>>
+        operator*(const MatrixS<N, L> &other) const
         {
             constexpr uint64_t ZR = 0;
             constexpr uint64_t MV = 0x8000000000000000;
@@ -620,6 +621,27 @@ namespace ppx
                 }
             }
 
+            return result;
+        }
+
+        template <size_t L>
+        std::enable_if_t<(M < 4), MatrixS<M, L>>
+        operator*(const MatrixS<N, L> &other) const
+        {
+            MatrixS<M, L> result;
+            const auto *a = this->data();
+            const auto *b = other.data();
+            auto *c = result.data();
+            for (size_t k = 0; k < N; k++)
+            {
+                for (size_t j = 0; j < L; j++)
+                {
+                    for (size_t i = 0; i < M; i++)
+                    {
+                        c[i + j * M] += a[i + k * M] * b[k + j * N];
+                    }
+                }
+            }
             return result;
         }
 

@@ -4,18 +4,7 @@
 
 using namespace ppx;
 
-static void gemm_for_4M(benchmark::State &state)
-{
-    MatrixS<4, 4> A;
-    MatrixS<4, 4> B;
-    random(A);
-    random(B);
-    MatrixS<4, 4> C;
-    for (auto _ : state)
-    {
-        C = B * A;
-    }
-}
+static bool flag{false};
 
 static void gemm_for_3M(benchmark::State &state)
 {
@@ -28,6 +17,91 @@ static void gemm_for_3M(benchmark::State &state)
     {
         C = B * A;
     }
+    flag = C(0, 0) > 0.0;
+}
+
+static void gemm_for_4M(benchmark::State &state)
+{
+    MatrixS<4, 4> A;
+    MatrixS<4, 4> B;
+    random(A);
+    random(B);
+    MatrixS<4, 4> C;
+    for (auto _ : state)
+    {
+        C = B * A;
+    }
+    flag = C(0, 0) > 0.0;
+}
+
+static void gemm_for_5M(benchmark::State &state)
+{
+    MatrixS<5, 4> A;
+    MatrixS<4, 5> B;
+    random(A);
+    random(B);
+    MatrixS<5, 5> C;
+    for (auto _ : state)
+    {
+        C = A * B;
+    }
+    flag = C(0, 0) > 0.0;
+}
+
+static void gemm_for_9M(benchmark::State &state)
+{
+    MatrixS<9, 4> A;
+    MatrixS<4, 7> B;
+    random(A);
+    random(B);
+    MatrixS<9, 7> C;
+    for (auto _ : state)
+    {
+        C = A * B;
+    }
+    flag = C(0, 0) > 0.0;
+}
+
+static void linsolve_LU(benchmark::State &state)
+{
+    MatrixS<16, 1> b;
+    MatrixS<16, 16> A;
+    random(A);
+    b.fill(1);
+    EqnResult<16> x;
+    for (auto _ : state)
+    {
+        x = linsolve<Factorization::LU>(A, A * b);
+    }
+    flag = x.x[0] > 0.0;
+}
+
+static void linsolve_QR(benchmark::State &state)
+{
+    MatrixS<16, 1> b;
+    MatrixS<16, 16> A;
+    random(A);
+    b.fill(1);
+    EqnResult<16> x;
+    for (auto _ : state)
+    {
+        x = linsolve<Factorization::QR>(A, A * b);
+    }
+    flag = x.x[0] > 0.0;
+}
+
+static void linsolve_SVD(benchmark::State &state)
+{
+    MatrixS<16, 1> b;
+    MatrixS<16, 16> A;
+    random(A);
+    b.fill(1);
+    EqnResult<16> x;
+    for (auto _ : state)
+    {
+        x = linsolve<Factorization::SVD>(A, A * b);
+    }
+    flag = x.x[0] > 0.0;
 }
 
 static void codo_perf(benchmark::State &state)
@@ -51,10 +125,15 @@ static void codo_perf(benchmark::State &state)
     {
         q = UR5.inverseSpace(TargetPose, q - 0.05);
     }
-    // std::cout << "singualr q:" << q << "\n";
+    flag = q[0] > 0.0;
 }
 
 BENCHMARK(gemm_for_3M);
 BENCHMARK(gemm_for_4M);
+BENCHMARK(gemm_for_5M);
+BENCHMARK(gemm_for_9M);
+BENCHMARK(linsolve_LU);
+BENCHMARK(linsolve_QR);
+BENCHMARK(linsolve_SVD);
 BENCHMARK(codo_perf);
 BENCHMARK_MAIN();
