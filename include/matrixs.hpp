@@ -81,7 +81,7 @@ namespace ppx
     } // namespace details
 
     template <std::size_t M, std::size_t N>
-    class MatrixS : public details::MatrixBase<M, N>
+    class alignas(32) MatrixS : public details::MatrixBase<M, N>
     {
         template <size_t A, size_t B>
         class SubPartBase
@@ -99,7 +99,7 @@ namespace ppx
 
             const cast_type &snap() const
             {
-                return *copy;
+                return copy;
             }
 
             cast_type eval() const
@@ -111,16 +111,15 @@ namespace ppx
             size_t row_idx;
             size_t col_idx;
             MatrixS<M, N> &data;
-            std::unique_ptr<MatrixS<A, B>> copy;
+            MatrixS<A, B> copy;
 
             void take_snap()
             {
-                copy = std::make_unique<MatrixS<A, B>>();
                 for (size_t i = 0; i < A; i++)
                 {
                     for (size_t j = 0; j < B; j++)
                     {
-                        (*copy)(i, j) = data(row_idx + i, col_idx + j);
+                        copy(i, j) = data(row_idx + i, col_idx + j);
                     }
                 }
             }
@@ -577,14 +576,16 @@ namespace ppx
         template <size_t L>
         MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
         {
-            constexpr __mmask8 c_Mask0{0};
-            constexpr __mmask8 c_Mask1{0b00000001};
-            constexpr __mmask8 c_Mask2{0b00000011};
-            constexpr __mmask8 c_Mask3{0b00000111};
+            constexpr uint64_t ZR = 0;
+            constexpr uint64_t MV = 0x8000000000000000;
+            alignas(32) const uint64_t c_Mask0[4]{ZR, ZR, ZR, ZR};
+            alignas(32) const uint64_t c_Mask1[4]{MV, ZR, ZR, ZR};
+            alignas(32) const uint64_t c_Mask2[4]{MV, MV, ZR, ZR};
+            alignas(32) const uint64_t c_Mask3[4]{MV, MV, MV, ZR};
 
-            constexpr __mmask8 c_MaskMovLUT[4]{c_Mask0, c_Mask1, c_Mask2, c_Mask3};
+            const uint64_t *c_MaskMovLUT[8]{c_Mask0, c_Mask1, c_Mask2, c_Mask3};
             constexpr size_t left_cols = M % 4;
-            auto res_mask = c_MaskMovLUT[left_cols];
+            auto res_mask = _mm256_load_si256((__m256i *)c_MaskMovLUT[left_cols]);
 
             MatrixS<M, L> result;
             const auto *a = this->data();
@@ -599,7 +600,7 @@ namespace ppx
                     auto quad_c = _mm256_setzero_pd();
                     for (size_t k = 0; k < N; k++)
                     {
-                        quad_c = _mm256_fmadd_pd(_mm256_loadu_pd(a + i + k * M),
+                        quad_c = _mm256_fmadd_pd(_mm256_load_pd(a + i + k * M),
                                                  _mm256_broadcast_sd(b + k + j * N),
                                                  quad_c);
                     }
@@ -611,11 +612,11 @@ namespace ppx
                     auto quad_c = _mm256_setzero_pd();
                     for (size_t k = 0; k < N; k++)
                     {
-                        quad_c = _mm256_fmadd_pd(_mm256_maskz_loadu_pd(res_mask, (void const *)(a + i + k * M)),
+                        quad_c = _mm256_fmadd_pd(_mm256_maskload_pd(a + i + k * M, res_mask),
                                                  _mm256_broadcast_sd(b + k + j * N),
                                                  quad_c);
                     }
-                    _mm256_mask_storeu_pd((void *)(c + i + j * M), res_mask, quad_c);
+                    _mm256_maskstore_pd(c + i + j * M, res_mask, quad_c);
                 }
             }
 

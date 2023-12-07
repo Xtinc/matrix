@@ -20,7 +20,7 @@ TEST_F(MatrixS_TestCase, ctor)
     EXPECT_EQ(B, C);
     EXPECT_EQ(C, D);
     EXPECT_EQ(sizeof(MatrixS<2, 2>), (sizeof(double)) * 4);
-    EXPECT_EQ(sizeof(MatrixS<20, 20>), sizeof(std::vector<double>));
+    EXPECT_EQ(sizeof(MatrixS<20, 20>), (sizeof(double)) * 4);
     MatrixS<3, 2> E{1, 2, 3, 4, 5, 6};
     MatrixS<3, 2> F{{1, 2, 3},
                     {4, 5, 6}};
