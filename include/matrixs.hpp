@@ -633,7 +633,7 @@ namespace ppx
                 {
                     for (size_t i = 0; i < M; i++)
                     {
-                        c[i + j * M] += a[i + k * M] * b[k + j * M];
+                        c[i + j * M] += a[i + k * M] * b[k + j * N];
                     }
                 }
             }
