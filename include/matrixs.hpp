@@ -575,47 +575,52 @@ namespace ppx
 
 #ifdef PPX_USE_AVX
         template <size_t L>
-        std::enable_if_t<M % 4 != 0, MatrixS<M, L>>
-        operator*(const MatrixS<N, L> &other) const
+        MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
         {
-            MatrixS<M, L> result;
-            const auto *a = this->data();
-            const auto *b = other.data();
-            auto *c = result.data();
-            for (size_t k = 0; k < N; k++)
-            {
-                for (size_t j = 0; j < L; j++)
-                {
-                    for (size_t i = 0; i < M; i++)
-                    {
-                        c[i + j * M] += a[i + k * M] * b[k + j * M];
-                    }
-                }
-            }
-            return result;
-        }
+            constexpr __mmask8 c_Mask0{0};
+            constexpr __mmask8 c_Mask1{0b00000001};
+            constexpr __mmask8 c_Mask2{0b00000011};
+            constexpr __mmask8 c_Mask3{0b00000111};
 
-        template <size_t L>
-        std::enable_if_t<M % 4 == 0, MatrixS<M, L>>
-        operator*(const MatrixS<N, L> &other) const
-        {
+            constexpr __mmask8 c_MaskMovLUT[4]{c_Mask0, c_Mask1, c_Mask2, c_Mask3};
+            constexpr size_t left_cols = M % 4;
+            auto res_mask = c_MaskMovLUT[left_cols];
+
             MatrixS<M, L> result;
             const auto *a = this->data();
             const auto *b = other.data();
             auto *c = result.data();
-            for (size_t i = 0; i < M; i += 4)
+
+            for (size_t j = 0; j < L; j++)
             {
-                for (size_t j = 0; j < L; j++)
+                size_t i = 0;
+                while (i + 4 <= M)
                 {
-                    auto c0 = _mm256_loadu_pd(c + i + j * M);
+                    auto quad_c = _mm256_setzero_pd();
                     for (size_t k = 0; k < N; k++)
                     {
-                        c0 = _mm256_add_pd(c0, _mm256_mul_pd(_mm256_loadu_pd(a + i + k * M),
-                                                             _mm256_broadcast_sd(b + k + j * N)));
+                        quad_c = _mm256_fmadd_pd(_mm256_loadu_pd(a + i + k * M),
+                                                 _mm256_broadcast_sd(b + k + j * N),
+                                                 quad_c);
                     }
-                    _mm256_storeu_pd(c + i + j * M, c0);
+                    _mm256_storeu_pd(c + i + j * M, quad_c);
+                    i += 4;
+                }
+                if (left_cols)
+                {
+                    auto quad_c = _mm256_setzero_pd();
+                    for (size_t k = 0; k < N; k++)
+                    {
+                        quad_c = _mm256_fmadd_pd(_mm256_maskz_loadu_pd(res_mask, a + i + k * M),
+                                                 _mm256_broadcast_sd(b + k + j * N),
+                                                 quad_c);
+                    }
+                    double cs[4]{1, 2, 3, 4};
+                    _mm256_mask_storeu_pd(cs, res_mask, quad_c);
+                    _mm256_mask_storeu_pd(c + i + j * M, res_mask, quad_c);
                 }
             }
+
             return result;
         }
 
