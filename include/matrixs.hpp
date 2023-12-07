@@ -611,7 +611,7 @@ namespace ppx
                     auto quad_c = _mm256_setzero_pd();
                     for (size_t k = 0; k < N; k++)
                     {
-                        quad_c = _mm256_fmadd_pd(_mm256_maskz_loadu_pd(res_mask, (void *)(a + i + k * M)),
+                        quad_c = _mm256_fmadd_pd(_mm256_maskz_loadu_pd(res_mask, (void const *)(a + i + k * M)),
                                                  _mm256_broadcast_sd(b + k + j * N),
                                                  quad_c);
                     }
