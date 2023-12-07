@@ -1,21 +1,39 @@
+import array
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
 import tools.misc as misc
 
 plt.style.use("tools.gnuplot")
-N = 2048 * 5  # 采样点的个数
-x = np.arange(0, 2 * np.pi, 2 * np.pi / N)
-fs = N / (2 * np.pi)
-# 产生频率为120、500、10hz的信号进行模拟
-y = (
-    7 * np.sin(120 * 2 * np.pi * x)
-    + 5 * np.sin(500 * 2 * np.pi * x)
-    + 9 * np.sin(10 * 2 * np.pi * x)
-    + np.random.normal(scale=np.sqrt(1.89), size=len(x))
-)
-fre, amp, _ = misc.fft(y, fs)
-plt.plot(fre, amp)
+plt.axis("equal")
+
+
+def Hu(u):
+    nu = u / np.linalg.norm(u)
+    return np.eye(2) - 2 * nu @ np.transpose(nu)
+
+
+u = np.array([[3, 1]]).T
+line1 = np.array([[0, 0], [0.25, 1], [0.5, 2], [0.75, 3], [1, 4]])
+line2 = np.array([Hu(u) @ np.array(ele) for ele in line1])
+plt.plot(line2[:, 0], line2[:, 1], "x-")
+plt.plot(line1[:, 0], line1[:, 1], "x-")
+plt.plot([0, 3], [0, 1], label=r"$u$")
+plt.plot([-1, 1], [3, -3], label=r"$u_\bot$")
+plt.legend()
+
+# N = 2048 * 5  # 采样点的个数
+# x = np.arange(0, 2 * np.pi, 2 * np.pi / N)
+# fs = N / (2 * np.pi)
+# # 产生频率为120、500、10hz的信号进行模拟
+# y = (
+#     7 * np.sin(120 * 2 * np.pi * x)
+#     + 5 * np.sin(500 * 2 * np.pi * x)
+#     + 9 * np.sin(10 * 2 * np.pi * x)
+#     + np.random.normal(scale=np.sqrt(1.89), size=len(x))
+# )
+# fre, amp, _ = misc.fft(y, fs)
+# plt.plot(fre, amp)
 # w = np.arange(0, N, 1)  # 频域轴
 
 
