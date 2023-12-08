@@ -4,8 +4,6 @@
 
 using namespace ppx;
 
-static bool flag{false};
-
 static void gemm_for_3M(benchmark::State &state)
 {
     MatrixS<3, 3> A;
@@ -17,7 +15,7 @@ static void gemm_for_3M(benchmark::State &state)
     {
         C = B * A;
     }
-    flag = C(0, 0) > 0.0;
+    benchmark::DoNotOptimize(C);
 }
 
 static void gemm_for_4M(benchmark::State &state)
@@ -31,7 +29,7 @@ static void gemm_for_4M(benchmark::State &state)
     {
         C = B * A;
     }
-    flag = C(0, 0) > 0.0;
+    benchmark::DoNotOptimize(C);
 }
 
 static void gemm_for_5M(benchmark::State &state)
@@ -45,7 +43,21 @@ static void gemm_for_5M(benchmark::State &state)
     {
         C = A * B;
     }
-    flag = C(0, 0) > 0.0;
+    benchmark::DoNotOptimize(C);
+}
+
+static void gemm_for_6M(benchmark::State &state)
+{
+    MatrixS<6, 4> A;
+    MatrixS<4, 6> B;
+    random(A);
+    random(B);
+    MatrixS<4, 4> C;
+    for (auto _ : state)
+    {
+        C = B * A;
+    }
+    benchmark::DoNotOptimize(C);
 }
 
 static void gemm_for_9M(benchmark::State &state)
@@ -59,7 +71,19 @@ static void gemm_for_9M(benchmark::State &state)
     {
         C = A * B;
     }
-    flag = C(0, 0) > 0.0;
+    benchmark::DoNotOptimize(C);
+}
+
+static void sum_for_9M(benchmark::State &state)
+{
+    MatrixS<15, 10> A;
+    random(A);
+    double s{};
+    for (auto _ : state)
+    {
+        s = sum(A.data(), 149);
+    }
+    benchmark::DoNotOptimize(s);
 }
 
 static void linsolve_LU(benchmark::State &state)
@@ -73,7 +97,7 @@ static void linsolve_LU(benchmark::State &state)
     {
         x = linsolve<Factorization::LU>(A, A * b);
     }
-    flag = x.x[0] > 0.0;
+    benchmark::DoNotOptimize(x);
 }
 
 static void linsolve_QR(benchmark::State &state)
@@ -87,7 +111,7 @@ static void linsolve_QR(benchmark::State &state)
     {
         x = linsolve<Factorization::QR>(A, A * b);
     }
-    flag = x.x[0] > 0.0;
+    benchmark::DoNotOptimize(x);
 }
 
 static void linsolve_SVD(benchmark::State &state)
@@ -101,7 +125,7 @@ static void linsolve_SVD(benchmark::State &state)
     {
         x = linsolve<Factorization::SVD>(A, A * b);
     }
-    flag = x.x[0] > 0.0;
+    benchmark::DoNotOptimize(x);
 }
 
 static void codo_perf(benchmark::State &state)
@@ -125,13 +149,15 @@ static void codo_perf(benchmark::State &state)
     {
         q = UR5.inverseSpace(TargetPose, q - 0.05);
     }
-    flag = q[0] > 0.0;
+    benchmark::DoNotOptimize(q);
 }
 
 BENCHMARK(gemm_for_3M);
 BENCHMARK(gemm_for_4M);
 BENCHMARK(gemm_for_5M);
+BENCHMARK(gemm_for_6M);
 BENCHMARK(gemm_for_9M);
+BENCHMARK(sum_for_9M);
 BENCHMARK(linsolve_LU);
 BENCHMARK(linsolve_QR);
 BENCHMARK(linsolve_SVD);

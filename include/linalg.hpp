@@ -87,6 +87,16 @@ namespace ppx
     }
 
     // matrix related
+
+    inline double sum(const double *cbegin, size_t len)
+    {
+#ifdef PPX_USE_AVX
+        return avxt::sum(cbegin, len);
+#else
+        return std::accumulate(cbegin, cbegin + len, 0.0);
+#endif
+    }
+
     template <size_t M, size_t N>
     void zeros(MatrixS<M, N> &m)
     {

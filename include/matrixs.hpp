@@ -2,6 +2,7 @@
 #define VVERY_SIMPLE_MATRIXS_HEADER
 
 #include "exprtmpl.hpp"
+#include "asmext.hpp"
 #include <iostream>
 #include <iomanip>
 #include <memory>
@@ -9,10 +10,6 @@
 #include <vector>
 #include <numeric>
 #include <cassert>
-
-#ifdef PPX_USE_AVX
-#include <immintrin.h>
-#endif
 
 namespace ppx
 {
@@ -572,55 +569,28 @@ namespace ppx
             return this->m_data.at(idx);
         }
 
-#ifdef PPX_USE_AVX
         template <size_t L>
         std::enable_if_t<(M >= 4), MatrixS<M, L>>
         operator*(const MatrixS<N, L> &other) const
         {
-            constexpr uint64_t ZR = 0;
-            constexpr uint64_t MV = 0x8000000000000000;
-            alignas(32) const uint64_t c_Mask0[4]{ZR, ZR, ZR, ZR};
-            alignas(32) const uint64_t c_Mask1[4]{MV, ZR, ZR, ZR};
-            alignas(32) const uint64_t c_Mask2[4]{MV, MV, ZR, ZR};
-            alignas(32) const uint64_t c_Mask3[4]{MV, MV, MV, ZR};
-
-            const uint64_t *c_MaskMovLUT[8]{c_Mask0, c_Mask1, c_Mask2, c_Mask3};
-            constexpr size_t left_cols = M % 4;
-            auto res_mask = _mm256_load_si256((__m256i *)c_MaskMovLUT[left_cols]);
-
             MatrixS<M, L> result;
             const auto *a = this->data();
             const auto *b = other.data();
             auto *c = result.data();
-
-            for (size_t j = 0; j < L; j++)
+#ifdef PPX_USE_AVX
+            avxt::gemm<M, N, L>(a, b, c);
+#else
+            for (size_t k = 0; k < N; k++)
             {
-                size_t i = 0;
-                while (i + 4 <= M)
+                for (size_t j = 0; j < L; j++)
                 {
-                    auto quad_c = _mm256_setzero_pd();
-                    for (size_t k = 0; k < N; k++)
+                    for (size_t i = 0; i < M; i++)
                     {
-                        quad_c = _mm256_fmadd_pd(_mm256_loadu_pd(a + i + k * M),
-                                                 _mm256_broadcast_sd(b + k + j * N),
-                                                 quad_c);
+                        c[i + j * M] += a[i + k * M] * b[k + j * N];
                     }
-                    _mm256_storeu_pd(c + i + j * M, quad_c);
-                    i += 4;
-                }
-                if (left_cols)
-                {
-                    auto quad_c = _mm256_setzero_pd();
-                    for (size_t k = 0; k < N; k++)
-                    {
-                        quad_c = _mm256_fmadd_pd(_mm256_maskload_pd(a + i + k * M, res_mask),
-                                                 _mm256_broadcast_sd(b + k + j * N),
-                                                 quad_c);
-                    }
-                    _mm256_maskstore_pd(c + i + j * M, res_mask, quad_c);
                 }
             }
-
+#endif
             return result;
         }
 
@@ -644,28 +614,6 @@ namespace ppx
             }
             return result;
         }
-
-#else
-        template <size_t L>
-        MatrixS<M, L> operator*(const MatrixS<N, L> &other) const
-        {
-            MatrixS<M, L> result;
-            const auto *a = this->data();
-            const auto *b = other.data();
-            auto *c = result.data();
-            for (size_t k = 0; k < N; k++)
-            {
-                for (size_t j = 0; j < L; j++)
-                {
-                    for (size_t i = 0; i < M; i++)
-                    {
-                        c[i + j * M] += a[i + k * M] * b[k + j * N];
-                    }
-                }
-            }
-            return result;
-        }
-#endif
 
         MatrixS &operator+=(const MatrixS &other)
         {
