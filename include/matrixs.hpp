@@ -81,7 +81,7 @@ namespace ppx
     } // namespace details
 
     template <std::size_t M, std::size_t N>
-    class alignas(32) MatrixS : public details::MatrixBase<M, N>
+    class MatrixS : public details::MatrixBase<M, N>
     {
         template <size_t A, size_t B>
         class SubPartBase

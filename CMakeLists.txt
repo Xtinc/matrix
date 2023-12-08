@@ -1,14 +1,24 @@
 cmake_minimum_required(VERSION 3.11)
-project(ppx VERSION 0.1.0)
-
-option(ENABLE_AVX "Enable AVX intrinsic" ON)
+project(ppx VERSION 1.2)
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_library(ppx INTERFACE)
+target_include_directories(ppx INTERFACE include)
+
+add_subdirectory(demo)
+
+option(ENABLE_AVX "Enable AVX intrinsic" ON)
+option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
+option(ENABLE_BENCHMARK "Enable benchmark" ON)
+option(ENABLE_LCOV "Enable code coverage tests" OFF)
+
 if(COMPILER_SUPPORTS_MARCH_NATIVE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-  set(ENABLE_AVX ON)
 endif()
 
 if(MSVC)
@@ -27,23 +37,12 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
-  if(ENABLE_AVX)
+  if(ENABLE_AVX AND COMPILER_SUPPORTS_MARCH_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mfma")
     add_definitions(-DPPX_USE_AVX)
   endif()
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_library(ppx INTERFACE)
-target_include_directories(ppx INTERFACE include)
-
-add_subdirectory(demo)
-
-option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
-option(ENABLE_BENCHMARK "Enable benchmark" OFF)
-option(ENABLE_LCOV "Enable code coverage tests" OFF)
 
 if(ENABLE_UNIT_TESTS)
   enable_testing()
