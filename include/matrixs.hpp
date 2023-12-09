@@ -570,7 +570,7 @@ namespace ppx
         }
 
         template <size_t L>
-        std::enable_if_t<(M >= 4), MatrixS<M, L>>
+        std::enable_if_t<(M == 4 || M >= 8), MatrixS<M, L>>
         operator*(const MatrixS<N, L> &other) const
         {
             MatrixS<M, L> result;
@@ -595,7 +595,7 @@ namespace ppx
         }
 
         template <size_t L>
-        std::enable_if_t<(M < 4), MatrixS<M, L>>
+        std::enable_if_t<!(M == 4 || M >= 8), MatrixS<M, L>>
         operator*(const MatrixS<N, L> &other) const
         {
             MatrixS<M, L> result;

@@ -217,12 +217,11 @@ namespace ppx
     template <size_t M, size_t N, enable_when_array_t<M, N> * = nullptr>
     double norm2(const MatrixS<M, N> &mat)
     {
-        auto res = 0.0;
-        for (auto ele : mat)
-        {
-            res += ele * ele;
-        }
-        return sqrt(res);
+#ifdef PPX_USE_AVX
+        return std::sqrt(avxt::inrpdt(mat.data(), mat.data(), M * N));
+#else
+        return std::sqrt(inner_product(mat, mat));
+#endif
     }
 
     template <size_t M, size_t N>
@@ -234,7 +233,11 @@ namespace ppx
     template <size_t N>
     double inner_product(const MatrixS<N, 1> &a, const MatrixS<N, 1> &b)
     {
+#ifdef PPX_USE_AVX
+        return avxt::inrpdt(a.data(), b.data(), N);
+#else
         return std::inner_product(a.cbegin(), a.cend(), b.cbegin(), 0.0);
+#endif
     }
 
     template <size_t M, size_t N>

@@ -74,14 +74,50 @@ static void gemm_for_9M(benchmark::State &state)
     benchmark::DoNotOptimize(C);
 }
 
-static void sum_for_9M(benchmark::State &state)
+static void sum_for_5M(benchmark::State &state)
 {
-    MatrixS<15, 10> A;
+    MatrixS<5, 10> A;
     random(A);
     double s{};
     for (auto _ : state)
     {
-        s = sum(A.data(), 149);
+        s = sum(A.data(), 50);
+    }
+    benchmark::DoNotOptimize(s);
+}
+
+static void sum_for_9M(benchmark::State &state)
+{
+    MatrixS<25, 10> A;
+    random(A);
+    double s{};
+    for (auto _ : state)
+    {
+        s = sum(A.data(), 250);
+    }
+    benchmark::DoNotOptimize(s);
+}
+
+static void norm2_for_5M(benchmark::State &state)
+{
+    MatrixS<50, 1> A;
+    random(A);
+    double s{};
+    for (auto _ : state)
+    {
+        s = norm2(A);
+    }
+    benchmark::DoNotOptimize(s);
+}
+
+static void norm2_for_9M(benchmark::State &state)
+{
+    MatrixS<250, 1> A;
+    random(A);
+    double s{};
+    for (auto _ : state)
+    {
+        s = norm2(A);
     }
     benchmark::DoNotOptimize(s);
 }
@@ -157,7 +193,10 @@ BENCHMARK(gemm_for_4M);
 BENCHMARK(gemm_for_5M);
 BENCHMARK(gemm_for_6M);
 BENCHMARK(gemm_for_9M);
+BENCHMARK(sum_for_5M);
 BENCHMARK(sum_for_9M);
+BENCHMARK(norm2_for_5M);
+BENCHMARK(norm2_for_9M);
 BENCHMARK(linsolve_LU);
 BENCHMARK(linsolve_QR);
 BENCHMARK(linsolve_SVD);

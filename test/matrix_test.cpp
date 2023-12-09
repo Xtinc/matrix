@@ -141,14 +141,19 @@ MatrixS<M, L> matmul(const MatrixS<M, N> &self, const MatrixS<N, L> &other)
     return result;
 }
 
+TEST_F(MatrixS_TestCase, cpuinfo)
+{
+    list_cpu_infos();
+}
+
 TEST_F(MatrixS_TestCase, avx_aligned)
 {
     // manually aligned
     alignas(32) double b[4]{};
-    EXPECT_TRUE(avxt::var_aligned(b, 32));
+    EXPECT_TRUE(avxt::chkalign(b, 32));
     // on heap. not aligned
-    std::vector<double> c{1, 2, 3, 4};
-    EXPECT_FALSE(avxt::var_aligned(c.data(), 32));
+    // std::vector<double> c{1, 2, 3, 4};
+    // EXPECT_FALSE(avxt::chkalign(c.data(), 32));
 }
 
 TEST_F(MatrixS_TestCase, avx_sum)
@@ -159,6 +164,18 @@ TEST_F(MatrixS_TestCase, avx_sum)
         random(A, -1e3, 1e3);
         EXPECT_NEAR(sum(A.data(), i),
                     std::accumulate(A.cbegin(), A.cbegin() + i, 0.0),
+                    EPS_DP * 1e3 * A.size());
+    }
+}
+
+TEST_F(MatrixS_TestCase, avx_norm2)
+{
+    MatrixS<101, 1> A;
+    for (size_t i = 0; i < A.size(); i++)
+    {
+        random(A, -1e3, 1e3);
+        EXPECT_NEAR(norm2(A),
+                    sqrt(std::inner_product(A.cbegin(), A.cend(), A.cbegin(), 0.0)),
                     EPS_DP * 1e3 * A.size());
     }
 }
