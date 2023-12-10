@@ -1152,7 +1152,7 @@ namespace ppx
 
     public:
         EigenValue(const MatrixS<n, n> &mat, bool sorted = false)
-            : m_sym(true), m_srt(sorted), z(mat)
+            : m_srt(sorted), z(mat)
         {
             tred2();
             tliq();
