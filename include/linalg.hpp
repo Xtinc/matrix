@@ -967,7 +967,7 @@ namespace ppx
     template <int n>
     class EigenValue
     {
-        bool m_sym;
+        __attribute__((unused)) bool m_sym;
         bool m_srt;
         MatrixS<n, 1> e;
 
@@ -1073,7 +1073,7 @@ namespace ppx
             for (int l = 0; l < n; l++)
             {
                 int iter = 0;
-                int m = 0;
+                int m;
                 do
                 {
                     for (m = l; m < n - 1; m++)
@@ -1213,7 +1213,6 @@ namespace ppx
     MatrixS<N, M> pinv(const MatrixS<M, N> &mat)
     {
         SVD<M, N> svd(mat);
-        const auto &U = svd.u;
         const auto &w = svd.w;
         MatrixS<N, N> W{};
         auto eigen_max = *std::max_element(w.cbegin(), w.cend());

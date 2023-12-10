@@ -27,9 +27,9 @@ namespace ppx
             uint32_t EDX;
         };
 
-        static inline uint32_t Cpuid__(uint32_t r_eax, uint32_t r_ecx, cpuidregs *r_out)
+        static inline uint32_t getcpuid(uint32_t r_eax, uint32_t r_ecx, cpuidregs *r_out)
         {
-#if defined(_MSC_VER)
+#ifdef _MSC_VER
             int cpuid_info[4];
             cpuid_info[0] = cpuid_info[1] = cpuid_info[2] = cpuid_info[3] = 0;
             __cpuidex(cpuid_info, r_eax, r_ecx);
@@ -48,7 +48,7 @@ namespace ppx
             return rc;
         }
 
-        static inline void Xgetbv__(uint32_t r_ecx, uint32_t *r_eax, uint32_t *r_edx)
+        static inline void xgetbv(uint32_t r_ecx, uint32_t *r_eax, uint32_t *r_edx)
         {
             uint64_t x = _xgetbv(r_ecx);
 
@@ -76,9 +76,9 @@ namespace ppx
                 uint32_t m_Size = 0;
 
             public:
-                uint32_t GetLevel(void) const { return m_Level; }
-                uint32_t GetSize(void) const { return m_Size; }
-                Type GetType(void) const { return m_Type; }
+                uint32_t GetLevel() const { return m_Level; }
+                uint32_t GetSize() const { return m_Size; }
+                Type GetType() const { return m_Type; }
 
                 // These are defined in CacheInfo.cpp
                 CacheInfo(uint32_t level, uint32_t type, uint32_t size)
@@ -106,7 +106,7 @@ namespace ppx
                     }
                 }
 
-                std::string GetTypeString(void) const
+                std::string GetTypeString() const
                 {
                     const char *s = "";
                     switch (m_Type)
@@ -127,7 +127,7 @@ namespace ppx
                         s = "Unknown";
                         break;
                     }
-                    return std::string(s);
+                    return s;
                 }
             };
 
@@ -137,8 +137,8 @@ namespace ppx
             uint32_t m_MaxEaxExt;                          // Max EAX for extended CPUID
             uint64_t m_FeatureFlags;                       // Processor feature flags
             std::vector<CpuidInfo::CacheInfo> m_CacheInfo; // Processor cache information
-            char m_VendorId[13];                           // Processor vendor ID string
-            char m_ProcessorBrand[49];                     // Processor brand string
+            char m_VendorId[13]{};                         // Processor vendor ID string
+            char m_ProcessorBrand[49]{};                   // Processor brand string
             bool m_OsXsave;                                // XSAVE is enabled for app use
             bool m_OsAvxState;                             // AVX state is enabled by OS
             bool m_OsAvx512State;                          // AVX-512 state is enabled by OS
@@ -147,12 +147,12 @@ namespace ppx
             {
                 if (m_MaxEaxExt >= 0x80000004)
                 {
-                    cpuidregs r2, r3, r4;
-                    uint32_t *p = (uint32_t *)m_ProcessorBrand;
+                    cpuidregs r2{}, r3{}, r4{};
+                    auto *p = (uint32_t *)m_ProcessorBrand;
 
-                    Cpuid__(0x80000002, 0, &r2);
-                    Cpuid__(0x80000003, 0, &r3);
-                    Cpuid__(0x80000004, 0, &r4);
+                    getcpuid(0x80000002, 0, &r2);
+                    getcpuid(0x80000003, 0, &r3);
+                    getcpuid(0x80000004, 0, &r4);
 
                     p[0] = r2.EAX;
                     p[1] = r2.EBX;
@@ -177,16 +177,16 @@ namespace ppx
             {
                 // Get MaxEax and VendorID
                 cpuidregs r{};
-                Cpuid__(0, 0, &r);
+                getcpuid(0, 0, &r);
                 m_MaxEax = r.EAX;
 
-                uint32_t *p = (uint32_t *)m_VendorId;
+                auto *p = (uint32_t *)m_VendorId;
                 p[0] = r.EBX;
                 p[1] = r.EDX;
                 p[2] = r.ECX;
 
                 // Get MaxEaxExt
-                Cpuid__(0x80000000, 0, &r);
+                getcpuid(0x80000000, 0, &r);
                 m_MaxEaxExt = r.EAX;
 
                 // Initialize processor brand string
@@ -195,12 +195,12 @@ namespace ppx
 
             void LoadInfo1()
             {
-                cpuidregs r;
+                cpuidregs r{};
                 if (m_MaxEax < 1)
                 {
                     return;
                 }
-                Cpuid__(1, 0, &r);
+                getcpuid(1, 0, &r);
 
                 //
                 // Decode r.ECX flags
@@ -291,12 +291,12 @@ namespace ppx
 
             void LoadInfo2()
             {
-                cpuidregs r;
+                cpuidregs r{};
                 if (m_MaxEax < 7)
                 {
                     return;
                 }
-                Cpuid__(7, 0, &r);
+                getcpuid(7, 0, &r);
 
                 //
                 // Decode EBX flags
@@ -358,12 +358,12 @@ namespace ppx
 
             void LoadInfo3()
             {
-                cpuidregs r;
+                cpuidregs r{};
                 if (m_MaxEaxExt < 0x80000001)
                 {
                     return;
                 }
-                Cpuid__(0x80000001, 0, &r);
+                getcpuid(0x80000001, 0, &r);
 
                 // CPUID.(EAX=80000001H, ECX=00H):ECX.LZCNT[bit 5]
                 if (r.ECX & (0x1 << 5))
@@ -380,19 +380,19 @@ namespace ppx
 
             void LoadInfo4()
             {
-                cpuidregs r_eax01h;
-                cpuidregs r_eax07h;
-                cpuidregs r_eax07h_ecx01h;
+                cpuidregs r_eax01h{};
+                cpuidregs r_eax07h{};
+                cpuidregs r_eax07h_ecx01h{};
                 if (m_MaxEax < 7)
                 {
                     return;
                 }
-                Cpuid__(1, 0, &r_eax01h);
-                Cpuid__(7, 0, &r_eax07h);
-                Cpuid__(7, 1, &r_eax07h_ecx01h);
+                getcpuid(1, 0, &r_eax01h);
+                getcpuid(7, 0, &r_eax07h);
+                getcpuid(7, 1, &r_eax07h_ecx01h);
 
                 // Test CPUID.(EAX=01H, ECX=00H):ECX.OSXSAVE[bit 27] to verify use of XGETBV
-                m_OsXsave = (r_eax01h.ECX & (0x1 << 27)) ? true : false;
+                m_OsXsave = (r_eax01h.ECX & (0x1 << 27)) != 0;
                 if (m_OsXsave)
                 {
                     // Use XGETBV to obtain following information
@@ -401,8 +401,8 @@ namespace ppx
 
                     uint32_t xgetbv_eax, xgetbv_edx;
 
-                    Xgetbv__(0, &xgetbv_eax, &xgetbv_edx);
-                    m_OsAvxState = (((xgetbv_eax >> 1) & 0x03) == 0x03) ? true : false;
+                    xgetbv(0, &xgetbv_eax, &xgetbv_edx);
+                    m_OsAvxState = (((xgetbv_eax >> 1) & 0x03) == 0x03);
 
                     if (m_OsAvxState)
                     {
@@ -455,7 +455,7 @@ namespace ppx
                                 m_FeatureFlags |= (uint64_t)FF::AVX_VNNI;
                             }
 
-                            m_OsAvx512State = (((xgetbv_eax >> 5) & 0x07) == 0x07) ? true : false;
+                            m_OsAvx512State = (((xgetbv_eax >> 5) & 0x07) == 0x07);
 
                             if (m_OsAvx512State)
                             {
@@ -599,8 +599,8 @@ namespace ppx
                 uint32_t index = 0;
                 while (!done)
                 {
-                    cpuidregs r;
-                    Cpuid__(4, index, &r);
+                    cpuidregs r{};
+                    getcpuid(4, index, &r);
                     uint32_t cache_type = r.EAX & 0x1f;
                     uint32_t cache_level = ((r.EAX >> 5) & 0x3);
 
@@ -695,9 +695,9 @@ namespace ppx
                 return (m_FeatureFlags & (uint64_t)flag) != 0;
             }
 
-            std::string Brand() const { return std::string(m_ProcessorBrand); }
+            std::string Brand() const { return m_ProcessorBrand; }
 
-            std::string Vendor() const { return std::string(m_VendorId); }
+            std::string Vendor() const { return m_VendorId; }
 
             void LoadInfo()
             {
