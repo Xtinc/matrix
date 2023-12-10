@@ -967,7 +967,6 @@ namespace ppx
     template <int n>
     class EigenValue
     {
-        __attribute__((unused)) bool m_sym;
         bool m_srt;
         MatrixS<n, 1> e;
 
