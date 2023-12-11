@@ -1,6 +1,7 @@
 #include "robotics.hpp"
 #include <random>
 #include <fstream>
+#include <chrono>
 
 using namespace ppx;
 using namespace ppx::details;
@@ -369,17 +370,25 @@ void test_robotics()
     UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}, -PI, PI};
     UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}, -PI, PI};
     UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6, -PI, PI};
-    auto s = StatusCode::SINGULAR;
+    auto s = StatusCode::NORMAL;
     kinematics<6>::Q q;
-    while (s == StatusCode::SINGULAR)
+    while (s == StatusCode::NORMAL)
     {
         random(q, -PI + 1e-3, PI - 1e-3);
         auto J = UR5.jacobiSpace(q);
         LU<6> lu(J);
         s = lu.s;
     }
+    q = {0.336058, 1.69911, -0.445658, -1.25227, 0.00013744, -2.71554};
     SE3 TargetPose = UR5.forwardSpace(q);
-    PRINT_SINGLE_ELEMENTS(UR5.inverseSpace(TargetPose, q - 0.05), "IKSpace = ");
+    auto t1 = std::chrono::system_clock::now();
+    for (size_t i = 0; i < 2000; i++)
+    {
+        q = UR5.inverseSpace(TargetPose, q - 0.05);
+    }
+    auto t2 = std::chrono::system_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 2000.0 << " us per iter has elapsed.\n";
+    PRINT_SINGLE_ELEMENTS(q, "IKSpace = ");
     std::cout << "singualr q:" << q << "\n";
 }
 

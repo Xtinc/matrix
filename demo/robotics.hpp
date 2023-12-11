@@ -147,7 +147,6 @@ public:
         }
 
         details::CoDo<Q::LEN, 6> codo(fx, dfx, lower, upper);
-
         auto result = codo(init);
         return result.s == StatusCode::CONVERGED ? result.x : init;
     }
