@@ -114,6 +114,29 @@ namespace ppx
                 }
             }
         }
+
+        inline void transpose4x4(const double *a, double *__restrict b)
+        {
+            auto q_a = _mm256_loadu_pd(a);
+            auto q_b = _mm256_loadu_pd(a + 4);
+            auto q_c = _mm256_loadu_pd(a + 8);
+            auto q_d = _mm256_loadu_pd(a + 12);
+
+            auto t1 = _mm256_permute4x64_pd(q_a, 0b01001110);
+            auto t2 = _mm256_permute4x64_pd(q_b, 0b01001110);
+            auto t3 = _mm256_permute4x64_pd(q_c, 0b01001110);
+            auto t4 = _mm256_permute4x64_pd(q_d, 0b01001110);
+
+            auto t5 = _mm256_blend_pd(q_a, t3, 0b1100);
+            auto t6 = _mm256_blend_pd(q_b, t4, 0b1100);
+            auto t7 = _mm256_blend_pd(t1, q_c, 0b1100);
+            auto t8 = _mm256_blend_pd(t2, q_d, 0b1100);
+
+            _mm256_storeu_pd(b, _mm256_unpacklo_pd(t5, t6));
+            _mm256_storeu_pd(b + 4, _mm256_unpackhi_pd(t5, t6));
+            _mm256_storeu_pd(b + 8, _mm256_unpacklo_pd(t7, t8));
+            _mm256_storeu_pd(b + 12, _mm256_unpackhi_pd(t7, t8));
+        }
     }
 #endif
 }

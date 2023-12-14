@@ -494,14 +494,38 @@ namespace ppx
             std::fill(this->m_data.begin(), this->m_data.end(), val);
         }
 
+        template <size_t A = M, size_t B = N, std::enable_if_t<A == 4 && B == 4> * = nullptr>
         MatrixS<N, M> T() const
         {
             MatrixS<N, M> res{};
+            const auto *a = this->data();
+            auto *b = res.data();
+#if defined(PPX_USE_AVX)
+            avxt::transpose4x4(a, b);
+#else
             for (auto i = 0u; i < M; i++)
             {
                 for (auto j = 0u; j < N; j++)
                 {
-                    res(j, i) = (*this)(i, j);
+                    *(b + j + i * N) = *(a + i + j * M);
+                }
+            }
+#endif
+            return res;
+        }
+
+        template <size_t A = M, size_t B = N, std::enable_if_t<!(A == 4 && B == 4)> * = nullptr>
+        MatrixS<N, M> T() const
+        {
+            MatrixS<N, M> res{};
+            const auto *a = this->data();
+            auto *b = res.data();
+
+            for (auto i = 0u; i < M; i++)
+            {
+                for (auto j = 0u; j < N; j++)
+                {
+                    *(b + j + i * N) = *(a + i + j * M);
                 }
             }
             return res;
