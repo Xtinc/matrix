@@ -32,7 +32,7 @@ namespace ppx
             {
                 q_sum = _mm256_add_pd(_mm256_loadu_pd(start + i), q_sum);
             }
-            // Peform reduction, final sum in low-order element of temp3
+            // Perform reduction, final sum in low-order element of temp3
             auto temp = _mm_add_pd(_mm256_extractf128_pd(q_sum, 0),
                                    _mm256_extractf128_pd(q_sum, 1));
             // Process remaining elements
@@ -115,27 +115,22 @@ namespace ppx
             }
         }
 
-        inline void transpose4x4(const double *a, double *__restrict b)
+        inline void transpose4x4(const double *a, double *b)
         {
             auto q_a = _mm256_loadu_pd(a);
             auto q_b = _mm256_loadu_pd(a + 4);
             auto q_c = _mm256_loadu_pd(a + 8);
             auto q_d = _mm256_loadu_pd(a + 12);
 
-            auto t1 = _mm256_permute4x64_pd(q_a, 0b01001110);
-            auto t2 = _mm256_permute4x64_pd(q_b, 0b01001110);
-            auto t3 = _mm256_permute4x64_pd(q_c, 0b01001110);
-            auto t4 = _mm256_permute4x64_pd(q_d, 0b01001110);
+            auto temp0 = _mm256_unpacklo_pd(q_a, q_b);
+            auto temp1 = _mm256_unpackhi_pd(q_a, q_b);
+            auto temp2 = _mm256_unpacklo_pd(q_c, q_d);
+            auto temp3 = _mm256_unpackhi_pd(q_c, q_d);
 
-            auto t5 = _mm256_blend_pd(q_a, t3, 0b1100);
-            auto t6 = _mm256_blend_pd(q_b, t4, 0b1100);
-            auto t7 = _mm256_blend_pd(t1, q_c, 0b1100);
-            auto t8 = _mm256_blend_pd(t2, q_d, 0b1100);
-
-            _mm256_storeu_pd(b, _mm256_unpacklo_pd(t5, t6));
-            _mm256_storeu_pd(b + 4, _mm256_unpackhi_pd(t5, t6));
-            _mm256_storeu_pd(b + 8, _mm256_unpacklo_pd(t7, t8));
-            _mm256_storeu_pd(b + 12, _mm256_unpackhi_pd(t7, t8));
+            _mm256_storeu_pd(b, _mm256_permute2f128_pd(temp0, temp2, 0x20));
+            _mm256_storeu_pd(b + 4, _mm256_permute2f128_pd(temp1, temp3, 0x20));
+            _mm256_storeu_pd(b + 8, _mm256_permute2f128_pd(temp0, temp2, 0x31));
+            _mm256_storeu_pd(b + 12, _mm256_permute2f128_pd(temp1, temp3, 0x31));
         }
     }
 #endif

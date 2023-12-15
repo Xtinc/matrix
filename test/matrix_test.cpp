@@ -1017,6 +1017,13 @@ TEST_F(MatrixS_TestCase, avx_mask_mul)
     EXPECT_EQ(M * N, matmul(M, N));
 }
 
+TEST_F(MatrixS_TestCase, avx_transpose)
+{
+    MatrixS<4, 4> A({{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}, {13, 14, 15, 16}}, Ori::Col);
+    MatrixS<4, 4> B({{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}, {13, 14, 15, 16}}, Ori::Row);
+    EXPECT_EQ(A.T(), B);
+}
+
 #endif
 
 int main(int argc, char **argv)
