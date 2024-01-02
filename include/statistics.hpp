@@ -9,17 +9,18 @@ namespace ppx
 {
     // Moments of a Distribution: Mean, Variance, Skewness
     template <typename T>
-    auto mean(const T &vec)
+    auto avg(const T &vec)
     {
         using value_t = typename T::value_type;
-        return static_cast<value_t>(std::accumulate(vec.begin(), vec.end(), value_t()) / vec.size());
+        return static_cast<value_t>(std::accumulate(vec.begin(), vec.end(), value_t{}) / vec.size());
     }
 
     template <typename T>
     double var(const T &vec)
     {
+        assert(vec.size() >= 1);
         using value_t = typename T::value_type;
-        value_t e = mean(vec);
+        value_t e = avg(vec);
         double sum = 0.0;
         for (size_t i = 0; i < vec.size(); i++)
         {
@@ -42,15 +43,15 @@ namespace ppx
     }
 
     template <size_t N>
-    class MultiNormalDistribution
+    class MultiGaussianDistribution
     {
     public:
         using samples = std::vector<MatrixS<N, 1>>;
 
-        MultiNormalDistribution() : m_cov(eye<N>()), m_gen(std::random_device{}()) {}
+        MultiGaussianDistribution() : m_cov(eye<N>()), m_gen(std::random_device{}()) {}
 
-        MultiNormalDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
-            : m_mean(mu), m_cov(sigma) {}
+        MultiGaussianDistribution(const MatrixS<N, 1> &mu, const MatrixS<N, N> &sigma)
+            : m_mean(mu), m_cov(sigma), m_gen(std::random_device{}()) {}
 
         MatrixS<N, 1> operator()() const
         {
@@ -69,10 +70,10 @@ namespace ppx
         double pdf(const MatrixS<N, 1> &x) const
         {
             int n = static_cast<int>(N);
-            MatrixS<2, 1> normalized_mu = x - m_mean;
+            MatrixS<N, 1> normalized_mu = x - m_mean;
             double quadform = (normalized_mu.T() * m_cov.I() * normalized_mu)[0];
-            double norm = pow(sqrt(2 * PI), -n) * pow(m_cov.det(), -0.5);
-            return norm * exp(-0.5 * quadform);
+            double norm = std::pow(std::sqrt(2 * PI), -n) / std::sqrt(m_cov.det());
+            return norm * std::exp(-0.5 * quadform);
         }
 
         const MatrixS<N, 1> &mean() const
@@ -95,7 +96,7 @@ namespace ppx
             return m_cov;
         }
 
-        void loglikehood(const samples &data)
+        void fit(const samples &data)
         {
             auto n = data.size();
             auto sum_m = std::accumulate(data.begin(), data.end(), MatrixS<N, 1>());
@@ -103,7 +104,7 @@ namespace ppx
             MatrixS<N, N> sum_s;
             for (size_t i = 0; i < n; i++)
             {
-                MatrixS<N, N> tpx = data.at(i) - m_mean;
+                MatrixS<N, 1> tpx = data.at(i) - m_mean;
                 sum_s += tpx * tpx.T();
             }
             m_cov = sum_s / n;
@@ -116,15 +117,15 @@ namespace ppx
     };
 
     template <>
-    class MultiNormalDistribution<1>
+    class MultiGaussianDistribution<1>
     {
     public:
         using samples = std::vector<double>;
 
-        MultiNormalDistribution() : m_mean(0.0), m_cov(1.0), m_gen(std::random_device{}()) {}
+        MultiGaussianDistribution() : m_mean(0.0), m_cov(1.0), m_gen(std::random_device{}()) {}
 
-        MultiNormalDistribution(double mu, double sigma)
-            : m_mean(mu), m_cov(sigma) {}
+        MultiGaussianDistribution(double mu, double sigma)
+            : m_mean(mu), m_cov(sigma), m_gen(std::random_device{}()) {}
 
         double operator()() const
         {
@@ -160,7 +161,7 @@ namespace ppx
             return m_cov;
         }
 
-        void loglikehood(const samples &data)
+        void fit(const samples &data)
         {
             auto n = data.size();
             auto sum_m = std::accumulate(data.begin(), data.end(), 0.0);
@@ -171,7 +172,7 @@ namespace ppx
                 auto tpx = data.at(i) - m_mean;
                 sum_s += tpx * tpx;
             }
-            m_cov = sum_s / n;
+            m_cov = sum_s / (double)n;
         }
 
     private:
@@ -181,22 +182,25 @@ namespace ppx
     };
 
     template <size_t N>
-    std::ostream &operator<<(std::ostream &os, const MultiNormalDistribution<N> &self)
+    using MVN = MultiGaussianDistribution<N>;
+
+    template <size_t N>
+    std::ostream &operator<<(std::ostream &os, const MultiGaussianDistribution<N> &self)
     {
         os << "MultiNormalDistribution<" << N << ">:\n"
-           << "mean = \t" << self.mean()
+           << "mean = \t" << self.mean() << "\n"
            << "cov  = \t" << self.covariance();
         return os;
     }
 
     template <size_t N, size_t K>
-    class MixedNormalDistribution
+    class MixedGaussianDistribution
     {
     public:
-        using dist = MultiNormalDistribution<N>;
+        using dist = MultiGaussianDistribution<N>;
         using samples = std::vector<MatrixS<N, 1>>;
 
-        MixedNormalDistribution() : m_prior(), m_gen(std::random_device{}()) {}
+        MixedGaussianDistribution() : m_prior(), m_gen(std::random_device{}()) {}
 
         double pdf(const MatrixS<N, 1> &x)
         {
@@ -232,12 +236,7 @@ namespace ppx
             return m_guassian.at(idx);
         }
 
-        const double &prior(size_t idx) const
-        {
-            return m_prior.at(idx);
-        }
-
-        double &prior(size_t idx)
+        double prior(size_t idx) const
         {
             return m_prior.at(idx);
         }
@@ -248,7 +247,7 @@ namespace ppx
             m_prior[idx] = p;
         }
 
-        void loglikehood(const samples &data)
+        void fit(const samples &data)
         {
             constexpr auto c = K;
             auto n = data.size();
@@ -282,7 +281,7 @@ namespace ppx
                 }
                 double tpp = std::accumulate(data.begin(), data.end(), 0.0,
                                              [&](double y0, const MatrixS<N, 1> &x)
-                                             { return y0 + log(pdf(x)); });
+                                             { return y0 + std::log(pdf(x)); });
                 residual = fabs(last_p - tpp);
                 last_p = tpp;
                 ++its;
@@ -297,7 +296,7 @@ namespace ppx
     };
 
     template <size_t N, size_t K>
-    std::ostream &operator<<(std::ostream &os, const MixedNormalDistribution<N, K> &self)
+    std::ostream &operator<<(std::ostream &os, const MixedGaussianDistribution<N, K> &self)
     {
         os << "MixedNormalDistribution<" << N << ',' << K << ">:\n";
         for (size_t i = 0; i < K; i++)
@@ -309,68 +308,71 @@ namespace ppx
     }
 
     template <size_t N, size_t K>
-    class Kmeans
-    {
-    public:
-        using samples = std::vector<MatrixS<N, 1>>;
+    using GMM = MixedGaussianDistribution<N, K>;
 
-        explicit Kmeans(const samples &data)
-            : m_data(data), m_assign(m_data.size(), 0) {}
-
-    private:
-        const samples &m_data;
-        std::vector<int> m_assign;
-        std::array<int, K> m_count;
-        std::array<MatrixS<N, 1>, K> m_mean;
-
-    private:
-        int estep()
-        {
-            int nchg = 0;
-            int kmin = 0;
-            m_count.fill(0);
-            for (auto i = 0; i < m_data.size(); i++)
-            {
-                auto dmin = std::numeric_limits<double>::max();
-                for (auto j = 0; j < K; j++)
-                {
-                    auto d = norm2(m_data[i] - m_mean[j]);
-                    if (d < dmin)
-                    {
-                        dmin = d;
-                        kmin = j;
-                    }
-                }
-                if (kmin != m_assign[i])
-                {
-                    nchg++;
-                }
-                m_assign[i] = kmin;
-                m_count[kmin]++;
-            }
-            return nchg;
-        }
-
-        void mstep()
-        {
-            for (const auto &elem : m_mean)
-            {
-                elem.fill(0);
-            }
-
-            for (auto i = 0; i < m_data.size(); i++)
-            {
-                m_mean[m_assign[i]] += m_data[i];
-            }
-
-            for (auto i = 0; i < K; i++)
-            {
-                if (m_count[i] > 0)
-                {
-                    m_mean[i] /= m_count[i];
-                }
-            }
-        }
-    };
+    //    template <size_t N, size_t K>
+    //    class Kmeans
+    //    {
+    //    public:
+    //        using samples = std::vector<MatrixS<N, 1>>;
+    //
+    //        explicit Kmeans(const samples &data)
+    //            : m_data(data), m_assign(m_data.size(), 0) {}
+    //
+    //    private:
+    //        const samples &m_data;
+    //        std::vector<int> m_assign;
+    //        std::array<int, K> m_count;
+    //        std::array<MatrixS<N, 1>, K> m_mean;
+    //
+    //    private:
+    //        int estep()
+    //        {
+    //            int nchg = 0;
+    //            int kmin = 0;
+    //            m_count.fill(0);
+    //            for (auto i = 0; i < m_data.size(); i++)
+    //            {
+    //                auto dmin = std::numeric_limits<double>::max();
+    //                for (auto j = 0; j < K; j++)
+    //                {
+    //                    auto d = norm2(m_data[i] - m_mean[j]);
+    //                    if (d < dmin)
+    //                    {
+    //                        dmin = d;
+    //                        kmin = j;
+    //                    }
+    //                }
+    //                if (kmin != m_assign[i])
+    //                {
+    //                    nchg++;
+    //                }
+    //                m_assign[i] = kmin;
+    //                m_count[kmin]++;
+    //            }
+    //            return nchg;
+    //        }
+    //
+    //        void mstep()
+    //        {
+    //            for (const auto &elem : m_mean)
+    //            {
+    //                elem.fill(0);
+    //            }
+    //
+    //            for (auto i = 0; i < m_data.size(); i++)
+    //            {
+    //                m_mean[m_assign[i]] += m_data[i];
+    //            }
+    //
+    //            for (auto i = 0; i < K; i++)
+    //            {
+    //                if (m_count[i] > 0)
+    //                {
+    //                    m_mean[i] /= m_count[i];
+    //                }
+    //            }
+    //        }
+    //    };
 }
 #endif

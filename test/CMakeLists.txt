@@ -8,7 +8,7 @@ if (ENABLE_UNIT_TESTS)
     FetchContent_Declare(
             googletest
             GIT_REPOSITORY https://github.com/google/googletest.git
-            GIT_TAG release-1.12.0
+            GIT_TAG v1.14.0
     )
     if (CMAKE_CXX_COMPILER_ID MATCHES MSVC)
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -23,6 +23,8 @@ if (ENABLE_UNIT_TESTS)
     target_link_libraries(opt_test PRIVATE ppx gtest_main)
     add_executable(lie_test lie_test.cpp)
     target_link_libraries(lie_test PRIVATE ppx gtest_main)
+    add_executable(signals_test signals_test.cpp)
+    target_link_libraries(signals_test PRIVATE ppx gtest_main)
     add_executable(statistic_test statistic_test.cpp)
     target_link_libraries(statistic_test PRIVATE ppx gtest_main)
     gtest_discover_tests(matrix_test
@@ -32,6 +34,8 @@ if (ENABLE_UNIT_TESTS)
     gtest_discover_tests(opt_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     gtest_discover_tests(lie_test
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(signals_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     gtest_discover_tests(statistic_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)

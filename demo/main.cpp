@@ -268,13 +268,13 @@ void test_statics()
     MatrixS<2, 1> mu{-2, 8};
     MatrixS<2, 2> sigma{0.4, 0.0, 0.0, 1.2};
     MatrixS<2, 1> x;
-    MultiNormalDistribution<2> d(mu, sigma);
+    MultiGaussianDistribution<2> d(mu, sigma);
     PRINT_SINGLE_ELEMENTS(d.pdf(x), "pdf of [0,0] = ");
     PRINT_SINGLE_ELEMENTS(d.pdf(MatrixS<2, 1>{-0.6, -0.6}), "pdf of [-0.6,-0.6] = ");
     std::vector<MatrixS<2, 1>> x1;
-    MultiNormalDistribution<2> d2(MatrixS<2, 1>{2, 1}, MatrixS<2, 2>{4, 1, 1, 4});
-    MultiNormalDistribution<2> d3(MatrixS<2, 1>{6, 4}, MatrixS<2, 2>{0.25, 1.6, 2.0, 16.0});
-    MixedNormalDistribution<2, 3> mg;
+    MultiGaussianDistribution<2> d2(MatrixS<2, 1>{ 2, 1}, MatrixS<2, 2>{ 4, 1, 1, 4});
+    MultiGaussianDistribution<2> d3(MatrixS<2, 1>{ 6, 4}, MatrixS<2, 2>{ 0.25, 1.6, 2.0, 16.0});
+    MixedGaussianDistribution<2, 3> mg;
     mg.setcomp(0, d, 0.3);
     mg.setcomp(1, d2, 0.5);
     mg.setcomp(2, d3, 0.2);
@@ -283,17 +283,17 @@ void test_statics()
     {
         x1.emplace_back(mg());
     }
-    PRINT_SINGLE_ELEMENTS(mean(x1), "mean = ");
+    PRINT_SINGLE_ELEMENTS(avg(x1), "mean = ");
     // for (size_t i = 0; i < ITMAX; i++)
     // {
     //     PRINT_LISTED_ELEMENTS(x1[i]);
     // }
 
-    MixedNormalDistribution<2, 3> mge;
-    mge.setcomp(0, MultiNormalDistribution<2>({1, 1}, {1, 0, 0, 1}), 0.5);
-    mge.setcomp(1, MultiNormalDistribution<2>({2, 2}, {1, 0, 0, 1}), 0.2);
-    mge.setcomp(2, MultiNormalDistribution<2>({4, 4}, {1, 0, 0, 1}), 0.3);
-    mge.loglikehood(x1);
+    MixedGaussianDistribution<2, 3> mge;
+    mge.setcomp(0, MultiGaussianDistribution<2>({ 1, 1}, { 1, 0, 0, 1}), 0.5);
+    mge.setcomp(1, MultiGaussianDistribution<2>({ 2, 2}, { 1, 0, 0, 1}), 0.2);
+    mge.setcomp(2, MultiGaussianDistribution<2>({ 4, 4}, { 1, 0, 0, 1}), 0.3);
+    mge.fit(x1);
     PRINT_SINGLE_ELEMENTS(mge);
     // auto e1 = mean(x1);
     // auto e2 = mean(x2);
