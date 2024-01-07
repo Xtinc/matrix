@@ -36,12 +36,12 @@ void test_filter(const Filter &flt, const std::vector<double> &input, const std:
 class SIG_TestCase : public ::testing::Test
 {
 public:
-    SIG_TestCase() : rand(0, 0.1)
+    SIG_TestCase() : rand()
     {
         for (int i = 0; i < 100; ++i)
         {
             double sample_point = -PI + (double)i / 50 * PI;
-            datas1.emplace_back(sin(sample_point) + rand());
+            datas1.emplace_back(sin(sample_point) + rand()[0]);
         }
         for (int i = 0; i < 8; i++)
         {
