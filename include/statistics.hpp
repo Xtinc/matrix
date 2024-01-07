@@ -71,7 +71,8 @@ namespace ppx
         {
             int n = static_cast<int>(N);
             MatrixS<N, 1> normalized_mu = x - m_mean;
-            double quadform = (normalized_mu.T() * m_cov.I() * normalized_mu)[0];
+            // double quadform = (normalized_mu.T() * m_cov.I() * normalized_mu)[0];
+            double quadform = inner_product(normalized_mu, normalized_mu, m_cov.I());
             double norm = std::pow(std::sqrt(2 * PI), -n) / std::sqrt(m_cov.det());
             return norm * std::exp(-0.5 * quadform);
         }
@@ -113,71 +114,6 @@ namespace ppx
     private:
         MatrixS<N, 1> m_mean;
         MatrixS<N, N> m_cov;
-        mutable std::mt19937 m_gen;
-    };
-
-    template <>
-    class MultiGaussianDistribution<1>
-    {
-    public:
-        using samples = std::vector<double>;
-
-        MultiGaussianDistribution() : m_mean(0.0), m_cov(1.0), m_gen(std::random_device{}()) {}
-
-        MultiGaussianDistribution(double mu, double sigma)
-            : m_mean(mu), m_cov(sigma), m_gen(std::random_device{}()) {}
-
-        double operator()() const
-        {
-            std::normal_distribution<> d{m_mean, m_cov};
-            return d(m_gen);
-        }
-
-        double pdf(double x) const
-        {
-            auto normalized_mu = (x - m_mean) / m_cov;
-            double quadform = normalized_mu * normalized_mu;
-            double norm = 1.0 / sqrt(2 * PI * m_cov * m_cov);
-            return norm * exp(-0.5 * quadform);
-        }
-
-        const double &mean() const
-        {
-            return m_mean;
-        }
-
-        double &mean()
-        {
-            return m_mean;
-        }
-
-        const double &covariance() const
-        {
-            return m_cov;
-        }
-
-        double &covariance()
-        {
-            return m_cov;
-        }
-
-        void fit(const samples &data)
-        {
-            auto n = data.size();
-            auto sum_m = std::accumulate(data.begin(), data.end(), 0.0);
-            m_mean = sum_m / n;
-            double sum_s = 0.0;
-            for (size_t i = 0; i < n; i++)
-            {
-                auto tpx = data.at(i) - m_mean;
-                sum_s += tpx * tpx;
-            }
-            m_cov = sum_s / (double)n;
-        }
-
-    private:
-        double m_mean;
-        double m_cov;
         mutable std::mt19937 m_gen;
     };
 
@@ -286,6 +222,93 @@ namespace ppx
                 last_p = tpp;
                 ++its;
             }
+        }
+
+        template <size_t L>
+        std::enable_if_t<(L < N), std::vector<MatrixS<N - L, 1>>>
+        predict(std::vector<MatrixS<L, 1>> &known, const std::array<size_t, L> &idx) const
+        {
+            std::array<bool, N> xory;
+            for (size_t i = 0; i < N; i++)
+            {
+                xory[i] = std::any_of(idx.cbegin(), idx.cend(), [i](size_t a)
+                                      { return a == i; });
+            }
+
+            std::vector<MatrixS<N - L, 1>> result;
+            std::vector<MatrixS<L, 1>> u_x_k;
+            std::vector<MatrixS<L, L>> cov_xx_k;
+            std::vector<MatrixS<N - L, 1>> u_y_k;
+            std::vector<MatrixS<N - L, L>> reg_k;
+
+            for (size_t k = 0; k < K; k++)
+            {
+                const auto &u_total = m_guassian[k].mean();
+                const auto &cov_total = m_guassian[k].covariance();
+                MatrixS<L, 1> u_x;
+                MatrixS<N - L, 1> u_y;
+                MatrixS<L, L> cov_xx;
+                MatrixS<N - L, L> cov_yx;
+
+                size_t idx1 = 0;
+                size_t idx2 = 0;
+                for (size_t i = 0; i < N; i++)
+                {
+                    if (xory[i])
+                    {
+                        u_x[idx1] = u_total[i];
+                        size_t jdx1 = 0;
+                        for (size_t j = 0; j < N; j++)
+                        {
+                            if (xory[j])
+                            {
+                                cov_xx(idx1, jdx1) = cov_total(i, j);
+                                jdx1++;
+                            }
+                        }
+                        idx1++;
+                    }
+                    else
+                    {
+                        u_y[idx2] = u_total[i];
+                        size_t jdx2 = 0;
+                        for (size_t j = 0; j < N; j++)
+                        {
+                            if (xory[j])
+                            {
+                                cov_yx(idx2, jdx2) = cov_total(i, j);
+                                jdx2++;
+                            }
+                        }
+                        idx2++;
+                    }
+                }
+                u_x_k.push_back(std::move(u_x));
+                u_y_k.push_back(std::move(u_y));
+                reg_k.push_back(cov_yx * cov_xx.I());
+                cov_xx_k.push_back(std::move(cov_xx));
+            }
+
+            for (const auto &elem : known)
+            {
+                MatrixS<K, 1> posterior_coff{};
+                for (size_t i = 0; i < K; i++)
+                {
+                    MVN<L> marginal_gmm(u_x_k[i], cov_xx_k[i]);
+                    posterior_coff[i] = marginal_gmm.pdf(elem);
+                }
+                posterior_coff /= sum(posterior_coff.data(), K);
+
+                MatrixS<N - L, 1> tmp;
+                for (size_t i = 0; i < K; i++)
+                {
+                    MatrixS<N - L, 1> u = (u_y_k[i] + reg_k[i] * (elem - u_x_k[i]));
+                    tmp = tmp + m_prior[i] * posterior_coff[i] * u;
+                }
+                result.push_back(std::move(tmp));
+            }
+
+            return result;
         }
 
     private:
