@@ -1,7 +1,9 @@
 #include "plog.h"
-#include <cinttypes>
-#include <time.h>
 #include <sys/stat.h>
+#include <inttypes.h>
+#include <time.h>
+#include <unistd.h>
+#include <string.h>
 #include <vector>
 #include <array>
 #include <list>
@@ -9,26 +11,33 @@
 #include <tuple>
 #include <map>
 #include <algorithm>
+#include <thread>
+#include <atomic>
 #include <mutex>
 #include <chrono>
 #include <fstream>
 #include <iostream>
-
 #if PLOG_OS_WINDOWS
 #include <io.h>
 #include <Windows.h>
 #include <strsafe.h>
+#include <WinSock2.h>
 #else
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <dirent.h>
 #endif
 
 #if PLOG_OS_WINDOWS
 #define PLOG_SAFE_WRITE ::_write
 #define PLOG_SAFE_FILENO ::_fileno
 #define PLOG_LOCALTIME(a, b) localtime_s(b, a)
+#define PLOG_SAFE_SOCKADDR SOCKADDR
 #else
 #define PLOG_SAFE_WRITE ::write
 #define PLOG_SAFE_FILENO ::fileno
 #define PLOG_LOCALTIME(a, b) localtime_r(a, b)
+#define PLOG_SAFE_SOCKADDR sockaddr
 #endif
 
 #if defined(_MSC_VER)
@@ -43,6 +52,14 @@
 #else
 #define PLOG_SAFE_MAKE_UNIQUE(PTR, TYPE, ...) PTR.reset(new TYPE(__VA_ARGS__))
 #endif
+#endif
+
+#if defined(__GNUC__)
+#define PLOG_LIKELY(x) __builtin_expect(x, 1)
+#define PLOG_UNLIKELY(x) __builtin_expect(x, 0)
+#else
+#define PLOG_LIKELY(x) x
+#define PLOG_UNLIKELY(x) x
 #endif
 
 namespace ppx
@@ -67,9 +84,9 @@ namespace ppx
 
     // file function related to file system. should be replace by <filesystem> after C++17
 #if PLOG_OS_WINDOWS
-    constexpr const char *kFilePathSeparator = "\\";
+    static constexpr const char *kFilePathSeparator = "\\";
 #else
-    constexpr const char *kFilePathSeparator = "/";
+    static constexpr const char *kFilePathSeparator = "/";
 #endif
 
     bool PathExist(const std::string &pathstr, bool considerFile = false)
@@ -120,6 +137,32 @@ namespace ppx
         }
         FindClose(hFind);
 #else
+        DIR *dir;
+        struct dirent *diread;
+        struct stat fileinfo;
+        if ((dir = opendir(directory.c_str())) != nullptr)
+        {
+            while ((diread = readdir(dir)) != nullptr)
+            {
+#if PLOG_OS_QNX
+                if (diread != nullptr &&
+                    ::stat((directory + kFilePathSeparator + diread->d_name).c_str(), &fileinfo) == 0)
+                {
+                    if (S_ISREG(fileinfo.st_mode))
+                    {
+                        filelist.push_back(diread->d_name);
+                    }
+                }
+#else
+                (void)(fileinfo);
+                if (diread->d_type == DT_REG)
+                {
+                    filelist.push_back(diread->d_name);
+                }
+#endif
+            }
+            closedir(dir);
+        }
 #endif
         return filelist;
     }
@@ -332,12 +375,12 @@ namespace ppx
 #if PLOG_OS_QNX
     static std::once_flag start_flag;
 #endif
-
     static constexpr size_t MAX_LINE_LENGTH = 1024 * 50;
     static constexpr size_t kMaxfilenum = 9;
     static constexpr LogLevel kScreenChannel = CH001 | CH002 | CH003;
     static constexpr LogLevel kSocketChannel = CH010 | CH020 | CH030;
     static constexpr LogLevel kDiskFileChannel = CH100 | CH200 | CH300;
+    static constexpr std::array<char, 3> kCustomLabels{'I', 'W', 'E'};
 
     uint64_t timestamp_now()
     {
@@ -368,8 +411,11 @@ namespace ppx
             PLOG_LOCALTIME(&cur_t, &gmtime);
             last_t = cur_t;
         }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation="
         snprintf(buf, 22, "[%04d-%02d-%02d %02d:%02d:%02d.", gmtime.tm_year + 1900, gmtime.tm_mon + 1,
                  gmtime.tm_mday, gmtime.tm_hour, gmtime.tm_min, gmtime.tm_sec);
+#pragma GCC diagnostic pop
         return timestamp % 1000000;
     }
 
@@ -385,9 +431,17 @@ namespace ppx
         static const size_t id = GetCurrentProcessId() % 8209 + 1000;
         return id;
 #else
-        static const size_t id = std::hash<int>{}(static_cast<int>(::getpid())) % 8209 + 1000;
+        static const size_t id = static_cast<uint32_t>(::getpid()) % 8209 + 1000;
         return id;
 #endif
+    }
+
+    PLOG_PRINTF_CHECK(1, 0)
+    char *vtextprintf(const char *format, va_list vlist)
+    {
+        static thread_local char log_line_bufs[MAX_LINE_LENGTH + 8]{};
+        auto fmt_result = vsnprintf(log_line_bufs, MAX_LINE_LENGTH, format, vlist);
+        return fmt_result > -1 && fmt_result <= static_cast<int>(MAX_LINE_LENGTH) ? log_line_bufs : nullptr;
     }
 
     // decode
@@ -437,7 +491,7 @@ namespace ppx
         return loglevel;
     }
 
-    void LogLine::stringify(std::ostream &os)
+    void LogLine::stringify(std::ostream &os, LogLevel mask, unsigned rsh)
     {
         char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
         char const *const end = b + m_bytes_used;
@@ -455,18 +509,20 @@ namespace ppx
         b += sizeof(uint32_t);
 
         auto buflen = strlen(file.m_s) + strlen(function.m_s);
+        auto label = kCustomLabels.at((loglevel & mask).val() >> rsh);
+
         if (buflen > 470)
         {
             char buf[30]{};
             auto micro_sec = format_timestamp(buf, timestamp);
             std::snprintf(buf + 21, 9, "%06" PRIu64 "] ", micro_sec);
-            os << buf << '[' << threadid << ",I][" << file.m_s << ':' << line << ',' << function.m_s << "] ";
+            os << buf << '[' << threadid << ',' << label << "][" << file.m_s << ':' << line << ',' << function.m_s << "] ";
         }
         else
         {
             char buf[512]{};
             auto micro_sec = format_timestamp(buf, timestamp);
-            std::snprintf(buf + 21, 491, "%06" PRIu64 "][%zu,%c][%s:%d,%s] ", micro_sec, threadid, 'I', file.m_s, line, function.m_s);
+            std::snprintf(buf + 21, 491, "%06" PRIu64 "][%zu,%c][%s:%d,%s] ", micro_sec, threadid, label, file.m_s, line, function.m_s);
             os << buf;
         }
         stringify(os, b, end);
@@ -638,109 +694,179 @@ namespace ppx
     using CodeType = std::uint16_t;
     static constexpr CodeType dms = (std::numeric_limits<CodeType>::max)();
 
-    class FdCompressedBuf : public std::streambuf
+    class osockstream : public std::ostream
     {
     private:
-        using KeyType = std::pair<CodeType, char>;
-        using PairType = std::pair<const KeyType, CodeType>;
-        using XAlloc = Allocator<PairType, 4 * dms>;
-        using Xmap = std::map<KeyType, CodeType, std::less<KeyType>, XAlloc>;
-
-        static const int bufferSize = 1280;
-
-        FILE *fd;
-        int cur_idx{0};
-        CodeType i{dms};
-        CodeType buffer[bufferSize]{};
-        Xmap dictionary;
-
-        void reset_dictionary()
+        class FdOutBuf : public std::streambuf
         {
-            dictionary.clear();
-            constexpr auto minc = (std::numeric_limits<char>::min)();
-            constexpr auto maxc = (std::numeric_limits<char>::max)();
-            for (auto ic = minc; ic <= maxc; ic++)
+        protected:
+            int fd;
+            static constexpr int bufferSize = 1400;
+            char buffer[bufferSize]{};
+
+        public:
+            explicit FdOutBuf(int _fd) : fd(_fd)
             {
-                auto dictionary_size = static_cast<CodeType>(dictionary.size());
-                dictionary[{dms, ic}] = dictionary_size;
+                setp(buffer, buffer + (bufferSize - 1));
             }
-        }
 
-        bool write_buffer(CodeType code)
-        {
-            if (cur_idx == bufferSize)
+            ~FdOutBuf() override
             {
-                if (PLOG_SAFE_WRITE(PLOG_SAFE_FILENO(fd), reinterpret_cast<const char *>(&buffer),
-                                    bufferSize * sizeof(CodeType)) != bufferSize * sizeof(CodeType))
-                {
-                    return false;
-                }
-                cur_idx = 0;
+                sync();
             }
-            buffer[cur_idx++] = code;
-            return true;
-        }
 
-    public:
-        explicit FdCompressedBuf(FILE *_fd) : fd(_fd)
-        {
-            reset_dictionary();
-        }
-
-        void clear()
-        {
-            auto num = PLOG_SAFE_WRITE(PLOG_SAFE_FILENO(fd), reinterpret_cast<const char *>(&buffer),
-                                       cur_idx * sizeof(CodeType)) != cur_idx * sizeof(CodeType);
-            (void)(num);
-        }
-
-    protected:
-        int_type overflow(int_type c) override
-        {
-            if (c != EOF)
+        protected:
+            int flushBuffer()
             {
-                if (dictionary.size() == dms)
-                {
-                    reset_dictionary();
-                }
-                if (dictionary.count({i, static_cast<char>(c)}) == 0)
-                {
-                    auto dictionary_size = static_cast<CodeType>(dictionary.size());
-                    dictionary[{dms, static_cast<char>(i)}] = dictionary_size;
-                    if (!write_buffer(i))
-                    {
-                        return EOF;
-                    }
-                    i = dictionary.at({dms, static_cast<char>(c)});
-                }
-                else
-                {
-                    i = dictionary.at({i, static_cast<char>(c)});
-                }
-            }
-            else
-            {
-                if (i != dms && !write_buffer(i))
+                auto ret = send(fd, buffer, static_cast<int>(pptr() - pbase()), 0);
+                if (PLOG_UNLIKELY(ret < 0))
                 {
                     return EOF;
                 }
+                pbump(-ret);
+                return ret;
             }
-            return c;
-        }
 
-        std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way,
-                               std::ios_base::openmode mode) override
+            int_type overflow(int_type c) override
+            {
+                if (PLOG_LIKELY(c != EOF))
+                {
+                    *pptr() = c;
+                    pbump(1);
+                }
+                if (flushBuffer() == EOF)
+                {
+                    return EOF;
+                }
+                return c;
+            }
+
+            int sync() override
+            {
+                if (flushBuffer() == EOF)
+                {
+                    return -1;
+                }
+                return 0;
+            }
+        };
+
+    protected:
+        FdOutBuf buf;
+
+    public:
+        explicit osockstream(int _fd) : std::ostream(nullptr), buf(_fd)
         {
-            return mode == std::ios_base::out && way == std::ios_base::cur ? std::streampos(std::streamoff(::ftell(fd)))
-                                                                           : std::streampos(std::streamoff(-1));
+            rdbuf(&buf);
         }
     };
 
     class ofcprstream : public std::ostream
     {
     private:
+        class FdCprdBuf : public std::streambuf
+        {
+        private:
+            using KeyType = std::pair<CodeType, char>;
+            using PairType = std::pair<const KeyType, CodeType>;
+            using XAlloc = Allocator<PairType, 4 * dms>;
+            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>, XAlloc>;
+
+            static const int bufferSize = 1280;
+
+            FILE *fptr;
+            const int fd;
+            int cur_idx{0};
+            CodeType i{dms};
+            CodeType buffer[bufferSize]{};
+            Xmap dictionary;
+
+            void reset_dictionary()
+            {
+                dictionary.clear();
+                constexpr int minc = (std::numeric_limits<char>::min)();
+                constexpr int maxc = (std::numeric_limits<char>::max)();
+                for (auto ic = minc; ic <= maxc; ic++)
+                {
+                    auto dictionary_size = static_cast<CodeType>(dictionary.size());
+                    dictionary[{dms, static_cast<char>(ic)}] = dictionary_size;
+                }
+            }
+
+            bool write_buffer(CodeType code)
+            {
+                if (PLOG_UNLIKELY(cur_idx == bufferSize))
+                {
+                    if (PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
+                                        bufferSize * sizeof(CodeType)) != bufferSize * sizeof(CodeType))
+                    {
+                        return false;
+                    }
+                    cur_idx = 0;
+                }
+                buffer[cur_idx++] = code;
+                return true;
+            }
+
+        public:
+            explicit FdCprdBuf(FILE *_fptr)
+                : fptr(_fptr), fd(PLOG_SAFE_FILENO(fptr))
+            {
+                reset_dictionary();
+            }
+
+            void clear()
+            {
+                auto num = PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
+                                           cur_idx * sizeof(CodeType));
+                (void)(num);
+            }
+
+        protected:
+            int_type overflow(int_type c) override
+            {
+                if (PLOG_LIKELY(c != EOF))
+                {
+                    if (dictionary.size() == dms)
+                    {
+                        reset_dictionary();
+                    }
+                    if (dictionary.count({i, static_cast<char>(c)}) == 0)
+                    {
+                        auto dictionary_size = static_cast<CodeType>(dictionary.size());
+                        dictionary[{dms, static_cast<char>(i)}] = dictionary_size;
+                        if (!write_buffer(i))
+                        {
+                            return EOF;
+                        }
+                        i = dictionary.at({dms, static_cast<char>(c)});
+                    }
+                    else
+                    {
+                        i = dictionary.at({i, static_cast<char>(c)});
+                    }
+                }
+                else
+                {
+                    if (i != dms && !write_buffer(i))
+                    {
+                        return EOF;
+                    }
+                }
+                return c;
+            }
+
+            std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way,
+                                   std::ios_base::openmode mode) override
+            {
+                return mode == std::ios_base::out && way == std::ios_base::cur ? std::streampos(std::streamoff(::ftell(fptr)))
+                                                                               : std::streampos(std::streamoff(-1));
+            }
+        };
+
+    private:
         FILE *fptr;
-        std::unique_ptr<FdCompressedBuf> buf;
+        std::unique_ptr<FdCprdBuf> buf;
 
     public:
         ofcprstream(const char *filename) : std::ostream(nullptr)
@@ -748,7 +874,7 @@ namespace ppx
             fptr = ::fopen(filename, "wb");
             if (fptr)
             {
-                PLOG_SAFE_MAKE_UNIQUE(buf, FdCompressedBuf, fptr);
+                PLOG_SAFE_MAKE_UNIQUE(buf, FdCprdBuf, fptr);
                 rdbuf(buf.get());
             }
         }
@@ -853,7 +979,7 @@ namespace ppx
 
         void push(LogLine &&logline)
         {
-            if (m_queue_len.load(std::memory_order_acquire) > 11)
+            if (PLOG_UNLIKELY(m_queue_len.load(std::memory_order_acquire) > 11))
             {
                 return;
             }
@@ -882,12 +1008,12 @@ namespace ppx
 
             BufferLeaf *read_buffer = m_current_read_buffer;
 
-            if (read_buffer == nullptr)
+            if (PLOG_UNLIKELY(read_buffer == nullptr))
             {
                 return false;
             }
 
-            if (bool success = read_buffer->try_pop(logline, m_read_index))
+            if (read_buffer->try_pop(logline, m_read_index))
             {
                 m_read_index++;
                 if (m_read_index == BufferLeaf::SIZE)
@@ -945,7 +1071,7 @@ namespace ppx
 
         void write(LogLine &logline)
         {
-            logline.stringify(*m_os);
+            logline.stringify(*m_os, kDiskFileChannel, 8);
             if (m_os->tellp() > m_log_file_roll_size_bytes)
             {
                 roll_file();
@@ -983,16 +1109,90 @@ namespace ppx
         std::unique_ptr<std::ostream> m_os;
     };
 
-    class ScreenWrite
+    class ScreenWriter
     {
     public:
         void write(LogLine &logline)
         {
-            logline.stringify(std::cout);
+            logline.stringify(std::cout, kScreenChannel, 2);
+        }
+    };
+
+    class SocketWriter
+    {
+#if PLOG_OS_WINDOWS
+        SOCKET m_sock;
+#else
+        int m_sock;
+#endif
+        sockaddr_in m_sa{};
+        std::unique_ptr<osockstream> m_os;
+
+    public:
+        bool init_ok;
+        std::atomic_bool good;
+        const std::string m_uid;
+
+    public:
+        SocketWriter(const std::string &ipaddr, uint16_t port)
+            : m_sock(0), init_ok(false), good(false)
+        {
+            memset(&m_sa, 0, sizeof(m_sa));
+            m_sa.sin_family = AF_INET;
+            inet_pton(AF_INET, ipaddr.c_str(), &m_sa.sin_addr);
+            m_sa.sin_port = htons(port);
+
+#if PLOG_OS_WINDOWS
+#else
+            m_sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (m_sock != -1)
+            {
+                init_ok = true;
+                PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, m_sock);
+            }
+#endif
+            if (init_ok)
+            {
+                timeval tv{};
+                tv.tv_sec = 4;
+                tv.tv_usec = 0;
+                setsockopt(m_sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
+            }
+        }
+
+        ~SocketWriter()
+        {
+            m_os->flush();
+            good.store(false);
+#if PLOG_OS_WINDOWS
+            shutdown(m_sock, SD_SEND);
+            closesocket(m_sock);
+            WSACleanup();
+#else
+            shutdown(m_sock, SHUT_WR);
+            close(m_sock);
+#endif
+        }
+
+        void Connect()
+        {
+            if (connect(m_sock, (const PLOG_SAFE_SOCKADDR *)&m_sa, sizeof(m_sa)) == 0)
+            {
+                good.store(true);
+            }
+        }
+
+        void write(LogLine &logline)
+        {
+            if (good.load())
+            {
+                logline.stringify(*m_os, kSocketChannel, 4);
+            }
         }
     };
 
     // Logger
+    template <typename T>
     struct LoggerFSM
     {
         enum class State
@@ -1002,9 +1202,42 @@ namespace ppx
             SHUTDOWN
         };
         std::atomic<State> m_state{State::INIT};
+        BufferTree m_buffer;
+
+        void add(LogLine &&logline)
+        {
+            m_buffer.push(std::move(logline));
+        }
+
+        void pop()
+        {
+            while (m_state.load(std::memory_order_acquire) == State::INIT)
+            {
+                std::this_thread::sleep_for(std::chrono::microseconds(50));
+            }
+
+            LogLine logline(CH000, nullptr, nullptr, 0);
+
+            while (m_state.load() == State::READY)
+            {
+                if (m_buffer.try_pop(logline))
+                {
+                    static_cast<T *>(this)->write(logline);
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(4));
+                }
+            }
+
+            while (m_buffer.try_pop(logline))
+            {
+                static_cast<T *>(this)->write(logline);
+            }
+        }
     };
 
-    class FLogger : public LoggerFSM
+    class FLogger : public LoggerFSM<FLogger>
     {
     public:
         FLogger(std::string const &log_directory, std::string const &log_file_name,
@@ -1021,45 +1254,17 @@ namespace ppx
             m_thread.join();
         }
 
-        void add(LogLine &&logline)
+        void write(LogLine &logline)
         {
-            m_buffer.push(std::move(logline));
-        }
-
-        void pop()
-        {
-            while (m_state.load(std::memory_order_acquire) == State::INIT)
-            {
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
-            }
-
-            LogLine logline(CH000, nullptr, nullptr, 0);
-
-            while (m_state.load() == State::READY)
-            {
-                if (m_buffer.try_pop(logline))
-                {
-                    m_file_writer.write(logline);
-                }
-                else
-                {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(4));
-                }
-            }
-
-            while (m_buffer.try_pop(logline))
-            {
-                m_file_writer.write(logline);
-            }
+            m_file_writer.write(logline);
         }
 
     private:
-        BufferTree m_buffer;
         FileWriter m_file_writer;
         std::thread m_thread;
     };
 
-    class TLogger : public LoggerFSM
+    class TLogger : public LoggerFSM<TLogger>
     {
     public:
         TLogger() : m_thread(&TLogger::pop, this)
@@ -1073,50 +1278,70 @@ namespace ppx
             m_thread.join();
         }
 
-        void add(LogLine &&logline)
+        void write(LogLine &logline)
         {
-            m_buffer.push(std::move(logline));
-        }
-
-        void pop()
-        {
-            while (m_state.load(std::memory_order_acquire) == State::INIT)
-            {
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
-            }
-
-            LogLine logline(CH000, nullptr, nullptr, 0);
-            auto now = std::chrono::system_clock::now();
-
-            while (m_state.load() == State::READY)
-            {
-                if (m_buffer.try_pop(logline))
-                {
-                    m_screen_writer.write(logline);
-                }
-                else
-                {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(4));
-                }
-            }
-
-            while (m_buffer.try_pop(logline))
-            {
-                m_screen_writer.write(logline);
-            }
+            m_screen_writer.write(logline);
         }
 
     private:
-        BufferTree m_buffer;
-        ScreenWrite m_screen_writer;
+        ScreenWriter m_screen_writer;
         std::thread m_thread;
+    };
+
+    class SLogger : public LoggerFSM<SLogger>
+    {
+    public:
+        SLogger(const std::string &ipaddr, uint16_t port)
+            : m_scoket_writer(ipaddr, port), m_thread0(&SLogger::pop, this)
+        {
+            PLOG_SAFE_MAKE_UNIQUE(m_thread1, std::thread, &SLogger::netConn, this);
+            m_state.store(State::READY, std::memory_order_release);
+        }
+
+        ~SLogger()
+        {
+            m_state.store(State::SHUTDOWN);
+            m_thread0.join();
+            if (m_thread1)
+            {
+                m_thread1->join();
+            }
+        }
+
+        void netConn()
+        {
+            int reConnNum = 0;
+            while (m_state.load(std::memory_order_acquire) != State::SHUTDOWN)
+            {
+                if (!m_scoket_writer.good.load())
+                {
+                    std::cerr << "Connect for " << reConnNum << "start!\n";
+                    m_scoket_writer.Connect();
+                    std::cerr << "Connect for " << reConnNum << "times!\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(30 * reConnNum++));
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(4));
+            }
+        }
+
+        void write(LogLine &logline)
+        {
+            m_scoket_writer.write(logline);
+        }
+
+    private:
+        SocketWriter m_scoket_writer;
+        std::thread m_thread0;
+        std::unique_ptr<std::thread> m_thread1;
     };
 
     namespace
     {
         std::unique_ptr<FLogger> flogger;
+        std::unique_ptr<SLogger> slogger;
         std::unique_ptr<TLogger> tlogger;
         std::atomic<FLogger *> atomic_flogger;
+        std::atomic<SLogger *> atomic_slogger;
         std::atomic<TLogger *> atomic_tlogger;
         std::atomic<uint16_t> loglevel{1};
     }
@@ -1127,6 +1352,14 @@ namespace ppx
         if (level & kScreenChannel)
         {
             auto lg = atomic_tlogger.load(std::memory_order_acquire);
+            if (lg)
+            {
+                lg->add(CopyLogLine(logline));
+            }
+        }
+        if (level & kSocketChannel)
+        {
+            auto lg = atomic_slogger.load(std::memory_order_acquire);
             if (lg)
             {
                 lg->add(CopyLogLine(logline));
@@ -1176,6 +1409,8 @@ namespace ppx
         if (opts.SOCK.on)
         {
             opts.LVL = opts.LVL | kSocketChannel;
+            PLOG_SAFE_MAKE_UNIQUE(slogger, SLogger, opts.SOCK.ip, opts.SOCK.port);
+            atomic_slogger.store(slogger.get());
         }
         else
         {
@@ -1203,6 +1438,7 @@ namespace ppx
         {
             opts.LVL = opts.LVL & (~kDiskFileChannel);
         }
+
         set_log_level(opts.LVL);
     }
 

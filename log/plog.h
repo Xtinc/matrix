@@ -3,7 +3,8 @@
 
 #include <type_traits>
 #include <utility>
-#include <ostream>
+#include <sstream>
+#include <memory>
 
 // Operating System Evaluation
 #if (defined(_WIN32) || defined(_WIN64))
@@ -75,7 +76,7 @@ namespace ppx
                                         decltype(cpt->end()) * = nullptr,
                                         typename A::iterator *pi = nullptr,
                                         typename A::const_iterator *pci = nullptr,
-                                        typename A::value_type *pv = nullptr)
+                                        typename A::value_type * = nullptr)
             {
                 using iterator = typename A::iterator;
                 using const_iterator = typename A::const_iterator;
@@ -109,9 +110,9 @@ namespace ppx
                                         decltype(cpt->end()) * = nullptr,
                                         typename A::iterator *pi = nullptr,
                                         typename A::const_iterator *pci = nullptr,
-                                        typename A::key_type *pk = nullptr,
-                                        typename A::mapped_type *pm = nullptr,
-                                        typename A::value_type *pv = nullptr)
+                                        typename A::key_type * = nullptr,
+                                        typename A::mapped_type * = nullptr,
+                                        typename A::value_type * = nullptr)
             {
                 using iterator = typename A::iterator;
                 using const_iterator = typename A::const_iterator;
@@ -136,6 +137,16 @@ namespace ppx
             static constexpr bool value = check<type>(nullptr);
         };
 
+        template <typename T, typename U = noid_t<>>
+        struct is_overloaded_stream_impl : public std::false_type
+        {
+        };
+
+        template <typename T>
+        struct is_overloaded_stream_impl<T, noid_t<decltype(std::ostringstream() << std::declval<T>())>> : public std::true_type
+        {
+        };
+
         template <typename T>
         static constexpr bool is_std_array_like()
         {
@@ -146,6 +157,12 @@ namespace ppx
         static constexpr bool is_std_map_like()
         {
             return is_stl_map_like_impl<T>::value;
+        }
+
+        template <typename T>
+        static constexpr bool is_overloaded_stream()
+        {
+            return is_overloaded_stream_impl<T>::value;
         }
     }
 
@@ -337,6 +354,8 @@ namespace ppx
         struct SOCK_t
         {
             bool on = false;
+            std::string ip = "127.0.0.1";
+            uint16_t port = 9998;
         } SOCK;
 
         struct FILE_t
@@ -363,7 +382,7 @@ namespace ppx
 
         LogLine(LogLevel level, char const *file, char const *function, uint32_t line);
 
-        void stringify(std::ostream &os);
+        void stringify(std::ostream &os, LogLevel mask = LogLevel::all(), unsigned rsh = 0);
 
         LogLevel lvl() const;
 
@@ -375,8 +394,9 @@ namespace ppx
         LogLine &operator<<(double arg);
         LogLine &operator<<(const std::string &arg);
 
-        template <typename T, typename std::enable_if<details::is_std_array_like<T>()>::type * = nullptr>
-        LogLine &operator<<(const T &arg)
+        template <typename T>
+        std::enable_if_t<details::is_std_array_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>
+        operator<<(const T &arg)
         {
             *this << '[';
             for (const auto &i : arg)
@@ -387,8 +407,9 @@ namespace ppx
             return *this;
         }
 
-        template <typename T, typename std::enable_if<details::is_std_map_like<T>()>::type * = nullptr>
-        LogLine &operator<<(const T &arg)
+        template <typename T>
+        std::enable_if_t<details::is_std_map_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>
+        operator<<(const T &arg)
         {
             *this << '[';
             for (const auto &p : arg)
@@ -423,7 +444,11 @@ namespace ppx
         }
 
         template <typename Arg>
-        LogLine &operator<<(const Arg &arg)
+        std::enable_if_t<details::is_overloaded_stream<Arg> &&
+                             !std::is_same<Arg, const char *>::value &&
+                             !std::is_same<Arg, char *>::value,
+                         LogLine &>
+        operator<<(const Arg &arg)
         {
             std::ostringstream ss;
             ss << arg;
