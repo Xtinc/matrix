@@ -1,0 +1,6 @@
+add_library(plog plog.cpp)
+target_include_directories(plog PUBLIC ./)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+target_compile_definitions(plog PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()

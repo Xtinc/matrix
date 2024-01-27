@@ -1,4 +1,5 @@
 #include "robotics.hpp"
+#include "plog.h"
 #include <random>
 #include <fstream>
 #include <chrono>
@@ -272,8 +273,8 @@ void test_statics()
     PRINT_SINGLE_ELEMENTS(d.pdf(x), "pdf of [0,0] = ");
     PRINT_SINGLE_ELEMENTS(d.pdf(MatrixS<2, 1>{-0.6, -0.6}), "pdf of [-0.6,-0.6] = ");
     std::vector<MatrixS<2, 1>> x1;
-    MultiGaussianDistribution<2> d2(MatrixS<2, 1>{ 2, 1}, MatrixS<2, 2>{ 4, 1, 1, 4});
-    MultiGaussianDistribution<2> d3(MatrixS<2, 1>{ 6, 4}, MatrixS<2, 2>{ 0.25, 1.6, 2.0, 16.0});
+    MultiGaussianDistribution<2> d2(MatrixS<2, 1>{2, 1}, MatrixS<2, 2>{4, 1, 1, 4});
+    MultiGaussianDistribution<2> d3(MatrixS<2, 1>{6, 4}, MatrixS<2, 2>{0.25, 1.6, 2.0, 16.0});
     MixedGaussianDistribution<2, 3> mg;
     mg.setcomp(0, d, 0.3);
     mg.setcomp(1, d2, 0.5);
@@ -290,9 +291,9 @@ void test_statics()
     // }
 
     MixedGaussianDistribution<2, 3> mge;
-    mge.setcomp(0, MultiGaussianDistribution<2>({ 1, 1}, { 1, 0, 0, 1}), 0.5);
-    mge.setcomp(1, MultiGaussianDistribution<2>({ 2, 2}, { 1, 0, 0, 1}), 0.2);
-    mge.setcomp(2, MultiGaussianDistribution<2>({ 4, 4}, { 1, 0, 0, 1}), 0.3);
+    mge.setcomp(0, MultiGaussianDistribution<2>({1, 1}, {1, 0, 0, 1}), 0.5);
+    mge.setcomp(1, MultiGaussianDistribution<2>({2, 2}, {1, 0, 0, 1}), 0.2);
+    mge.setcomp(2, MultiGaussianDistribution<2>({4, 4}, {1, 0, 0, 1}), 0.3);
     mge.fit(x1);
     PRINT_SINGLE_ELEMENTS(mge);
     // auto e1 = mean(x1);
@@ -394,13 +395,19 @@ void test_robotics()
 
 int main(int, char **)
 {
+    // ppx::log_options opts;
+    // opts.FILE.on = true;
+    // opts.FILE.compressed = true;
+    ppx::initialize_log();
+
     // test_expr();
     // test_matrix();
     // test_linear();
     // test_statics();
     // test_lieGroup();
     // test_nonlinear();
+    // test_robotics();
 
-    test_robotics();
+    LOG_CH(101) << "TEST_LOG";
     return EXIT_SUCCESS;
 }

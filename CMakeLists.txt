@@ -41,6 +41,7 @@ target_include_directories(ppx INTERFACE include)
 if(ENABLE_AVX)
 target_compile_definitions(ppx INTERFACE PPX_USE_AVX)
 endif()
+add_subdirectory(log)
 add_subdirectory(demo)
 
 
