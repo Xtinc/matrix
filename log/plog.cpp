@@ -1359,7 +1359,7 @@ namespace ppx
                 if (!m_scoket_writer.good.load())
                 {
                     m_scoket_writer.Connect();
-                    std::this_thread::sleep_for(std::chrono::seconds(30 * reConnNum++));
+                    std::this_thread::sleep_for(std::chrono::seconds(10 * reConnNum++));
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(4));
             }
