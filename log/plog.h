@@ -382,6 +382,8 @@ namespace ppx
 
         LogLine(LogLevel level, char const *file, char const *function, uint32_t line);
 
+        LogLine(LogLevel level, char const *file, char const *function, uint32_t line, char const *ctx);
+
         void stringify(std::ostream &os, LogLevel mask = LogLevel::all(), unsigned rsh = 0);
 
         LogLevel lvl() const;
@@ -487,17 +489,29 @@ namespace ppx
         char m_stack_buffer[256 - 2 * sizeof(size_t) - sizeof(decltype(m_heap_buffer)) - 8 /* Reserved */];
     };
 
-    struct PsuedoLog
+    namespace details
     {
-        bool operator==(LogLine &);
-    };
+        struct PsuedoLog
+        {
+            bool operator==(LogLine &);
+        };
+
+        PLOG_PRINTF_CHECK(5, 6)
+        void psuedo_log_fmt(LogLevel level, char const *file, char const *function,
+                            uint32_t line, PLOG_PRINT_STRING_TYPE format, ...);
+    }
 
     bool is_logged(LogLevel level);
 
     void initialize_log(const log_options &opts = log_options{});
 }
 
-#define PPX_LOG(LEVEL) ppx::PsuedoLog() == ppx::LogLine(LEVEL, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__)
+#define PPX_LOG(LEVEL) ppx::details::PsuedoLog() == ppx::LogLine(LEVEL, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__)
 #define LOG_CH(NUM) ppx::is_logged(ppx::CH##NUM) && PPX_LOG(ppx::CH##NUM)
-
+#define LOG_FMT(NUM, ...) ppx::is_logged(ppx::CH##NUM)                                                                                                  \
+                              ? ppx::details::psuedo_log_fmt(ppx::CH##NUM, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__) \
+                              : (void)0
+#define LOG_IF(NUM, COND, ...) ppx::is_logged(ppx::CH##NUM) && (cond)                                                                                        \
+                                   ? ppx::details::psuedo_log_fmt(ppx::CH##NUM, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__) \
+                                   : (void)0
 #endif

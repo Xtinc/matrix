@@ -23,6 +23,7 @@
 #include <io.h>
 #include <strsafe.h>
 #else
+#include <stdarg.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -489,6 +490,12 @@ namespace ppx
         encode<uint32_t>(line);
     }
 
+    LogLine::LogLine(LogLevel level, char const *file, char const *function, uint32_t line, char const *ctx)
+        : LogLine(level, file, function, line)
+    {
+        encode(ctx);
+    }
+
     LogLevel LogLine::lvl() const
     {
         const char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
@@ -605,7 +612,7 @@ namespace ppx
 
     void LogLine::encode(const char *arg)
     {
-        if (arg != nullptr)
+        if (PLOG_LIKELY(arg != nullptr))
         {
             encode_c_string(arg, strlen(arg));
         }
@@ -613,7 +620,7 @@ namespace ppx
 
     void LogLine::encode(char *arg)
     {
-        if (arg != nullptr)
+        if (PLOG_LIKELY(arg != nullptr))
         {
             encode_c_string(arg, strlen(arg));
         }
@@ -621,7 +628,7 @@ namespace ppx
 
     void LogLine::encode_c_string(char const *arg, size_t length)
     {
-        if (length == 0)
+        if (PLOG_UNLIKELY(length == 0))
         {
             return;
         }
@@ -1362,7 +1369,7 @@ namespace ppx
         std::atomic<uint16_t> loglevel{1};
     }
 
-    bool PsuedoLog::operator==(LogLine &logline)
+    bool details::PsuedoLog::operator==(LogLine &logline)
     {
         auto level = logline.lvl();
         if (level & kScreenChannel)
@@ -1391,6 +1398,40 @@ namespace ppx
         }
 
         return true;
+    }
+
+    void details::psuedo_log_fmt(LogLevel level, char const *file, char const *function,
+                                 uint32_t line, PLOG_PRINT_STRING_TYPE format, ...)
+    {
+        va_list vlist;
+        va_start(vlist, format);
+        auto *ctx = vtextprintf(format, vlist);
+        va_end(vlist);
+
+        if (level & kScreenChannel)
+        {
+            auto lg = atomic_tlogger.load(std::memory_order_acquire);
+            if (lg)
+            {
+                lg->add(LogLine(level, file, function, line, ctx));
+            }
+        }
+        if (level & kSocketChannel)
+        {
+            auto lg = atomic_slogger.load(std::memory_order_acquire);
+            if (lg)
+            {
+                lg->add(LogLine(level, file, function, line, ctx));
+            }
+        }
+        if (level & kDiskFileChannel)
+        {
+            auto lg = atomic_flogger.load(std::memory_order_acquire);
+            if (lg)
+            {
+                lg->add(LogLine(level, file, function, line, ctx));
+            }
+        }
     }
 
     void set_log_level(LogLevel level)
