@@ -201,7 +201,7 @@ namespace ppx
 
     constexpr bit_t operator"" _bit(unsigned long long int b) { return bit_t{static_cast<int>(b)}; }
 
-    template <typename T, typename Tag, typename Cond = std::enable_if_t<std::is_integral<T>::value>>
+    template <typename T, typename Tag, typename Cond = typename std::enable_if<std::is_integral<T>::value>::type>
     struct bit_flag
     {
         constexpr bit_flag(bit_flag const &rhs) noexcept = default;
@@ -395,7 +395,7 @@ namespace ppx
         LogLine &operator<<(const std::string &arg);
 
         template <typename T>
-        std::enable_if_t<details::is_std_array_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>
+        typename std::enable_if<details::is_std_array_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>::type
         operator<<(const T &arg)
         {
             *this << '[';
@@ -408,7 +408,7 @@ namespace ppx
         }
 
         template <typename T>
-        std::enable_if_t<details::is_std_map_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>
+        typename std::enable_if<details::is_std_map_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>::type
         operator<<(const T &arg)
         {
             *this << '[';
@@ -428,7 +428,7 @@ namespace ppx
         }
 
         template <typename Arg>
-        std::enable_if_t<std::is_same<Arg, const char *>::value, LogLine &>
+        typename std::enable_if<std::is_same<Arg, const char *>::value, LogLine &>::type
         operator<<(Arg const &arg)
         {
             encode(arg);
@@ -436,7 +436,7 @@ namespace ppx
         }
 
         template <typename Arg>
-        std::enable_if_t<std::is_same<Arg, char *>::value, LogLine &>
+        typename std::enable_if<std::is_same<Arg, char *>::value, LogLine &>::type
         operator<<(const Arg &arg)
         {
             encode(arg);
@@ -444,10 +444,10 @@ namespace ppx
         }
 
         template <typename Arg>
-        std::enable_if_t<details::is_overloaded_stream<Arg> &&
-                             !std::is_same<Arg, const char *>::value &&
-                             !std::is_same<Arg, char *>::value,
-                         LogLine &>
+        typename std::enable_if<details::is_overloaded_stream<Arg> &&
+                                    !std::is_same<Arg, const char *>::value &&
+                                    !std::is_same<Arg, char *>::value,
+                                LogLine &>::type
         operator<<(const Arg &arg)
         {
             std::ostringstream ss;

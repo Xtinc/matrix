@@ -58,9 +58,9 @@
 #if defined(__GNUC__)
 #define PLOG_LIKELY(x) __builtin_expect(x, 1)
 #define PLOG_UNLIKELY(x) __builtin_expect(x, 0)
-#define PLOG_DONT_WARN_FMT_START _Pragma(GCC diagnostic push) \
-    _Pragma(GCC diagnostic ignored "-Wformat-truncation=")
-#define PLOG_DONT_WARN_FMT_END _Pragma(GCC diagnostic pop)
+#define PLOG_DONT_WARN_FMT_START _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wformat-truncation=\"")
+#define PLOG_DONT_WARN_FMT_END _Pragma("GCC diagnostic pop")
 #else
 #define PLOG_LIKELY(x) x
 #define PLOG_UNLIKELY(x) x
