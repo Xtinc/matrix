@@ -2,7 +2,6 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 #include <time.h>
-#include <unistd.h>
 #include <string.h>
 #include <vector>
 #include <array>
@@ -18,11 +17,13 @@
 #include <fstream>
 #include <iostream>
 #if PLOG_OS_WINDOWS
-#include <io.h>
-#include <Windows.h>
-#include <strsafe.h>
 #include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
+#include <io.h>
+#include <strsafe.h>
 #else
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <dirent.h>
@@ -57,9 +58,14 @@
 #if defined(__GNUC__)
 #define PLOG_LIKELY(x) __builtin_expect(x, 1)
 #define PLOG_UNLIKELY(x) __builtin_expect(x, 0)
+#define PLOG_DONT_WARN_FMT_START _Pragma(GCC diagnostic push) \
+    _Pragma(GCC diagnostic ignored "-Wformat-truncation=")
+#define PLOG_DONT_WARN_FMT_END _Pragma(GCC diagnostic pop)
 #else
 #define PLOG_LIKELY(x) x
 #define PLOG_UNLIKELY(x) x
+#define PLOG_DONT_WARN_FMT_START
+#define PLOG_DONT_WARN_FMT_END
 #endif
 
 namespace ppx
@@ -411,11 +417,10 @@ namespace ppx
             PLOG_LOCALTIME(&cur_t, &gmtime);
             last_t = cur_t;
         }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation="
+        PLOG_DONT_WARN_FMT_START
         snprintf(buf, 22, "[%04d-%02d-%02d %02d:%02d:%02d.", gmtime.tm_year + 1900, gmtime.tm_mon + 1,
                  gmtime.tm_mday, gmtime.tm_hour, gmtime.tm_min, gmtime.tm_sec);
-#pragma GCC diagnostic pop
+        PLOG_DONT_WARN_FMT_END
         return timestamp % 1000000;
     }
 
@@ -1143,6 +1148,17 @@ namespace ppx
             m_sa.sin_port = htons(port);
 
 #if PLOG_OS_WINDOWS
+            WSADATA wsaData = {0};
+            auto iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+            if (iResult == 0)
+            {
+                m_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+                if (m_sock != INVALID_SOCKET)
+                {
+                    init_ok = true;
+                    PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, (int)m_sock);
+                }
+            }
 #else
             m_sock = socket(AF_INET, SOCK_STREAM, 0);
             if (m_sock != -1)
