@@ -388,6 +388,7 @@ namespace ppx
     static constexpr LogLevel kSocketChannel = CH010 | CH020 | CH030;
     static constexpr LogLevel kDiskFileChannel = CH100 | CH200 | CH300;
     static constexpr std::array<char, 3> kCustomLabels{'I', 'W', 'E'};
+    static std::vector<LogLine> MainThreadInnerMsg;
 
     uint64_t timestamp_now()
     {
@@ -449,6 +450,21 @@ namespace ppx
         auto fmt_result = vsnprintf(log_line_bufs, MAX_LINE_LENGTH, format, vlist);
         return fmt_result > -1 && fmt_result <= static_cast<int>(MAX_LINE_LENGTH) ? log_line_bufs : nullptr;
     }
+
+    PLOG_PRINTF_CHECK(5, 6)
+    void inner_log_fmt(LogLevel level, char const *file, char const *function,
+                       uint32_t line, PLOG_PRINT_STRING_TYPE format, ...)
+    {
+        va_list vlist;
+        va_start(vlist, format);
+        auto *ctx = vtextprintf(format, vlist);
+        va_end(vlist);
+        MainThreadInnerMsg.emplace_back(level, file, function, line, ctx);
+    }
+
+#define PLOG_INNER_IMSG(...) inner_log_fmt(CH111, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
+#define PLOG_INNER_WMSG(...) inner_log_fmt(CH222, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
+#define PLOG_INNER_EMSG(...) inner_log_fmt(CH333, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
 
     // decode
     template <typename Arg>
@@ -1181,6 +1197,10 @@ namespace ppx
                 tv.tv_usec = 0;
                 setsockopt(m_sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
             }
+            else
+            {
+                PLOG_INNER_EMSG("create socket failed.");
+            }
         }
 
         ~SocketWriter()
@@ -1338,9 +1358,7 @@ namespace ppx
             {
                 if (!m_scoket_writer.good.load())
                 {
-                    std::cerr << "Connect for " << reConnNum << "start!\n";
                     m_scoket_writer.Connect();
-                    std::cerr << "Connect for " << reConnNum << "times!\n";
                     std::this_thread::sleep_for(std::chrono::seconds(30 * reConnNum++));
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(4));
@@ -1441,6 +1459,24 @@ namespace ppx
 
     bool options_legality_check(const log_options &opts)
     {
+        if (opts.SOCK.on)
+        {
+            struct sockaddr_in sa;
+            if (inet_pton(AF_INET, opts.SOCK.ip.c_str(), &(sa.sin_addr)) != 1)
+            {
+                PLOG_INNER_WMSG("%s is an invalid ip, no socket will be created.", opts.SOCK.ip.c_str());
+                return false;
+            }
+        }
+
+        if (opts.FILE.on)
+        {
+            if (opts.FILE.directory.empty())
+            {
+                PLOG_INNER_IMSG("storage directory is empty, path to program runtime will be used.");
+            }
+        }
+
         return true;
     }
 
@@ -1457,10 +1493,12 @@ namespace ppx
             opts.LVL = opts.LVL | kScreenChannel;
             PLOG_SAFE_MAKE_UNIQUE(tlogger, TLogger);
             atomic_tlogger.store(tlogger.get());
+            PLOG_INNER_IMSG("teminal output is enabled.");
         }
         else
         {
             opts.LVL = opts.LVL & (~kScreenChannel);
+            PLOG_INNER_WMSG("teminal output is disabled.");
         }
 
         if (opts.SOCK.on)
@@ -1468,10 +1506,13 @@ namespace ppx
             opts.LVL = opts.LVL | kSocketChannel;
             PLOG_SAFE_MAKE_UNIQUE(slogger, SLogger, opts.SOCK.ip, opts.SOCK.port);
             atomic_slogger.store(slogger.get());
+            std::stringstream ss;
+            PLOG_INNER_IMSG("net server output is enabled, ip address of log server is %s:%hu", opts.SOCK.ip.c_str(), opts.SOCK.port);
         }
         else
         {
             opts.LVL = opts.LVL & (~kSocketChannel);
+            PLOG_INNER_IMSG("net server output is disabled.");
         }
 
         if (opts.FILE.on)
@@ -1490,13 +1531,33 @@ namespace ppx
             opts.FILE.rootname += buffer;
             PLOG_SAFE_MAKE_UNIQUE(flogger, FLogger, opts.FILE.directory, opts.FILE.rootname, opts.FILE.max_size_mb, opts.FILE.compressed);
             atomic_flogger.store(flogger.get());
+            PLOG_INNER_IMSG("disk output is enabled, storage directory is %s, max size of a single file is %u Mib,  max capacity of directory is %u Mib, in %s format.",
+                            opts.FILE.directory.c_str(), opts.FILE.max_size_mb, opts.FILE.max_size_all, opts.FILE.compressed ? "compressed" : "normal text");
         }
         else
         {
             opts.LVL = opts.LVL & (~kDiskFileChannel);
+            PLOG_INNER_IMSG("disk output is disabled.");
         }
 
         set_log_level(opts.LVL);
+        PLOG_INNER_IMSG("log level set to %hu", opts.LVL.val());
+
+        for (const auto &msg : MainThreadInnerMsg)
+        {
+            if (tlogger)
+            {
+                tlogger->add(CopyLogLine(msg));
+            }
+            if (slogger)
+            {
+                slogger->add(CopyLogLine(msg));
+            }
+            if (flogger)
+            {
+                flogger->add(CopyLogLine(msg));
+            }
+        }
     }
 
     bool is_logged(LogLevel level)
