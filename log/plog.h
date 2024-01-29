@@ -446,7 +446,7 @@ namespace ppx
         }
 
         template <typename Arg>
-        typename std::enable_if<details::is_overloaded_stream<Arg> &&
+        typename std::enable_if<details::is_overloaded_stream<Arg>() &&
                                     !std::is_same<Arg, const char *>::value &&
                                     !std::is_same<Arg, char *>::value,
                                 LogLine &>::type

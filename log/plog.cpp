@@ -89,6 +89,29 @@ namespace ppx
     using SupportedTypes =
         std::tuple<char, uint32_t, uint64_t, int32_t, int64_t, double, LogLine::string_literal_t, char *>;
 
+    PLOG_PRINTF_CHECK(1, 0)
+    char *vtextprintf(const char *format, va_list vlist)
+    {
+        static thread_local char log_line_bufs[MAX_LINE_LENGTH + 8]{};
+        auto fmt_result = vsnprintf(log_line_bufs, MAX_LINE_LENGTH, format, vlist);
+        return fmt_result > -1 && fmt_result <= static_cast<int>(MAX_LINE_LENGTH) ? log_line_bufs : nullptr;
+    }
+
+    PLOG_PRINTF_CHECK(5, 6)
+    void inner_log_fmt(LogLevel level, char const *file, char const *function,
+                       uint32_t line, PLOG_PRINT_STRING_TYPE format, ...)
+    {
+        va_list vlist;
+        va_start(vlist, format);
+        auto *ctx = vtextprintf(format, vlist);
+        va_end(vlist);
+        MainThreadInnerMsg.emplace_back(level, file, function, line, ctx);
+    }
+
+#define PLOG_INNER_IMSG(...) inner_log_fmt(CH111, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
+#define PLOG_INNER_WMSG(...) inner_log_fmt(CH222, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
+#define PLOG_INNER_EMSG(...) inner_log_fmt(CH333, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
+
     // file function related to file system. should be replace by <filesystem> after C++17
 #if PLOG_OS_WINDOWS
     static constexpr const char *kFilePathSeparator = "\\";
@@ -190,7 +213,7 @@ namespace ppx
             {
                 std::string fname(directory);
                 fname.append(kFilePathSeparator).append(filename);
-                if (::stat(fname.c_str(), &fileinfo))
+                if (!::stat(fname.c_str(), &fileinfo))
                 {
                     auto tmp = std::make_tuple(fname, fileinfo.st_size, fileinfo.st_mtime);
                     auto it = std::lower_bound(loglist.cbegin(), loglist.cend(), tmp, [](const finfo &a, const finfo &b)
@@ -442,29 +465,6 @@ namespace ppx
         return id;
 #endif
     }
-
-    PLOG_PRINTF_CHECK(1, 0)
-    char *vtextprintf(const char *format, va_list vlist)
-    {
-        static thread_local char log_line_bufs[MAX_LINE_LENGTH + 8]{};
-        auto fmt_result = vsnprintf(log_line_bufs, MAX_LINE_LENGTH, format, vlist);
-        return fmt_result > -1 && fmt_result <= static_cast<int>(MAX_LINE_LENGTH) ? log_line_bufs : nullptr;
-    }
-
-    PLOG_PRINTF_CHECK(5, 6)
-    void inner_log_fmt(LogLevel level, char const *file, char const *function,
-                       uint32_t line, PLOG_PRINT_STRING_TYPE format, ...)
-    {
-        va_list vlist;
-        va_start(vlist, format);
-        auto *ctx = vtextprintf(format, vlist);
-        va_end(vlist);
-        MainThreadInnerMsg.emplace_back(level, file, function, line, ctx);
-    }
-
-#define PLOG_INNER_IMSG(...) inner_log_fmt(CH111, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
-#define PLOG_INNER_WMSG(...) inner_log_fmt(CH222, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
-#define PLOG_INNER_EMSG(...) inner_log_fmt(CH333, filename(__FILE__), funcname(__FUNCTION__), __LINE__, __VA_ARGS__)
 
     // decode
     template <typename Arg>
