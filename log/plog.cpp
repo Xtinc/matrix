@@ -89,6 +89,17 @@ namespace ppx
     using SupportedTypes =
         std::tuple<char, uint32_t, uint64_t, int32_t, int64_t, double, LogLine::string_literal_t, char *>;
 
+#if PLOG_OS_QNX
+    static std::once_flag start_flag;
+#endif
+    static constexpr size_t MAX_LINE_LENGTH = 1024 * 50;
+    static constexpr size_t kMaxfilenum = 9;
+    static constexpr LogLevel kScreenChannel = CH001 | CH002 | CH003;
+    static constexpr LogLevel kSocketChannel = CH010 | CH020 | CH030;
+    static constexpr LogLevel kDiskFileChannel = CH100 | CH200 | CH300;
+    static constexpr std::array<char, 3> kCustomLabels{'I', 'W', 'E'};
+    static std::vector<LogLine> MainThreadInnerMsg;
+
     PLOG_PRINTF_CHECK(1, 0)
     char *vtextprintf(const char *format, va_list vlist)
     {
@@ -401,17 +412,6 @@ namespace ppx
             p->~T();
         }
     };
-
-#if PLOG_OS_QNX
-    static std::once_flag start_flag;
-#endif
-    static constexpr size_t MAX_LINE_LENGTH = 1024 * 50;
-    static constexpr size_t kMaxfilenum = 9;
-    static constexpr LogLevel kScreenChannel = CH001 | CH002 | CH003;
-    static constexpr LogLevel kSocketChannel = CH010 | CH020 | CH030;
-    static constexpr LogLevel kDiskFileChannel = CH100 | CH200 | CH300;
-    static constexpr std::array<char, 3> kCustomLabels{'I', 'W', 'E'};
-    static std::vector<LogLine> MainThreadInnerMsg;
 
     uint64_t timestamp_now()
     {
@@ -1219,6 +1219,7 @@ namespace ppx
 
         void Connect()
         {
+            std::cout << "connect" << std::endl;
             if (connect(m_sock, (const PLOG_SAFE_SOCKADDR *)&m_sa, sizeof(m_sa)) == 0)
             {
                 good.store(true);
@@ -1230,6 +1231,10 @@ namespace ppx
             if (good.load())
             {
                 logline.stringify(*m_os, kSocketChannel, 4);
+                if (!m_os->good())
+                {
+                    good.store(false);
+                }
             }
         }
     };
@@ -1359,7 +1364,6 @@ namespace ppx
                 if (!m_scoket_writer.good.load())
                 {
                     m_scoket_writer.Connect();
-                    std::this_thread::sleep_for(std::chrono::seconds(10 * reConnNum++));
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(4));
             }
