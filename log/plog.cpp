@@ -995,7 +995,7 @@ namespace ppx
         BufferTree(BufferTree const &) = delete;
         BufferTree &operator=(BufferTree const &) = delete;
 
-        BufferTree() : m_current_read_buffer{nullptr}, m_write_index(0), m_queue_len(0), m_flag{ATOMIC_FLAG_INIT}, m_read_index(0)
+        BufferTree() : m_current_read_buffer{nullptr}, m_write_index(0), m_flag{ATOMIC_FLAG_INIT}, m_read_index(0), m_queue_len(0)
         {
             setup_next_write_buffer();
         }
@@ -1266,6 +1266,15 @@ namespace ppx
     bool details::PsuedoLog::operator==(LogLine &logline)
     {
         auto level = logline.lvl();
+
+        if (level & kDiskFileChannel)
+        {
+            auto lg = atomic_flogger.load(std::memory_order_acquire);
+            if (lg)
+            {
+                lg->add(CopyLogLine(logline));
+            }
+        }
         if (level & kScreenChannel)
         {
             auto lg = atomic_tlogger.load(std::memory_order_acquire);
@@ -1277,14 +1286,6 @@ namespace ppx
         if (level & kSocketChannel)
         {
             auto lg = atomic_slogger.load(std::memory_order_acquire);
-            if (lg)
-            {
-                lg->add(CopyLogLine(logline));
-            }
-        }
-        if (level & kDiskFileChannel)
-        {
-            auto lg = atomic_flogger.load(std::memory_order_acquire);
             if (lg)
             {
                 lg->add(std::move(logline));
@@ -1302,9 +1303,9 @@ namespace ppx
         auto *ctx = vtextprintf(format, vlist);
         va_end(vlist);
 
-        if (level & kScreenChannel)
+        if (level & kDiskFileChannel)
         {
-            auto lg = atomic_tlogger.load(std::memory_order_acquire);
+            auto lg = atomic_flogger.load(std::memory_order_acquire);
             if (lg)
             {
                 lg->add(LogLine(level, file, function, line, ctx));
@@ -1318,9 +1319,9 @@ namespace ppx
                 lg->add(LogLine(level, file, function, line, ctx));
             }
         }
-        if (level & kDiskFileChannel)
+        if (level & kScreenChannel)
         {
-            auto lg = atomic_flogger.load(std::memory_order_acquire);
+            auto lg = atomic_tlogger.load(std::memory_order_acquire);
             if (lg)
             {
                 lg->add(LogLine(level, file, function, line, ctx));
@@ -1368,7 +1369,7 @@ namespace ppx
         {
             opts.LVL = opts.LVL | kScreenChannel;
             PLOG_SAFE_MAKE_UNIQUE(tlogger, TLogger);
-            atomic_tlogger.store(tlogger.get());
+            atomic_tlogger.store(tlogger.get(), std::memory_order_release);
             PLOG_INNER_IMSG("teminal output is enabled.");
         }
         else
@@ -1381,7 +1382,7 @@ namespace ppx
         {
             opts.LVL = opts.LVL | kSocketChannel;
             PLOG_SAFE_MAKE_UNIQUE(slogger, SLogger, opts.SOCK.ip, opts.SOCK.port);
-            atomic_slogger.store(slogger.get());
+            atomic_slogger.store(slogger.get(), std::memory_order_release);
             std::stringstream ss;
             PLOG_INNER_IMSG("net server output is enabled, ip address of log server is %s:%hu", opts.SOCK.ip.c_str(), opts.SOCK.port);
         }
@@ -1406,7 +1407,7 @@ namespace ppx
             strftime(buffer, 17, "_%Y%m%d%H%M%S", &gmtime);
             opts.FILE.rootname += buffer;
             PLOG_SAFE_MAKE_UNIQUE(flogger, FLogger, opts.FILE.directory, opts.FILE.rootname, (std::max)(1u, opts.FILE.max_size_mb), opts.FILE.compressed);
-            atomic_flogger.store(flogger.get());
+            atomic_flogger.store(flogger.get(), std::memory_order_release);
             PLOG_INNER_IMSG("disk output is enabled, storage directory is %s, max size of a single file is %u Mib,  max capacity of directory is %u Mib, in %s format.",
                             opts.FILE.directory.c_str(), opts.FILE.max_size_mb, opts.FILE.max_size_all, opts.FILE.compressed ? "compressed" : "normal text");
         }
