@@ -35,11 +35,15 @@
 #define PLOG_SAFE_FILENO ::_fileno
 #define PLOG_LOCALTIME(a, b) localtime_s(b, a)
 #define PLOG_SAFE_SOCKADDR SOCKADDR
+#define PLOG_SAFE_TCPPROTOCAL IPPROTO_TCP
+#define PLOG_SAFE_INVALID_SOCKET INVALID_SOCKET
 #else
 #define PLOG_SAFE_WRITE ::write
 #define PLOG_SAFE_FILENO ::fileno
 #define PLOG_LOCALTIME(a, b) localtime_r(a, b)
 #define PLOG_SAFE_SOCKADDR sockaddr
+#define PLOG_SAFE_TCPPROTOCAL 0
+#define PLOG_SAFE_INVALID_SOCKET -1
 #endif
 
 #if defined(_MSC_VER)
@@ -322,11 +326,6 @@ namespace ppx
     template <typename T, std::size_t growSize = 1024>
     class Allocator : private PreAllocMem<T, growSize>
     {
-#if defined(_MSC_VER)
-        Allocator *copyAllocator = nullptr;
-        std::allocator<T> *rebindAllocator = nullptr;
-#endif
-
     public:
         typedef std::size_t size_type;
         typedef std::ptrdiff_t difference_type;
@@ -342,41 +341,8 @@ namespace ppx
             typedef Allocator<U, growSize> other;
         };
 
-#if defined(_MSC_VER)
-        Allocator() = default;
-
-        Allocator(Allocator &allocator) : copyAllocator(&allocator)
-        {
-        }
-
-        template <class U>
-        Allocator(const Allocator<U, growSize> &other)
-        {
-            if (!std::is_same<T, U>::value)
-            {
-                rebindAllocator = new std::allocator<T>();
-            }
-        }
-
-        ~Allocator()
-        {
-            delete rebindAllocator;
-        }
-#endif
-
         pointer allocate(size_type n, const void *hint = 0)
         {
-#if defined(_MSC_VER)
-            if (copyAllocator)
-            {
-                return copyAllocator->allocate(n, hint);
-            }
-
-            if (rebindAllocator)
-            {
-                return rebindAllocator->allocate(n, hint);
-            }
-#endif
             if (n != 1 || hint)
             {
                 throw std::bad_alloc();
@@ -386,19 +352,6 @@ namespace ppx
 
         void deallocate(pointer p, size_type n)
         {
-#if defined(_MSC_VER)
-            if (copyAllocator)
-            {
-                copyAllocator->deallocate(p, n);
-                return;
-            }
-
-            if (rebindAllocator)
-            {
-                rebindAllocator->deallocate(p, n);
-                return;
-            }
-#endif
             PreAllocMem<T, growSize>::deallocate(p);
         }
 
@@ -515,15 +468,14 @@ namespace ppx
     LogLevel LogLine::lvl() const
     {
         const char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
-        auto loglevel = *reinterpret_cast<LogLevel *>(const_cast<char *>(b));
-        return loglevel;
+        return *reinterpret_cast<LogLevel *>(const_cast<char *>(b));
     }
 
     void LogLine::stringify(std::ostream &os, LogLevel mask, unsigned rsh)
     {
         char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
         char const *const end = b + m_bytes_used;
-        auto loglevel = *reinterpret_cast<LogLevel *>(b);
+        auto loglvl = *reinterpret_cast<LogLevel *>(b);
         b += sizeof(LogLevel);
         auto timestamp = *reinterpret_cast<uint64_t *>(b);
         b += sizeof(uint64_t);
@@ -537,7 +489,7 @@ namespace ppx
         b += sizeof(uint32_t);
 
         auto buflen = strlen(file.m_s) + strlen(function.m_s);
-        auto label = kCustomLabels.at((loglevel & mask).val() >> rsh);
+        auto label = kCustomLabels.at((loglvl & mask).val() >> rsh);
 
         if (buflen > 470)
         {
@@ -779,13 +731,54 @@ namespace ppx
             }
         };
 
-    protected:
-        FdOutBuf buf;
+    private:
+#if PLOG_OS_WINDOWS
+        SOCKET sock_fd;
+#else
+        int sock_fd;
+#endif
+        std::unique_ptr<FdOutBuf> buf;
 
     public:
-        explicit osockstream(int _fd) : std::ostream(nullptr), buf(_fd)
+        osockstream(const std::string &ipaddr, uint16_t port)
+            : std::ostream(nullptr), sock_fd(0)
         {
-            rdbuf(&buf);
+            setstate(std::ios::badbit);
+            sockaddr_in sa;
+            memset(&sa, 0, sizeof(sa));
+            sa.sin_family = AF_INET;
+            inet_pton(AF_INET, ipaddr.c_str(), &sa.sin_addr);
+            sa.sin_port = htons(port);
+
+            sock_fd = socket(AF_INET, SOCK_STREAM, PLOG_SAFE_TCPPROTOCAL);
+            if (sock_fd != PLOG_SAFE_INVALID_SOCKET)
+            {
+                PLOG_SAFE_MAKE_UNIQUE(buf, FdOutBuf, (int)sock_fd);
+                timeval tv{4, 0};
+                setsockopt(sock_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
+            }
+
+            if (buf)
+            {
+                rdbuf(buf.get());
+            }
+
+            if (connect(sock_fd, (const PLOG_SAFE_SOCKADDR *)&sa, sizeof(sa)) == 0)
+            {
+                setstate(std::ios::goodbit);
+            }
+        }
+
+        ~osockstream() override
+        {
+            flush();
+#if PLOG_OS_WINDOWS
+            shutdown(sock_fd, SD_SEND);
+            closesocket(sock_fd);
+#else
+            shutdown(sock_fd, SHUT_WR);
+            close(sock_fd);
+#endif
         }
     };
 
@@ -797,9 +790,11 @@ namespace ppx
         private:
             using KeyType = std::pair<CodeType, char>;
             using PairType = std::pair<const KeyType, CodeType>;
-            using XAlloc = Allocator<PairType, 4 * dms>;
-            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>, XAlloc>;
-
+#if PLOG_OS_WINDOWS
+            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>>;
+#else
+            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>, Allocator<PairType, 4 * dms>>;
+#endif
             static const int bufferSize = 1280;
 
             FILE *fptr;
@@ -959,7 +954,7 @@ namespace ppx
 
         ~BufferLeaf()
         {
-            unsigned int write_count = m_write_state[SIZE].load();
+            unsigned int write_count = m_write_state[SIZE].load(std::memory_order_acquire);
             for (size_t i = 0; i < write_count; ++i)
             {
                 m_buffer[i].~Item();
@@ -1007,7 +1002,7 @@ namespace ppx
 
         void push(LogLine &&logline)
         {
-            if (PLOG_UNLIKELY(m_queue_len.load(std::memory_order_acquire) > 11))
+            if (PLOG_UNLIKELY(m_queue_len > 11))
             {
                 return;
             }
@@ -1080,12 +1075,12 @@ namespace ppx
         std::atomic<BufferLeaf *> m_current_write_buffer;
         BufferLeaf *m_current_read_buffer;
         std::atomic<unsigned int> m_write_index;
-        std::atomic<unsigned int> m_queue_len;
         std::atomic_flag m_flag;
         unsigned int m_read_index;
+        unsigned int m_queue_len;
     };
 
-    class FileWriter
+    struct FileWriter
     {
     public:
         FileWriter(std::string const &log_directory, std::string const &log_file_name,
@@ -1148,100 +1143,49 @@ namespace ppx
 
     class SocketWriter
     {
-#if PLOG_OS_WINDOWS
-        SOCKET m_sock;
-#else
-        int m_sock;
-#endif
-        sockaddr_in m_sa{};
+        uint16_t port;
+        const std::string ipaddr;
         std::unique_ptr<osockstream> m_os;
 
     public:
-        bool init_ok;
-        std::atomic_bool good;
         const std::string m_uid;
 
     public:
-        SocketWriter(const std::string &ipaddr, uint16_t port)
-            : m_sock(0), init_ok(false), good(false)
+        SocketWriter(const std::string &_ipaddr, uint16_t _port)
+            : port(_port), ipaddr(_ipaddr)
         {
-            memset(&m_sa, 0, sizeof(m_sa));
-            m_sa.sin_family = AF_INET;
-            inet_pton(AF_INET, ipaddr.c_str(), &m_sa.sin_addr);
-            m_sa.sin_port = htons(port);
-
 #if PLOG_OS_WINDOWS
             WSADATA wsaData = {0};
             auto iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
             if (iResult == 0)
             {
-                m_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-                if (m_sock != INVALID_SOCKET)
-                {
-                    init_ok = true;
-                    PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, (int)m_sock);
-                }
+                PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, ipaddr, port);
             }
 #else
-            m_sock = socket(AF_INET, SOCK_STREAM, 0);
-            if (m_sock != -1)
-            {
-                init_ok = true;
-                PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, m_sock);
-            }
+            PLOG_SAFE_MAKE_UNIQUE(m_os, osockstream, ipaddr, port);
 #endif
-            if (init_ok)
-            {
-                timeval tv{};
-                tv.tv_sec = 4;
-                tv.tv_usec = 0;
-                setsockopt(m_sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
-            }
-            else
-            {
-                PLOG_INNER_EMSG("create socket failed.");
-            }
         }
 
         ~SocketWriter()
         {
-            m_os->flush();
-            good.store(false);
-#if PLOG_OS_WINDOWS
-            shutdown(m_sock, SD_SEND);
-            closesocket(m_sock);
-            WSACleanup();
-#else
-            shutdown(m_sock, SHUT_WR);
-            close(m_sock);
-#endif
-        }
-
-        void Connect()
-        {
-            std::cout << "connect" << std::endl;
-            if (connect(m_sock, (const PLOG_SAFE_SOCKADDR *)&m_sa, sizeof(m_sa)) == 0)
-            {
-                good.store(true);
-            }
+            m_os.reset();
         }
 
         void write(LogLine &logline)
         {
-            if (good.load())
+            if (m_os->good())
             {
                 logline.stringify(*m_os, kSocketChannel, 4);
-                if (!m_os->good())
-                {
-                    good.store(false);
-                }
+            }
+            else
+            {
+                m_os.reset(new osockstream(ipaddr, port));
             }
         }
     };
 
-    // Logger
     template <typename T>
-    struct LoggerFSM
+    class Logger
     {
         enum class State
         {
@@ -1249,8 +1193,22 @@ namespace ppx
             READY,
             SHUTDOWN
         };
-        std::atomic<State> m_state{State::INIT};
-        BufferTree m_buffer;
+
+    public:
+        template <typename... Ts>
+        Logger(Ts... args)
+            : m_state(State::INIT),
+              m_writer(std::forward<Ts>(args)...),
+              m_thread(&Logger::pop, this)
+        {
+            m_state.store(State::READY, std::memory_order_release);
+        }
+
+        ~Logger()
+        {
+            m_state.store(State::SHUTDOWN, std::memory_order_release);
+            m_thread.join();
+        }
 
         void add(LogLine &&logline)
         {
@@ -1270,7 +1228,7 @@ namespace ppx
             {
                 if (m_buffer.try_pop(logline))
                 {
-                    static_cast<T *>(this)->write(logline);
+                    m_writer.write(logline);
                 }
                 else
                 {
@@ -1280,108 +1238,22 @@ namespace ppx
 
             while (m_buffer.try_pop(logline))
             {
-                static_cast<T *>(this)->write(logline);
+                m_writer.write(logline);
             }
-        }
-    };
-
-    class FLogger : public LoggerFSM<FLogger>
-    {
-    public:
-        FLogger(std::string const &log_directory, std::string const &log_file_name,
-                uint32_t log_file_roll_size_mb, bool enable_compressed)
-            : m_file_writer(log_directory, log_file_name, (std::max)(1u, log_file_roll_size_mb), enable_compressed),
-              m_thread(&FLogger::pop, this)
-        {
-            m_state.store(State::READY, std::memory_order_release);
-        }
-
-        ~FLogger()
-        {
-            m_state.store(State::SHUTDOWN);
-            m_thread.join();
-        }
-
-        void write(LogLine &logline)
-        {
-            m_file_writer.write(logline);
         }
 
     private:
-        FileWriter m_file_writer;
+        std::atomic<State> m_state;
+        T m_writer;
+        BufferTree m_buffer;
         std::thread m_thread;
-    };
-
-    class TLogger : public LoggerFSM<TLogger>
-    {
-    public:
-        TLogger() : m_thread(&TLogger::pop, this)
-        {
-            m_state.store(State::READY, std::memory_order_release);
-        }
-
-        ~TLogger()
-        {
-            m_state.store(State::SHUTDOWN);
-            m_thread.join();
-        }
-
-        void write(LogLine &logline)
-        {
-            m_screen_writer.write(logline);
-        }
-
-    private:
-        ScreenWriter m_screen_writer;
-        std::thread m_thread;
-    };
-
-    class SLogger : public LoggerFSM<SLogger>
-    {
-    public:
-        SLogger(const std::string &ipaddr, uint16_t port)
-            : m_scoket_writer(ipaddr, port), m_thread0(&SLogger::pop, this)
-        {
-            PLOG_SAFE_MAKE_UNIQUE(m_thread1, std::thread, &SLogger::netConn, this);
-            m_state.store(State::READY, std::memory_order_release);
-        }
-
-        ~SLogger()
-        {
-            m_state.store(State::SHUTDOWN);
-            m_thread0.join();
-            if (m_thread1)
-            {
-                m_thread1->join();
-            }
-        }
-
-        void netConn()
-        {
-            int reConnNum = 0;
-            while (m_state.load(std::memory_order_acquire) != State::SHUTDOWN)
-            {
-                if (!m_scoket_writer.good.load())
-                {
-                    m_scoket_writer.Connect();
-                }
-                std::this_thread::sleep_for(std::chrono::seconds(4));
-            }
-        }
-
-        void write(LogLine &logline)
-        {
-            m_scoket_writer.write(logline);
-        }
-
-    private:
-        SocketWriter m_scoket_writer;
-        std::thread m_thread0;
-        std::unique_ptr<std::thread> m_thread1;
     };
 
     namespace
     {
+        using FLogger = Logger<FileWriter>;
+        using SLogger = Logger<SocketWriter>;
+        using TLogger = Logger<ScreenWriter>;
         std::unique_ptr<FLogger> flogger;
         std::unique_ptr<SLogger> slogger;
         std::unique_ptr<TLogger> tlogger;
@@ -1458,7 +1330,7 @@ namespace ppx
 
     void set_log_level(LogLevel level)
     {
-        loglevel.store(level.val());
+        loglevel.store(level.val(), std::memory_order_release);
     }
 
     bool options_legality_check(const log_options &opts)
@@ -1533,7 +1405,7 @@ namespace ppx
             PLOG_LOCALTIME(&now, &gmtime);
             strftime(buffer, 17, "_%Y%m%d%H%M%S", &gmtime);
             opts.FILE.rootname += buffer;
-            PLOG_SAFE_MAKE_UNIQUE(flogger, FLogger, opts.FILE.directory, opts.FILE.rootname, opts.FILE.max_size_mb, opts.FILE.compressed);
+            PLOG_SAFE_MAKE_UNIQUE(flogger, FLogger, opts.FILE.directory, opts.FILE.rootname, (std::max)(1u, opts.FILE.max_size_mb), opts.FILE.compressed);
             atomic_flogger.store(flogger.get());
             PLOG_INNER_IMSG("disk output is enabled, storage directory is %s, max size of a single file is %u Mib,  max capacity of directory is %u Mib, in %s format.",
                             opts.FILE.directory.c_str(), opts.FILE.max_size_mb, opts.FILE.max_size_all, opts.FILE.compressed ? "compressed" : "normal text");
@@ -1566,6 +1438,6 @@ namespace ppx
 
     bool is_logged(LogLevel level)
     {
-        return (bool)(level & LogLevel(loglevel.load()));
+        return (bool)(level & LogLevel(loglevel.load(std::memory_order_acquire)));
     }
 }
