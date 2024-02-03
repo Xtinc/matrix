@@ -390,7 +390,7 @@ void test_robotics()
 
 int main(int, char **)
 {
-    ppx::initialize_log(opts);
+    ppx::initialize_log();
 
     test_expr();
     test_matrix();
