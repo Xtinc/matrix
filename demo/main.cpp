@@ -13,18 +13,13 @@ using namespace ppx::details;
 template <typename T>
 inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
 {
-    std::cout << optcsrt << coll << std::endl;
+    LOG_CH(001) << optcsrt << coll;
 }
 
 template <typename T>
 inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
 {
-    std::cout << optcsrt;
-    for (const auto ele : coll)
-    {
-        std::cout << ele << ' ';
-    }
-    std::cout << std::endl;
+    LOG_CH(001) << optcsrt << coll;
 }
 
 void test_expr()
@@ -120,7 +115,7 @@ void test_linear()
 {
     std::default_random_engine eni((unsigned)time(NULL));
     std::uniform_real_distribution<> uf(-10000, 10000);
-    printf("Test linear linsolver LU\n");
+    LOG_FMT(001, "Test linear linsolver LU\n");
     for (size_t i = 0; i < 50; i++)
     {
         MatrixS<100, 100> A;
@@ -138,7 +133,7 @@ void test_linear()
         auto residual = norm2<100, 1>(result.x - x);
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
-    printf("Test linear linsolver SVD\n");
+    LOG_FMT(001, "Test linear linsolver SVD\n");
     for (size_t i = 0; i < 50; i++)
     {
         MatrixS<100, 100> A;
@@ -156,7 +151,7 @@ void test_linear()
         auto residual = norm2<100, 1>(result.x - x);
         PRINT_SINGLE_ELEMENTS(residual, "residual = ");
     }
-    printf("Test linear linsolver QR\n");
+    LOG_FMT(001, "Test linear linsolver QR\n");
     for (size_t i = 0; i < 50; i++)
     {
         MatrixS<100, 100> A;
@@ -178,7 +173,7 @@ void test_linear()
 
 void test_nonlinear()
 {
-    printf("test nonlinear 1D:\n");
+    LOG_FMT(001, "test nonlinear 1D:\n");
     auto f1 = [](double x)
     {
         double y = 0.0;
@@ -211,7 +206,7 @@ void test_nonlinear()
     PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::QuadraticSearch>(f3, 1, 2.0 * PI), "f3 by QuadraticSearch: ");
     PRINT_SINGLE_ELEMENTS(fminbnd<Optimization::BrentSearch>(f3, 1, 2.0 * PI), "f3 by BrentSearch: ");
 
-    printf("test nonlinear ND:\n");
+    LOG_FMT(001, "test nonlinear ND:\n");
     auto f4 = [](const MatrixS<2, 1> &x)
     {
         return 3 * x[0] * x[0] + 2 * x[0] * x[1] + x[1] * x[1] - 4 * x[0] + 5 * x[1];
@@ -395,19 +390,14 @@ void test_robotics()
 
 int main(int, char **)
 {
-    // ppx::log_options opts;
-    // opts.FILE.on = true;
-    // opts.FILE.compressed = true;
-    ppx::initialize_log();
+    ppx::initialize_log(opts);
 
-    // test_expr();
-    // test_matrix();
-    // test_linear();
-    // test_statics();
-    // test_lieGroup();
-    // test_nonlinear();
-    // test_robotics();
-
-    LOG_CH(101) << "TEST_LOG";
+    test_expr();
+    test_matrix();
+    test_linear();
+    test_statics();
+    test_lieGroup();
+    test_nonlinear();
+    test_robotics();
     return EXIT_SUCCESS;
 }
