@@ -470,7 +470,7 @@ namespace ppx
                         ip = row;
                     }
                 }
-                if (valmax < EPS_SP)
+                if (valmax < EPS_DP)
                 {
                     s = StatusCode::SINGULAR;
                     break;
