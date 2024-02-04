@@ -8,7 +8,6 @@
 #include <list>
 #include <queue>
 #include <tuple>
-#include <map>
 #include <algorithm>
 #include <thread>
 #include <atomic>
@@ -251,120 +250,6 @@ namespace ppx
             }
         }
     }
-
-    template <typename T, std::size_t growSize = 1024>
-    class PreAllocMem
-    {
-        struct Block
-        {
-            Block *next;
-        };
-
-        class Buffer
-        {
-            static const std::size_t blockSize = sizeof(T) > sizeof(Block) ? sizeof(T) : sizeof(Block);
-            uint8_t data[blockSize * growSize];
-
-        public:
-            Buffer *const next;
-
-            Buffer(Buffer *_next) : next(_next) {}
-
-            T *getBlock(std::size_t index)
-            {
-                return reinterpret_cast<T *>(&data[blockSize * index]);
-            }
-        };
-
-        Block *firstFreeBlock = nullptr;
-        Buffer *firstBuffer = nullptr;
-        std::size_t bufferedBlocks = growSize;
-
-    public:
-        PreAllocMem() = default;
-        PreAllocMem(PreAllocMem &&memoryPool) = delete;
-        PreAllocMem(const PreAllocMem &memoryPool) = delete;
-        PreAllocMem operator=(PreAllocMem &&memoryPool) = delete;
-        PreAllocMem operator=(const PreAllocMem &memoryPool) = delete;
-
-        ~PreAllocMem()
-        {
-            while (firstBuffer)
-            {
-                Buffer *buffer = firstBuffer;
-                firstBuffer = buffer->next;
-                delete buffer;
-            }
-        }
-
-        T *allocate()
-        {
-            if (firstFreeBlock)
-            {
-                Block *block = firstFreeBlock;
-                firstFreeBlock = block->next;
-                return reinterpret_cast<T *>(block);
-            }
-
-            if (bufferedBlocks >= growSize)
-            {
-                firstBuffer = new Buffer(firstBuffer);
-                bufferedBlocks = 0;
-            }
-
-            return firstBuffer->getBlock(bufferedBlocks++);
-        }
-
-        void deallocate(T *pointer)
-        {
-            Block *block = reinterpret_cast<Block *>(pointer);
-            block->next = firstFreeBlock;
-            firstFreeBlock = block;
-        }
-    };
-
-    template <typename T, std::size_t growSize = 1024>
-    class Allocator : private PreAllocMem<T, growSize>
-    {
-    public:
-        typedef std::size_t size_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef T *pointer;
-        typedef const T *const_pointer;
-        typedef T &reference;
-        typedef const T &const_reference;
-        typedef T value_type;
-
-        template <class U>
-        struct rebind
-        {
-            typedef Allocator<U, growSize> other;
-        };
-
-        pointer allocate(size_type n, const void *hint = 0)
-        {
-            if (n != 1 || hint)
-            {
-                throw std::bad_alloc();
-            }
-            return PreAllocMem<T, growSize>::allocate();
-        }
-
-        void deallocate(pointer p, size_type n)
-        {
-            PreAllocMem<T, growSize>::deallocate(p);
-        }
-
-        void construct(pointer p, const_reference val)
-        {
-            new (p) T(val);
-        }
-
-        void destroy(pointer p)
-        {
-            p->~T();
-        }
-    };
 
     uint64_t timestamp_now()
     {
@@ -674,6 +559,109 @@ namespace ppx
     using CodeType = std::uint16_t;
     static constexpr CodeType dms = (std::numeric_limits<CodeType>::max)();
 
+    class SearchTree
+    {
+        struct Node
+        {
+            CodeType first;
+            CodeType left;
+            CodeType right;
+            char c;
+            explicit Node(char _c) : first(dms), right(dms), left(dms), c(_c) {}
+        };
+
+        void reset()
+        {
+            vn.clear();
+            constexpr int minc = (std::numeric_limits<char>::min)();
+            constexpr int maxc = (std::numeric_limits<char>::max)();
+            for (auto c = minc; c <= maxc; ++c)
+            {
+                vn.emplace_back(c);
+            }
+        }
+
+    public:
+        SearchTree()
+        {
+            constexpr int minc = (std::numeric_limits<char>::min)();
+            constexpr int maxc = (std::numeric_limits<char>::max)();
+            CodeType k{0};
+            for (auto ic = minc; ic <= maxc; ic++)
+            {
+                initials[static_cast<unsigned char>(ic)] = k++;
+            }
+            vn.reserve(dms);
+            reset();
+        }
+
+        CodeType search_and_insert(CodeType i, char c)
+        {
+            if (vn.size() == dms)
+            {
+                reset();
+            }
+
+            if (i == dms)
+            {
+                return search_initials(c);
+            }
+
+            const CodeType vn_size = static_cast<CodeType>(vn.size());
+            CodeType ci{vn[i].first}; // Current Index
+
+            if (ci != dms)
+            {
+                for (;;)
+                {
+                    if (c < vn[ci].c)
+                    {
+                        if (vn[ci].left == dms)
+                        {
+                            vn[ci].left = vn_size;
+                            break;
+                        }
+                        else
+                        {
+                            ci = vn[ci].left;
+                        }
+                    }
+                    else if (c > vn[ci].c)
+                    {
+                        if (vn[ci].right == dms)
+                        {
+                            vn[ci].right = vn_size;
+                            break;
+                        }
+                        else
+                        {
+                            ci = vn[ci].right;
+                        }
+                    }
+                    else
+                    {
+                        return ci;
+                    }
+                }
+            }
+            else
+            {
+                vn[i].first = vn_size;
+            }
+            vn.emplace_back(c);
+            return dms;
+        }
+
+        CodeType search_initials(char c) const
+        {
+            return initials[static_cast<unsigned char>(c)];
+        }
+
+    private:
+        std::vector<Node> vn;
+        std::array<CodeType, 1u << CHAR_BIT> initials;
+    };
+
     class osockstream : public std::ostream
     {
     private:
@@ -788,13 +776,6 @@ namespace ppx
         class FdCprdBuf : public std::streambuf
         {
         private:
-            using KeyType = std::pair<CodeType, char>;
-            using PairType = std::pair<const KeyType, CodeType>;
-#if PLOG_OS_WINDOWS
-            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>>;
-#else
-            using Xmap = std::map<KeyType, CodeType, std::less<KeyType>, Allocator<PairType, 4 * dms>>;
-#endif
             static const int bufferSize = 1280;
 
             FILE *fptr;
@@ -802,19 +783,7 @@ namespace ppx
             int cur_idx{0};
             CodeType i{dms};
             CodeType buffer[bufferSize]{};
-            Xmap dictionary;
-
-            void reset_dictionary()
-            {
-                dictionary.clear();
-                constexpr int minc = (std::numeric_limits<char>::min)();
-                constexpr int maxc = (std::numeric_limits<char>::max)();
-                for (auto ic = minc; ic <= maxc; ic++)
-                {
-                    auto dictionary_size = static_cast<CodeType>(dictionary.size());
-                    dictionary[{dms, static_cast<char>(ic)}] = dictionary_size;
-                }
-            }
+            SearchTree dictionary;
 
             bool write_buffer(CodeType code)
             {
@@ -832,11 +801,7 @@ namespace ppx
             }
 
         public:
-            explicit FdCprdBuf(FILE *_fptr)
-                : fptr(_fptr), fd(PLOG_SAFE_FILENO(fptr))
-            {
-                reset_dictionary();
-            }
+            explicit FdCprdBuf(FILE *_fptr) : fptr(_fptr), fd(PLOG_SAFE_FILENO(fptr)) {}
 
             void clear()
             {
@@ -850,23 +815,14 @@ namespace ppx
             {
                 if (PLOG_LIKELY(c != EOF))
                 {
-                    if (dictionary.size() == dms)
+                    const CodeType temp{i};
+                    if ((i = dictionary.search_and_insert(temp, c)) == dms)
                     {
-                        reset_dictionary();
-                    }
-                    if (dictionary.count({i, static_cast<char>(c)}) == 0)
-                    {
-                        auto dictionary_size = static_cast<CodeType>(dictionary.size());
-                        dictionary[{dms, static_cast<char>(i)}] = dictionary_size;
-                        if (!write_buffer(i))
+                        if (!write_buffer(temp))
                         {
                             return EOF;
                         }
-                        i = dictionary.at({dms, static_cast<char>(c)});
-                    }
-                    else
-                    {
-                        i = dictionary.at({i, static_cast<char>(c)});
+                        i = dictionary.search_initials(c);
                     }
                 }
                 else
