@@ -41,6 +41,8 @@ if (ENABLE_UNIT_TESTS)
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     gtest_discover_tests(statistic_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(log_test
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     if (ENABLE_LCOV)
         message(STATUS "Enable Lcov in ${SUBPRJ}")
         message(STATUS "-- lcov Configure")
@@ -56,7 +58,7 @@ if (ENABLE_UNIT_TESTS)
                     EXECUTABLE ctest test
                     BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/build"
                     EXCLUDE "${PROJECT_SOURCE_DIR}/build/_deps/*" "/usr/*"
-                    DEPENDENCIES matrix_test lineqn_test opt_test lie_test statistic_test signals_test)
+                    DEPENDENCIES matrix_test lineqn_test opt_test lie_test statistic_test signals_test log_test)
         endif ()
     endif ()
 endif ()
