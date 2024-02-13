@@ -27,6 +27,8 @@ if (ENABLE_UNIT_TESTS)
     target_link_libraries(signals_test PRIVATE ppx gtest_main)
     add_executable(statistic_test statistic_test.cpp)
     target_link_libraries(statistic_test PRIVATE ppx gtest_main)
+    add_executable(log_test log_test.cpp)
+    target_link_libraries(log_test PRIVATE plog gtest_main)
     gtest_discover_tests(matrix_test
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     gtest_discover_tests(lineqn_test
@@ -54,7 +56,7 @@ if (ENABLE_UNIT_TESTS)
                     EXECUTABLE ctest test
                     BASE_DIRECTORY "${PROJECT_SOURCE_DIR}/build"
                     EXCLUDE "${PROJECT_SOURCE_DIR}/build/_deps/*" "/usr/*"
-                    DEPENDENCIES matrix_test lineqn_test opt_test lie_test statistic_test)
+                    DEPENDENCIES matrix_test lineqn_test opt_test lie_test statistic_test signals_test)
         endif ()
     endif ()
 endif ()

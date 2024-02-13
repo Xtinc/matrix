@@ -64,79 +64,6 @@ namespace ppx
         template <typename... Ts>
         using noid_t = typename make_noid<Ts...>::type;
 
-        template <typename T>
-        struct is_stl_container_like_impl
-        {
-            using type = typename std::remove_const<T>::type;
-            template <typename A>
-            static constexpr bool check(A *pt, A const *cpt = nullptr,
-                                        decltype(pt->begin()) * = nullptr,
-                                        decltype(pt->end()) * = nullptr,
-                                        decltype(cpt->begin()) * = nullptr,
-                                        decltype(cpt->end()) * = nullptr,
-                                        typename A::iterator *pi = nullptr,
-                                        typename A::const_iterator *pci = nullptr,
-                                        typename A::value_type * = nullptr)
-            {
-                using iterator = typename A::iterator;
-                using const_iterator = typename A::const_iterator;
-                using value_type = typename A::value_type;
-                return std::is_same<decltype(pt->begin()), iterator>::value &&
-                       std::is_same<decltype(pt->end()), iterator>::value &&
-                       std::is_same<decltype(cpt->begin()), const_iterator>::value &&
-                       std::is_same<decltype(cpt->end()), const_iterator>::value &&
-                       std::is_same<decltype(**pi), value_type &>::value &&
-                       std::is_same<decltype(**pci), value_type const &>::value;
-            }
-
-            template <typename A>
-            static constexpr bool check(...)
-            {
-                return false;
-            }
-
-            static constexpr bool value = check<type>(nullptr);
-        };
-
-        template <typename T>
-        struct is_stl_map_like_impl
-        {
-            using type = typename std::remove_const<T>::type;
-            template <typename A>
-            static constexpr bool check(A *pt, A const *cpt = nullptr,
-                                        decltype(pt->begin()) * = nullptr,
-                                        decltype(pt->end()) * = nullptr,
-                                        decltype(cpt->begin()) * = nullptr,
-                                        decltype(cpt->end()) * = nullptr,
-                                        typename A::iterator *pi = nullptr,
-                                        typename A::const_iterator *pci = nullptr,
-                                        typename A::key_type * = nullptr,
-                                        typename A::mapped_type * = nullptr,
-                                        typename A::value_type * = nullptr)
-            {
-                using iterator = typename A::iterator;
-                using const_iterator = typename A::const_iterator;
-                using key_type = typename A::key_type;
-                using value_type = typename A::value_type;
-                using mapped_type = typename A::mapped_type;
-                return std::is_same<decltype(pt->begin()), iterator>::value &&
-                       std::is_same<decltype(pt->end()), iterator>::value &&
-                       std::is_same<decltype(cpt->begin()), const_iterator>::value &&
-                       std::is_same<decltype(cpt->end()), const_iterator>::value &&
-                       std::is_same<decltype(**pi), value_type &>::value &&
-                       std::is_same<decltype(**pci), value_type const &>::value &&
-                       std::is_same<value_type, std::pair<const key_type, mapped_type>>::value;
-            }
-
-            template <typename A>
-            static constexpr bool check(...)
-            {
-                return false;
-            }
-
-            static constexpr bool value = check<type>(nullptr);
-        };
-
         template <typename T, typename U = noid_t<>>
         struct is_overloaded_stream_impl : public std::false_type
         {
@@ -146,18 +73,6 @@ namespace ppx
         struct is_overloaded_stream_impl<T, noid_t<decltype(std::ostringstream() << std::declval<T>())>> : public std::true_type
         {
         };
-
-        template <typename T>
-        static constexpr bool is_std_array_like()
-        {
-            return is_stl_container_like_impl<T>::value && (!is_stl_map_like_impl<T>::value);
-        }
-
-        template <typename T>
-        static constexpr bool is_std_map_like()
-        {
-            return is_stl_map_like_impl<T>::value;
-        }
 
         template <typename T>
         static constexpr bool is_overloaded_stream()
@@ -396,36 +311,10 @@ namespace ppx
         LogLine &operator<<(double arg);
         LogLine &operator<<(const std::string &arg);
 
-        template <typename T>
-        typename std::enable_if<details::is_std_array_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>::type
-        operator<<(const T &arg)
-        {
-            *this << '[';
-            for (const auto &i : arg)
-            {
-                *this << i << ' ';
-            }
-            *this << ']';
-            return *this;
-        }
-
-        template <typename T>
-        typename std::enable_if<details::is_std_map_like<T>() && !details::is_overloaded_stream<T>(), LogLine &>::type
-        operator<<(const T &arg)
-        {
-            *this << '[';
-            for (const auto &p : arg)
-            {
-                *this << p.first << ':' << p.second;
-            }
-            *this << ']';
-            return *this;
-        }
-
         template <size_t N>
         LogLine &operator<<(const char (&arg)[N])
         {
-            encode(string_literal_t(arg));
+            encode_c_string(arg, (std::max)(N, size_t(1)) - 1);
             return *this;
         }
 

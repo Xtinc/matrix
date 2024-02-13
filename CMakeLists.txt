@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(ENABLE_AVX "Enable AVX intrinsic" ON)
+option(ENABLE_AVX "Enable AVX intrinsic" OFF)
 option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
 option(ENABLE_BENCHMARK "Enable benchmark" OFF)
 option(ENABLE_LCOV "Enable code coverage tests" OFF)

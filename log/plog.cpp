@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <string.h>
+#include <limits.h>
 #include <vector>
 #include <array>
 #include <list>
@@ -243,6 +244,7 @@ namespace ppx
             if (total_size + fsize > max_directory_size)
             {
                 std::remove(std::get<0>(log).c_str());
+                PLOG_INNER_WMSG("remove file: %s", std::get<0>(log).c_str());
             }
             else
             {
@@ -567,7 +569,7 @@ namespace ppx
             CodeType left;
             CodeType right;
             char c;
-            explicit Node(char _c) : first(dms), right(dms), left(dms), c(_c) {}
+            explicit Node(char _c) : first(dms), left(dms), right(dms), c(_c) {}
         };
 
         void reset()
