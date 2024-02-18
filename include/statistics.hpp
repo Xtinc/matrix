@@ -295,15 +295,15 @@ namespace ppx
                 for (size_t i = 0; i < K; i++)
                 {
                     MVN<L> marginal_gmm(u_x_k[i], cov_xx_k[i]);
-                    posterior_coff[i] = marginal_gmm.pdf(elem);
+                    posterior_coff[i] = m_prior[i] * marginal_gmm.pdf(elem);
                 }
                 posterior_coff /= sum(posterior_coff.data(), K);
 
                 MatrixS<N - L, 1> tmp;
                 for (size_t i = 0; i < K; i++)
                 {
-                    MatrixS<N - L, 1> u = (u_y_k[i] + reg_k[i] * (elem - u_x_k[i]));
-                    tmp = tmp + m_prior[i] * posterior_coff[i] * u;
+                    MatrixS<N - L, 1> u = u_y_k[i] + reg_k[i] * (elem - u_x_k[i]);
+                    tmp = tmp + posterior_coff[i] * u;
                 }
                 result.push_back(std::move(tmp));
             }
@@ -332,70 +332,5 @@ namespace ppx
 
     template <size_t N, size_t K>
     using GMM = MixedGaussianDistribution<N, K>;
-
-    //    template <size_t N, size_t K>
-    //    class Kmeans
-    //    {
-    //    public:
-    //        using samples = std::vector<MatrixS<N, 1>>;
-    //
-    //        explicit Kmeans(const samples &data)
-    //            : m_data(data), m_assign(m_data.size(), 0) {}
-    //
-    //    private:
-    //        const samples &m_data;
-    //        std::vector<int> m_assign;
-    //        std::array<int, K> m_count;
-    //        std::array<MatrixS<N, 1>, K> m_mean;
-    //
-    //    private:
-    //        int estep()
-    //        {
-    //            int nchg = 0;
-    //            int kmin = 0;
-    //            m_count.fill(0);
-    //            for (auto i = 0; i < m_data.size(); i++)
-    //            {
-    //                auto dmin = std::numeric_limits<double>::max();
-    //                for (auto j = 0; j < K; j++)
-    //                {
-    //                    auto d = norm2(m_data[i] - m_mean[j]);
-    //                    if (d < dmin)
-    //                    {
-    //                        dmin = d;
-    //                        kmin = j;
-    //                    }
-    //                }
-    //                if (kmin != m_assign[i])
-    //                {
-    //                    nchg++;
-    //                }
-    //                m_assign[i] = kmin;
-    //                m_count[kmin]++;
-    //            }
-    //            return nchg;
-    //        }
-    //
-    //        void mstep()
-    //        {
-    //            for (const auto &elem : m_mean)
-    //            {
-    //                elem.fill(0);
-    //            }
-    //
-    //            for (auto i = 0; i < m_data.size(); i++)
-    //            {
-    //                m_mean[m_assign[i]] += m_data[i];
-    //            }
-    //
-    //            for (auto i = 0; i < K; i++)
-    //            {
-    //                if (m_count[i] > 0)
-    //                {
-    //                    m_mean[i] /= m_count[i];
-    //                }
-    //            }
-    //        }
-    //    };
 }
 #endif

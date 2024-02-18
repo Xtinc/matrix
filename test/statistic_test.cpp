@@ -122,6 +122,36 @@ TEST_F(STA_TestCase, GMR_2D)
     auto pred = gmm.predict(knowns, {0});
     for (size_t i = 0; i < pred.size(); i++)
     {
-        std::cout << gmr_1[i] << " " << pred[i][0] << "\n";
+        std::cout << gmr_1[i] << " " << pred[i][0] << " " << gmr_2[i] << "\n";
+    }
+}
+
+TEST_F(STA_TestCase, GMR_Linear)
+{
+    std::vector<double> x{0., 0.6981317, 1.3962634, 2.0943951, 2.7925268, 3.4906585, 4.1887902, 4.88692191, 5.58505361, 6.28318531};
+    std::vector<double> y{1.58565603, 0.66114222, -5.06753345, -6.33437884, -5.364985, -10.50269171, -10.51272332, -12.92031932, -15.34471305, -17.9232931};
+    GMM<2, 2> gmm;
+    GMM<2, 2>::samples sa;
+    for (size_t i = 0; i < std::min(x.size(), y.size()); i++)
+    {
+        sa.push_back(MatrixS<2, 1>{x[i], y[i]});
+    }
+
+    gmm.setcomp(0, MVN<2>({1, -5}, {1, 0, 0, 1}), 0.5);
+    gmm.setcomp(1, MVN<2>({2.5, -7.0}, {1, 0, 0, 1}), 0.5);
+
+    gmm.fit(sa);
+    std::cout << gmm << std::endl;
+
+    std::vector<MatrixS<1, 1>> knowns;
+    for (size_t i = 0; i < 100; i++)
+    {
+        knowns.push_back(MatrixS<1, 1>{0.0628 * i});
+    }
+
+    auto pred = gmm.predict(knowns, {0});
+    for (size_t i = 0; i < pred.size(); i++)
+    {
+        std::cout << knowns[i][0] << " " << pred[i][0] << "\n";
     }
 }
