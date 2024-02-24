@@ -79,6 +79,8 @@ namespace ppx
         {
             return is_overloaded_stream_impl<T>::value;
         }
+
+        void psuedo_log_flush();
     }
 
     inline const char *filename(const char *path)
@@ -288,6 +290,11 @@ namespace ppx
 
     class LogLine
     {
+    private:
+        LogLine();
+
+        friend void details::psuedo_log_flush();
+
     public:
         struct string_literal_t
         {
@@ -372,10 +379,11 @@ namespace ppx
         void stringify(std::ostream &os, char *start, char const *end);
 
     public:
+        bool m_ctrl_bytes;
         size_t m_bytes_used;
         size_t m_buffer_size;
         std::unique_ptr<char[]> m_heap_buffer;
-        char m_stack_buffer[256 - 2 * sizeof(size_t) - sizeof(decltype(m_heap_buffer)) - 8 /* Reserved */];
+        char m_stack_buffer[256 - 2 * sizeof(size_t) - sizeof(decltype(m_heap_buffer)) - 16];
     };
 
     namespace details
@@ -403,4 +411,5 @@ namespace ppx
 #define LOG_IF(NUM, COND, ...) ppx::is_logged(ppx::CH##NUM) && (cond)                                                                                        \
                                    ? ppx::details::psuedo_log_fmt(ppx::CH##NUM, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__) \
                                    : (void)0
+#define LOG_FLUSH
 #endif

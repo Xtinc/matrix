@@ -335,8 +335,11 @@ namespace ppx
     }
 
     // LogLine
+
+    LogLine::LogLine() : m_ctrl_bytes(true), m_bytes_used(0), m_buffer_size(sizeof(m_stack_buffer)) {}
+
     LogLine::LogLine(LogLevel level, char const *file, char const *function, uint32_t line)
-        : m_bytes_used(0), m_buffer_size(sizeof(m_stack_buffer))
+        : m_ctrl_bytes(false), m_bytes_used(0), m_buffer_size(sizeof(m_stack_buffer))
     {
         encode<LogLevel>(level);
         encode<uint64_t>(timestamp_now());
@@ -360,6 +363,12 @@ namespace ppx
 
     void LogLine::stringify(std::ostream &os, LogLevel mask, unsigned rsh)
     {
+        if (PLOG_UNLIKELY(m_ctrl_bytes))
+        {
+            os.flush();
+            return;
+        }
+
         char *b = !m_heap_buffer ? m_stack_buffer : m_heap_buffer.get();
         char const *const end = b + m_bytes_used;
         auto loglvl = *reinterpret_cast<LogLevel *>(b);
@@ -378,7 +387,7 @@ namespace ppx
         auto buflen = strlen(file.m_s) + strlen(function.m_s);
         auto label = kCustomLabels.at((loglvl & mask).val() >> rsh);
 
-        if (buflen > 470)
+        if (PLOG_UNLIKELY(buflen > 470))
         {
             char buf[30]{};
             auto micro_sec = format_timestamp(buf, timestamp);
@@ -1133,7 +1142,7 @@ namespace ppx
         {
             if (m_os->good())
             {
-                logline.stringify(*m_os, kSocketChannel, 4);
+                logline.stringify(*m_os, kSocketChannel, 5);
             }
             else
             {
@@ -1284,6 +1293,15 @@ namespace ppx
             {
                 lg->add(LogLine(level, file, function, line, ctx));
             }
+        }
+    }
+
+    void details::psuedo_log_flush()
+    {
+        auto lg = atomic_tlogger.load(std::memory_order_acquire);
+        if (lg)
+        {
+            lg->add(LogLine());
         }
     }
 
