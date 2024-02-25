@@ -1,7 +1,9 @@
 #ifndef VVERY_SIMPLE_ASMEXT_HEADER
 #define VVERY_SIMPLE_ASMEXT_HEADER
 
+#if defined(PPX_USE_AVX)
 #include <immintrin.h>
+#endif
 #include <cinttypes>
 
 namespace ppx
