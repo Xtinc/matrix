@@ -367,15 +367,7 @@ void test_robotics()
     UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}, -PI, PI};
     UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6, -PI, PI};
     auto s = StatusCode::NORMAL;
-    kinematics<6>::Q q;
-    while (s == StatusCode::NORMAL)
-    {
-        random(q, -PI + 1e-3, PI - 1e-3);
-        auto J = UR5.jacobiSpace(q);
-        LU<6> lu(J);
-        s = lu.s;
-    }
-    q = {0.336058, 1.69911, -0.445658, -1.25227, 0.00013744, -2.71554};
+    kinematics<6>::Q q{0.336058, 1.69911, -0.445658, -1.25227, 0.00013744, -2.71554};
     SE3 TargetPose = UR5.forwardSpace(q);
     auto t1 = std::chrono::system_clock::now();
     for (size_t i = 0; i < 2000; i++)
@@ -391,7 +383,6 @@ void test_robotics()
 int main(int, char **)
 {
     ppx::initialize_log();
-
     test_expr();
     test_matrix();
     test_linear();
