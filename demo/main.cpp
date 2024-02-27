@@ -382,13 +382,7 @@ void test_robotics()
 using namespace std::chrono_literals;
 int main(int, char **)
 {
-    ppx::log_options opts;
-    opts.FILE.on = true;
-    opts.FILE.max_size_mb = 1;
-    opts.SOCK.on = true;
-    opts.SOCK.ip = "127.0.0.1";
-    opts.SOCK.port = 9999;
-    ppx::initialize_log(opts);
+    ppx::initialize_log();
     test_expr();
     test_matrix();
     test_linear();

@@ -836,7 +836,6 @@ namespace ppx
         osockstream(const std::string &ipaddr, uint16_t port)
             : std::ostream(nullptr), sock_fd(0)
         {
-            setstate(std::ios::badbit);
             sockaddr_in sa;
             memset(&sa, 0, sizeof(sa));
             sa.sin_family = AF_INET;
@@ -856,15 +855,19 @@ namespace ppx
                 rdbuf(buf.get());
             }
 
-            if (connect(sock_fd, (const PLOG_SAFE_SOCKADDR *)&sa, sizeof(sa)) == 0)
+            if (connect(sock_fd, (const PLOG_SAFE_SOCKADDR *)&sa, sizeof(sa)) != 0)
             {
-                setstate(std::ios::goodbit);
+                setstate(std::ios::badbit);
             }
         }
 
         ~osockstream() override
         {
-            buf->clear();
+            if (good())
+            {
+                buf->clear();
+            }
+
 #if PLOG_OS_WINDOWS
             shutdown(sock_fd, SD_SEND);
             closesocket(sock_fd);
@@ -1191,13 +1194,19 @@ namespace ppx
 
         void write(LogLine &logline)
         {
+            static auto reConnTP = std::chrono::system_clock::now();
             if (m_os->good())
             {
                 logline.stringify(*m_os, kSocketChannel, 5);
             }
             else
             {
-                m_os.reset(new osockstream(ipaddr, port));
+                auto now = std::chrono::system_clock::now();
+                if (now - reConnTP > std::chrono::seconds(4))
+                {
+                    reConnTP = now;
+                    m_os.reset(new osockstream(ipaddr, port));
+                }
             }
         }
     };
