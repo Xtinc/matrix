@@ -366,7 +366,6 @@ void test_robotics()
     UR5.Joint<3>() = {"R4", se3{0.0, 1.0, 0.0, -0.089, 0.0, 0.817}, SE3{}, -PI, PI};
     UR5.Joint<4>() = {"R5", se3{0.0, 0.0, -1.0, -0.109, 0.817, 0.0}, SE3{}, -PI, PI};
     UR5.Joint<5>() = {"R6", se3{0.0, 0.0, 0.0, 0.006, 0.0, 0.817}, F6, -PI, PI};
-    auto s = StatusCode::NORMAL;
     kinematics<6>::Q q{0.336058, 1.69911, -0.445658, -1.25227, 0.00013744, -2.71554};
     SE3 TargetPose = UR5.forwardSpace(q);
     auto t1 = std::chrono::system_clock::now();
@@ -397,11 +396,6 @@ int main(int, char **)
     test_lieGroup();
     test_nonlinear();
     test_robotics();
-    for (size_t i = 0; i < 30000; i++)
-    {
-        std::this_thread::sleep_for(1ms);
-        LOG_CH(111) << "singualr q: " << i;
-    }
 
     return EXIT_SUCCESS;
 }
