@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <dirent.h>
 #endif
@@ -392,13 +393,13 @@ namespace ppx
             char buf[30]{};
             auto micro_sec = format_timestamp(buf, timestamp);
             std::snprintf(buf + 21, 9, "%06" PRIu64 "] ", micro_sec);
-            os << buf << '[' << threadid << ',' << label << "][" << file.m_s << ':' << line << ',' << function.m_s << "] ";
+            os << buf << '[' << label << threadid << ' ' << file.m_s << ':' << line << "][" << function.m_s << "] ";
         }
         else
         {
             char buf[512]{};
             auto micro_sec = format_timestamp(buf, timestamp);
-            std::snprintf(buf + 21, 491, "%06" PRIu64 "][%zu,%c][%s:%d,%s] ", micro_sec, threadid, label, file.m_s, line, function.m_s);
+            std::snprintf(buf + 21, 491, "%06" PRIu64 "][%c%zu %s:%d][%s] ", micro_sec, label, threadid, file.m_s, line, function.m_s);
             os << buf;
         }
         stringify(os, b, end);
@@ -673,63 +674,156 @@ namespace ppx
         std::array<CodeType, 1u << CHAR_BIT> initials;
     };
 
-    class osockstream : public std::ostream
+    class FdOutBuf : public std::streambuf
     {
     private:
-        class FdOutBuf : public std::streambuf
+        static constexpr int bufferSize = 1400;
+
+        const int fd;
+        const bool sock_type;
+        int tol_idx{0};
+        char buffer[bufferSize]{};
+
+    public:
+        explicit FdOutBuf(int _fd, bool _isSock)
+            : fd(_fd), sock_type(_isSock)
         {
-        protected:
-            int fd;
-            static constexpr int bufferSize = 1400;
-            char buffer[bufferSize]{};
+            setp(buffer, buffer + (bufferSize - 1));
+        }
 
-        public:
-            explicit FdOutBuf(int _fd) : fd(_fd)
-            {
-                setp(buffer, buffer + (bufferSize - 1));
-            }
+        void clear()
+        {
+            sync();
+        }
 
-            ~FdOutBuf() override
+    protected:
+        int flushBuffer()
+        {
+            auto ret = static_cast<int>(pptr() - pbase());
+            if (sock_type)
             {
-                sync();
-            }
-
-        protected:
-            int flushBuffer()
-            {
-                auto ret = send(fd, buffer, static_cast<int>(pptr() - pbase()), 0);
+                ret = send(fd, buffer, ret, 0);
                 if (PLOG_UNLIKELY(ret < 0))
                 {
                     return EOF;
                 }
-                pbump(-ret);
-                return ret;
             }
-
-            int_type overflow(int_type c) override
+            else
             {
-                if (PLOG_LIKELY(c != EOF))
-                {
-                    *pptr() = c;
-                    pbump(1);
-                }
-                if (flushBuffer() == EOF)
+                if (PLOG_UNLIKELY(ret != PLOG_SAFE_WRITE(fd, buffer, ret)))
                 {
                     return EOF;
                 }
-                return c;
             }
+            tol_idx += ret;
+            pbump(-ret);
+            return ret;
+        }
 
-            int sync() override
+        int_type overflow(int_type c) override
+        {
+            if (PLOG_LIKELY(c != EOF))
             {
-                if (flushBuffer() == EOF)
-                {
-                    return -1;
-                }
-                return 0;
+                *pptr() = c;
+                pbump(1);
             }
-        };
+            if (flushBuffer() == EOF)
+            {
+                return EOF;
+            }
+            return c;
+        }
 
+        int sync() override
+        {
+            if (flushBuffer() == EOF)
+            {
+                return -1;
+            }
+            return 0;
+        }
+
+        std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way,
+                               std::ios_base::openmode mode) override
+        {
+            return mode == std::ios_base::out && way == std::ios_base::cur ? std::streampos(std::streamoff(tol_idx))
+                                                                           : std::streampos(std::streamoff(-1));
+        }
+    };
+
+    class FdCprdBuf : public std::streambuf
+    {
+    private:
+        static const int bufferSize = 1280;
+
+        const int fd;
+        int cur_idx{0};
+        int tol_idx{0};
+        CodeType i{dms};
+        CodeType buffer[bufferSize]{};
+        SearchTree dictionary;
+
+        bool write_buffer(CodeType code)
+        {
+            if (PLOG_UNLIKELY(cur_idx == bufferSize))
+            {
+                if (PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
+                                    bufferSize * sizeof(CodeType)) != bufferSize * sizeof(CodeType))
+                {
+                    return false;
+                }
+                cur_idx = 0;
+                tol_idx += bufferSize * sizeof(CodeType);
+            }
+            buffer[cur_idx++] = code;
+            return true;
+        }
+
+    public:
+        explicit FdCprdBuf(int _fd) : fd(_fd) {}
+
+        void clear()
+        {
+            auto num = PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
+                                       cur_idx * sizeof(CodeType));
+            tol_idx += num;
+        }
+
+    protected:
+        int_type overflow(int_type c) override
+        {
+            if (PLOG_LIKELY(c != EOF))
+            {
+                const CodeType temp{i};
+                if ((i = dictionary.search_and_insert(temp, c)) == dms)
+                {
+                    if (!write_buffer(temp))
+                    {
+                        return EOF;
+                    }
+                    i = dictionary.search_initials(c);
+                }
+            }
+            else
+            {
+                if (i != dms && !write_buffer(i))
+                {
+                    return EOF;
+                }
+            }
+            return c;
+        }
+
+        std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way,
+                               std::ios_base::openmode mode) override
+        {
+            return mode == std::ios_base::out && way == std::ios_base::cur ? std::streampos(std::streamoff(tol_idx))
+                                                                           : std::streampos(std::streamoff(-1));
+        }
+    };
+
+    class osockstream : public std::ostream
+    {
     private:
 #if PLOG_OS_WINDOWS
         SOCKET sock_fd;
@@ -752,7 +846,7 @@ namespace ppx
             sock_fd = socket(AF_INET, SOCK_STREAM, PLOG_SAFE_TCPPROTOCAL);
             if (sock_fd != PLOG_SAFE_INVALID_SOCKET)
             {
-                PLOG_SAFE_MAKE_UNIQUE(buf, FdOutBuf, (int)sock_fd);
+                PLOG_SAFE_MAKE_UNIQUE(buf, FdOutBuf, (int)sock_fd, true);
                 timeval tv{4, 0};
                 setsockopt(sock_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
             }
@@ -770,7 +864,7 @@ namespace ppx
 
         ~osockstream() override
         {
-            flush();
+            buf->clear();
 #if PLOG_OS_WINDOWS
             shutdown(sock_fd, SD_SEND);
             closesocket(sock_fd);
@@ -784,77 +878,6 @@ namespace ppx
     class ofcprstream : public std::ostream
     {
     private:
-        class FdCprdBuf : public std::streambuf
-        {
-        private:
-            static const int bufferSize = 1280;
-
-            FILE *fptr;
-            const int fd;
-            int cur_idx{0};
-            CodeType i{dms};
-            CodeType buffer[bufferSize]{};
-            SearchTree dictionary;
-
-            bool write_buffer(CodeType code)
-            {
-                if (PLOG_UNLIKELY(cur_idx == bufferSize))
-                {
-                    if (PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
-                                        bufferSize * sizeof(CodeType)) != bufferSize * sizeof(CodeType))
-                    {
-                        return false;
-                    }
-                    cur_idx = 0;
-                }
-                buffer[cur_idx++] = code;
-                return true;
-            }
-
-        public:
-            explicit FdCprdBuf(FILE *_fptr) : fptr(_fptr), fd(PLOG_SAFE_FILENO(fptr)) {}
-
-            void clear()
-            {
-                auto num = PLOG_SAFE_WRITE(fd, reinterpret_cast<const char *>(&buffer),
-                                           cur_idx * sizeof(CodeType));
-                (void)(num);
-            }
-
-        protected:
-            int_type overflow(int_type c) override
-            {
-                if (PLOG_LIKELY(c != EOF))
-                {
-                    const CodeType temp{i};
-                    if ((i = dictionary.search_and_insert(temp, c)) == dms)
-                    {
-                        if (!write_buffer(temp))
-                        {
-                            return EOF;
-                        }
-                        i = dictionary.search_initials(c);
-                    }
-                }
-                else
-                {
-                    if (i != dms && !write_buffer(i))
-                    {
-                        return EOF;
-                    }
-                }
-                return c;
-            }
-
-            std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way,
-                                   std::ios_base::openmode mode) override
-            {
-                return mode == std::ios_base::out && way == std::ios_base::cur ? std::streampos(std::streamoff(::ftell(fptr)))
-                                                                               : std::streampos(std::streamoff(-1));
-            }
-        };
-
-    private:
         FILE *fptr;
         std::unique_ptr<FdCprdBuf> buf;
 
@@ -864,12 +887,40 @@ namespace ppx
             fptr = ::fopen(filename, "wb");
             if (fptr)
             {
-                PLOG_SAFE_MAKE_UNIQUE(buf, FdCprdBuf, fptr);
+                PLOG_SAFE_MAKE_UNIQUE(buf, FdCprdBuf, PLOG_SAFE_FILENO(fptr));
                 rdbuf(buf.get());
             }
         }
 
         ~ofcprstream() override
+        {
+            if (fptr)
+            {
+                buf->clear();
+                ::fclose(fptr);
+                fptr = nullptr;
+            }
+        }
+    };
+
+    class ofbufstream : public std::ostream
+    {
+    private:
+        FILE *fptr;
+        std::unique_ptr<FdOutBuf> buf;
+
+    public:
+        ofbufstream(const char *filename) : std::ostream(nullptr)
+        {
+            fptr = ::fopen(filename, "w");
+            if (fptr)
+            {
+                PLOG_SAFE_MAKE_UNIQUE(buf, FdOutBuf, PLOG_SAFE_FILENO(fptr), false);
+                rdbuf(buf.get());
+            }
+        }
+
+        ~ofbufstream() override
         {
             if (fptr)
             {
@@ -1087,7 +1138,7 @@ namespace ppx
             }
             else
             {
-                PLOG_SAFE_MAKE_UNIQUE(m_os, std::ofstream, m_name + "_" + std::to_string(m_file_number++) + ".log");
+                PLOG_SAFE_MAKE_UNIQUE(m_os, ofbufstream, (m_name + "_" + std::to_string(m_file_number++) + ".log").c_str());
             }
         }
 
@@ -1301,7 +1352,7 @@ namespace ppx
         auto lg = atomic_tlogger.load(std::memory_order_acquire);
         if (lg)
         {
-            lg->add(LogLine());
+            lg->add(LogLine{});
         }
     }
 

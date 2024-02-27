@@ -13,13 +13,13 @@ using namespace ppx::details;
 template <typename T>
 inline void PRINT_SINGLE_ELEMENTS(const T &coll, const std::string &optcsrt = "")
 {
-    LOG_CH(001) << optcsrt << coll;
+    LOG_CH(111) << optcsrt << coll;
 }
 
 template <typename T>
 inline void PRINT_LISTED_ELEMENTS(const T &coll, const std::string &optcsrt = "")
 {
-    LOG_CH(001) << optcsrt << coll;
+    LOG_CH(111) << optcsrt << coll;
 }
 
 void test_expr()
@@ -379,10 +379,17 @@ void test_robotics()
     PRINT_SINGLE_ELEMENTS(q, "IKSpace = ");
     std::cout << "singualr q:" << q << "\n";
 }
-
+#include <thread>
+using namespace std::chrono_literals;
 int main(int, char **)
 {
-    ppx::initialize_log();
+    ppx::log_options opts;
+    opts.FILE.on = true;
+    opts.FILE.max_size_mb = 1;
+    opts.SOCK.on = true;
+    opts.SOCK.ip = "127.0.0.1";
+    opts.SOCK.port = 9999;
+    ppx::initialize_log(opts);
     test_expr();
     test_matrix();
     test_linear();
@@ -390,5 +397,11 @@ int main(int, char **)
     test_lieGroup();
     test_nonlinear();
     test_robotics();
+    for (size_t i = 0; i < 30000; i++)
+    {
+        std::this_thread::sleep_for(1ms);
+        LOG_CH(111) << "singualr q: " << i;
+    }
+
     return EXIT_SUCCESS;
 }

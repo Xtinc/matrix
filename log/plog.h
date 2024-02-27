@@ -411,5 +411,5 @@ namespace ppx
 #define LOG_IF(NUM, COND, ...) ppx::is_logged(ppx::CH##NUM) && (cond)                                                                                        \
                                    ? ppx::details::psuedo_log_fmt(ppx::CH##NUM, ppx::filename(__FILE__), ppx::funcname(__FUNCTION__), __LINE__, __VA_ARGS__) \
                                    : (void)0
-#define LOG_FLUSH
+#define FLUSH_LOG ppx::details::psuedo_log_flush()
 #endif
