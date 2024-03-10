@@ -2,14 +2,14 @@
 #include "liegroup.hpp"
 #if defined(_MSC_VER)
 #include <intrin.h>
-#elif defined(__GNUG__)
+#elif defined(__GNUG__) && (defined(__i386__) || defined(__x86_64__))
 #include <cpuid.h>
 #include <x86intrin.h>
-#else
-#error Unknown target
 #endif
 
 using namespace ppx;
+
+#ifdef PPX_USE_AVX
 // check cpu info
 struct cpuidregs
 {
@@ -751,6 +751,8 @@ void list_cpu_infos()
     cpu_infos.LoadInfo();
     std::cout << cpu_infos << "\n";
 }
+
+#endif
 
 class MatrixS_TestCase : public ::testing::Test
 {
