@@ -513,7 +513,7 @@ namespace ppx
 
     LogLine &LogLine::operator<<(const std::string &arg)
     {
-        encode_c_string(arg.c_str(), arg.length());
+        encode_c_string(arg.c_str(), (std::min)(strlen(arg.c_str()), arg.length()));
         return *this;
     }
 
